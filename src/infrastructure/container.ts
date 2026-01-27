@@ -13,7 +13,6 @@ import {
     InMemoryPasswordResetTokenRepository
 } from "./repositories/implementations";
 import { seedRepositories } from "./seed/seed-data";
-import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
 // Generic Global Singleton Helper
@@ -70,35 +69,52 @@ export const analyticsService = new AnalyticsService(
 
 
 // Initializer function (to be called at app bootstrap)
+// Initializer function (Singleton Promise Pattern)
+let initializationPromise: Promise<void> | null = null;
+
 export async function initializeContainer() {
-    // Check if specifically SEEDED flag exists to avoid re-seeding repeatedly on hot reload if not desired, 
-    // OR just rely on repo check logic.
+    // If already initialized (global check for dev hot reload), return immediately
     // @ts-ignore
     if (global.__kyber_initialized) return;
 
-    await seedRepositories(categoryRepository, unitRepository);
+    // If a promise is already running, return it to wait for the same result
+    if (initializationPromise) return initializationPromise;
 
-    // Seed default test user
-    const defaultUserEmail = "test@test.com"; // using format to satisfy validation
-    const existingUser = await userRepository.findByEmail(defaultUserEmail);
-    if (!existingUser) {
-        // Validation bypass: Creating user directly in repo to allow weak password "test"
-        const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash("test", salt); // Hash "test"
+    // Create the cleanup/initialization promise
+    initializationPromise = (async () => {
+        try {
+            await seedRepositories(categoryRepository, unitRepository);
 
-        await userRepository.create({
-            id: randomUUID(),
-            email: defaultUserEmail,
-            passwordHash: hash,
-            defaultCurrencyCode: "USD",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            isDeleted: false
-        });
-        console.log(`Default test user seeded: ${defaultUserEmail} / test`);
-    }
+            // Seed default test user
+            const defaultUserEmail = "test@test.com";
+            const existingUser = await userRepository.findByEmail(defaultUserEmail);
+            if (!existingUser) {
+                // Validation bypass: Creating user directly in repo
+                // PLAIN TEXT for V1 simplicity
+                const hash = "test";
 
-    // @ts-ignore
-    global.__kyber_initialized = true;
-    console.log("Container initialized and seeded (Global).");
+                await userRepository.create({
+                    id: randomUUID(),
+                    email: defaultUserEmail,
+                    passwordHash: hash,
+                    defaultCurrencyCode: "USD",
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    isDeleted: false
+                });
+                console.log(`Default test user seeded: ${defaultUserEmail} / test`);
+            }
+
+            // @ts-ignore
+            global.__kyber_initialized = true;
+            console.log("Container initialized and seeded (Global).");
+        } catch (error) {
+            console.error("Failed to initialize container:", error);
+            // Reset promise on failure so we can retry? Or let it fail.
+            initializationPromise = null;
+            throw error;
+        }
+    })();
+
+    return initializationPromise;
 }

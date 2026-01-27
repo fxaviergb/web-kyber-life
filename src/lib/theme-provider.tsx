@@ -25,11 +25,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         if (stored && (stored === "dark" || stored === "light")) {
             setTheme(stored);
         } else {
-            // Fall back to system preference
-            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-            const systemTheme = prefersDark ? "dark" : "light";
-            setTheme(systemTheme);
-            localStorage.setItem("kyber-theme", systemTheme);
+            // Default to Dark Mode (User Request)
+            setTheme("dark");
+            localStorage.setItem("kyber-theme", "dark");
         }
     }, []);
 
