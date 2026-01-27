@@ -58,6 +58,8 @@ export function PurchaseChecklist({
     // Create New Option State
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [createForGenericId, setCreateForGenericId] = useState<string | null>(null);
+    const [createForLineId, setCreateForLineId] = useState<string | null>(null);
+    const [extraBrands, setExtraBrands] = useState<Record<string, BrandProduct[]>>({});
 
     // Global Price Update State
 
@@ -98,12 +100,42 @@ export function PurchaseChecklist({
 
     }
 
-    function handleBrandChange(lineId: string, value: string, genericItemId: string) {
+    function handleBrandChange(lineId: string, value: string, genericItemId: string, brandOverride?: BrandProduct) {
         if (value === "new_option") {
             setCreateForGenericId(genericItemId);
+            setCreateForLineId(lineId);
             setCreateModalOpen(true);
         } else {
-            handleLineUpdate(lineId, { brandProductId: value || null });
+            const updates: Partial<PurchaseLine> = { brandProductId: value || null };
+
+            // Logic: Update price based on selection
+            if (value) {
+                // Search in both server brands and locally created ones
+                const brands = [
+                    ...(brandOptionsMap[genericItemId] || []),
+                    ...(extraBrands[genericItemId] || [])
+                ];
+                const brand = brandOverride || brands.find(b => b.id === value);
+                if (brand && typeof brand.globalPrice === 'number') {
+                    updates.unitPrice = brand.globalPrice;
+                }
+            } else {
+                // Revert to Generic Price
+                const generic = genericItemsMap[genericItemId];
+                updates.unitPrice = (generic && typeof generic.globalPrice === 'number') ? generic.globalPrice : 0;
+            }
+
+            handleLineUpdate(lineId, updates);
+        }
+    }
+
+    function onBrandCreated(brand: BrandProduct) {
+        setExtraBrands(prev => ({
+            ...prev,
+            [brand.genericItemId]: [...(prev[brand.genericItemId] || []), brand]
+        }));
+        if (createForLineId && createForGenericId) {
+            handleBrandChange(createForLineId, brand.id, createForGenericId, brand);
         }
     }
 
@@ -155,7 +187,11 @@ export function PurchaseChecklist({
     });
 
     const renderLine = (line: PurchaseLine) => {
-        const brands = brandOptionsMap[line.genericItemId] || [];
+        const brands = [
+            ...(brandOptionsMap[line.genericItemId] || []),
+            ...(extraBrands[line.genericItemId] || [])
+        ].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i); // Deduplicate
+
         const genericItem = genericItemsMap[line.genericItemId];
         const genericName = genericItem?.canonicalName || "Item";
         const needsPrice = line.checked && (!line.unitPrice || line.unitPrice <= 0);
@@ -215,7 +251,11 @@ export function PurchaseChecklist({
                                 type="number"
                                 placeholder="Cant"
                                 className="bg-bg-0 border-input w-16 text-center px-1"
-                                defaultValue={line.qty?.toString()}
+                                value={line.qty?.toString() || ""}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setLines(prev => prev.map(l => l.id === line.id ? { ...l, qty: val === "" ? 1 : parseFloat(val) } : l));
+                                }}
                                 disabled={line.checked || isReadOnly}
                                 onBlur={(e) => handleLineUpdate(line.id, { qty: parseFloat(e.target.value) })}
                             />
@@ -241,7 +281,11 @@ export function PurchaseChecklist({
                                     "pl-7 bg-bg-0 border-input font-bold",
                                     (!line.unitPrice || line.unitPrice <= 0) && line.checked && "border-destructive focus-visible:ring-destructive"
                                 )}
-                                defaultValue={line.unitPrice?.toString()}
+                                value={line.unitPrice?.toString() || ""}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setLines(prev => prev.map(l => l.id === line.id ? { ...l, unitPrice: val === "" ? 0 : parseFloat(val) } : l));
+                                }}
                                 disabled={isReadOnly}
                                 onBlur={(e) => handlePriceBlur(line, e.target.value)}
                             />
@@ -396,8 +440,12 @@ export function PurchaseChecklist({
                         open={createModalOpen}
                         onOpenChange={(open) => {
                             setCreateModalOpen(open);
-                            if (!open) setCreateForGenericId(null);
+                            if (!open) {
+                                setCreateForGenericId(null);
+                                setCreateForLineId(null);
+                            }
                         }}
+                        onSuccess={onBrandCreated}
                     />
                 )
             }

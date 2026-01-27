@@ -48,7 +48,7 @@ export interface BrandProduct extends BaseEntity {
     ownerUserId: UUID;
     genericItemId: UUID;
     brand: string;
-    presentation: string;
+    presentation?: string;
     imageUrl: string | null;
     globalPrice: number | null;
     currencyCode: CurrencyCode | null;

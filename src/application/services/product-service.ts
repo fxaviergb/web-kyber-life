@@ -114,7 +114,7 @@ export class ProductService {
         userId: UUID,
         genericItemId: UUID,
         brand: string,
-        presentation: string,
+        presentation?: string,
         imageUrl?: string,
         globalPrice?: number,
         currencyCode: string = "USD"
@@ -124,7 +124,7 @@ export class ProductService {
             ownerUserId: userId,
             genericItemId,
             brand,
-            presentation,
+            presentation: presentation || undefined,
             imageUrl: imageUrl || null,
             globalPrice: globalPrice !== undefined ? globalPrice : null,
             currencyCode: globalPrice !== undefined ? currencyCode : null,
@@ -139,7 +139,7 @@ export class ProductService {
         userId: UUID,
         id: UUID,
         brand: string,
-        presentation: string,
+        presentation?: string,
         imageUrl?: string,
         globalPrice?: number,
         currencyCode?: string
@@ -149,7 +149,7 @@ export class ProductService {
         if (product.ownerUserId !== userId) throw new Error("Cannot edit other user's product");
 
         product.brand = brand;
-        product.presentation = presentation;
+        if (presentation !== undefined) product.presentation = presentation;
         if (imageUrl !== undefined) product.imageUrl = imageUrl || null;
         if (globalPrice !== undefined) product.globalPrice = globalPrice;
         if (currencyCode !== undefined) product.currencyCode = currencyCode;

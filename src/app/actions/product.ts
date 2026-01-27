@@ -66,7 +66,7 @@ export async function createGenericItemAction(prevState: any, formData: FormData
 
     try {
         const userId = await getUserId();
-        await productService.createGenericItem(
+        const newItem = await productService.createGenericItem(
             userId,
             result.data.name,
             result.data.primaryCategoryId,
@@ -76,7 +76,7 @@ export async function createGenericItemAction(prevState: any, formData: FormData
         // Assuming createGenericItem handles basic creation.
 
         revalidatePath("/market/items");
-        return { success: true, message: "Producto creado" };
+        return { success: true, message: "Producto creado", id: newItem.id };
     } catch (e: any) {
         return { error: e.message };
     }
@@ -148,6 +148,16 @@ export async function addAliasAction(itemId: string, formData: FormData) {
 
 // --- Brand Products ---
 
+export async function getBrandProductsAction(genericItemId: string) {
+    try {
+        const userId = await getUserId();
+        return await productService.getBrandProducts(userId, genericItemId);
+    } catch (e) {
+        console.error("Get brands error", e);
+        return [];
+    }
+}
+
 export async function createBrandProductAction(genericItemId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
     const parseData = {
@@ -164,7 +174,7 @@ export async function createBrandProductAction(genericItemId: string, prevState:
 
     try {
         const userId = await getUserId();
-        await productService.createBrandProduct(
+        const newBrandProduct = await productService.createBrandProduct(
             userId,
             result.data.genericItemId,
             result.data.brand,
@@ -174,7 +184,7 @@ export async function createBrandProductAction(genericItemId: string, prevState:
             result.data.currencyCode
         );
         revalidatePath(`/market/items/${genericItemId}`);
-        return { success: true, message: "Opción creada" };
+        return { success: true, message: "Opción creada", data: newBrandProduct };
     } catch (e: any) {
         return { error: e.message };
     }

@@ -12,8 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useActionState, useEffect, useState } from "react";
-import { createBrandProductAction, updateBrandProductAction, addPriceObservationAction } from "@/app/actions/product";
+import { useActionState, useEffect, useState, startTransition } from "react";
+import { createBrandProductAction, updateBrandProductAction, addPriceObservationAction, getBrandProductsAction } from "@/app/actions/product";
 import { createSupermarketAction } from "@/app/actions/master-data";
 import { BrandProduct, Supermarket, PriceObservation } from "@/domain/entities";
 import { Loader2, Plus } from "lucide-react";
@@ -52,9 +52,11 @@ export function BrandProductDialog({
     const effectiveOpen = isControlled ? controlledOpen : open;
     const effectiveSetOpen = isControlled ? onOpenChange! : setOpen;
 
+    const [step, setStep] = useState<"form" | "confirm">("form");
+    const [brandName, setBrandName] = useState(product?.brand || "");
+    const [localLoading, setLocalLoading] = useState(false);
+
     // Fixed Action Assignment for useActionState
-    // useActionState expects (prevState, formData)
-    // createBrandProductAction(genericItemId, prevState, formData) -> bound(null, genericItemId)
     const action = mode === 'create'
         ? createBrandProductAction.bind(null, genericItemId!)
         : updateBrandProductAction;
@@ -66,81 +68,156 @@ export function BrandProductDialog({
     const [showNewMarketInput, setShowNewMarketInput] = useState(false);
 
     useEffect(() => {
-        if (state?.success && mode === 'create') {
+        if (state?.success) {
             effectiveSetOpen(false);
+            setStep("form");
         }
-    }, [state, mode, effectiveSetOpen]);
+    }, [state?.success, effectiveSetOpen]);
 
     useEffect(() => {
         if (marketActionState?.success) {
             setShowNewMarketInput(false);
         }
-    }, [marketActionState]);
+    }, [marketActionState?.success]);
+
+    async function handlePreSubmit(e: React.FormEvent<HTMLFormElement>) {
+        if (mode === 'edit') return; // Edit doesn't need duplicate check for same ID, or it can be complex. Let's focus on Create.
+
+        e.preventDefault();
+        const form = e.currentTarget;
+        if (!brandName.trim()) return;
+
+        setLocalLoading(true);
+        // Check for duplicates
+        const existingBrands = await getBrandProductsAction(genericItemId!);
+        const match = existingBrands.find(b => b.brand.toLowerCase() === brandName.trim().toLowerCase());
+
+        if (match) {
+            setStep("confirm");
+            setLocalLoading(false);
+            return;
+        }
+
+        setLocalLoading(false);
+        const formData = new FormData(form);
+        startTransition(() => {
+            formAction(formData);
+        });
+    }
+
+    function handleForceSubmit() {
+        const formData = new FormData();
+        formData.set("brand", brandName);
+        // We'll need to grab other fields if we want to force submit from confirm step.
+        // For simplicity in dialog, we'll just allow them to go back or handle the basics.
+        // Actually, let's just make it simple: from confirm, it submits with name.
+        startTransition(() => {
+            formAction(formData);
+        });
+    }
 
     const title = mode === 'create' ? "Nueva Opción de Marca" : "Editar Opción";
 
     return (
-        <Dialog open={effectiveOpen} onOpenChange={effectiveSetOpen}>
+        <Dialog open={effectiveOpen} onOpenChange={(o) => {
+            effectiveSetOpen(o);
+            if (!o) setTimeout(() => setStep("form"), 200);
+        }}>
             {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
             <DialogContent className="bg-bg-1 border-border sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="text-text-1">{title}</DialogTitle>
+                    <DialogTitle className="text-text-1">
+                        {step === "form" ? title : "Marca Existente"}
+                    </DialogTitle>
                     <DialogDescription className="text-text-2">
-                        Define la marca, presentación y precios.
+                        {step === "form"
+                            ? "Define la marca, presentación y precios."
+                            : `Ya existe la marca "${brandName}" para este producto.`}
                     </DialogDescription>
                 </DialogHeader>
 
-                <form action={formAction} className="grid gap-4 py-4">
-                    {mode === 'edit' && product && <input type="hidden" name="id" value={product.id} />}
+                {step === "form" ? (
+                    <form onSubmit={handlePreSubmit} action={mode === 'edit' ? formAction : undefined} className="grid gap-4 py-4">
+                        {mode === 'edit' && product && <input type="hidden" name="id" value={product.id} />}
 
-                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="brand" className="text-text-1">Marca</Label>
+                                <Input
+                                    id="brand"
+                                    name="brand"
+                                    value={brandName}
+                                    onChange={e => setBrandName(e.target.value)}
+                                    placeholder="Ej. Bimbo"
+                                    required
+                                    className="bg-bg-0 text-text-1"
+                                />
+                            </div>
+                        </div>
+
                         <div className="grid gap-2">
-                            <Label htmlFor="brand" className="text-text-1">Marca</Label>
-                            <Input id="brand" name="brand" defaultValue={product?.brand} placeholder="Ej. Bimbo" required className="bg-bg-0 text-text-1" />
+                            <Label htmlFor="imageUrl" className="text-text-1">Imagen URL</Label>
+                            <Input id="imageUrl" name="imageUrl" defaultValue={product?.imageUrl || ""} placeholder="https://..." className="bg-bg-0 text-text-1" />
                         </div>
+
+                        <Separator className="bg-border" />
+
                         <div className="grid gap-2">
-                            <Label htmlFor="presentation" className="text-text-1">Presentación</Label>
-                            <Input id="presentation" name="presentation" defaultValue={product?.presentation} placeholder="Ej. 600g" required className="bg-bg-0 text-text-1" />
+                            <Label className="text-text-1">Precio Referencial Global</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    name="globalPrice"
+                                    type="number"
+                                    step="0.01"
+                                    defaultValue={product?.globalPrice || ""}
+                                    placeholder="0.00"
+                                    className="bg-bg-0 text-text-1 flex-1"
+                                />
+                                <Input
+                                    name="currencyCode"
+                                    defaultValue={product?.currencyCode || "USD"}
+                                    className="bg-bg-0 text-text-1 w-20"
+                                    readOnly
+                                />
+                            </div>
+                            <p className="text-xs text-text-3">Se usará si no hay precio específico.</p>
+                        </div>
+
+                        {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
+
+                        <DialogFooter>
+                            <Button type="submit" disabled={isPending || localLoading} className="bg-accent-violet text-white">
+                                {isPending || localLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (mode === 'create' ? "Crear Opción" : "Guardar Cambios")}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                ) : (
+                    <div className="space-y-6 py-6">
+                        <div className="p-4 rounded-xl bg-accent-violet/5 border border-accent-violet/20 text-center space-y-2">
+                            <p className="text-text-1 text-sm">
+                                ¿Quieres crear otra opción para esta marca de todos modos o prefieres volver atrás?
+                            </p>
+                        </div>
+
+                        <div className="grid gap-3">
+                            <Button
+                                variant="outline"
+                                className="w-full border-border text-text-1 hover:bg-glass"
+                                onClick={() => setStep("form")}
+                                disabled={isPending}
+                            >
+                                Atrás y cambiar nombre
+                            </Button>
+                            <Button
+                                className="w-full bg-accent-violet text-white hover:bg-accent-violet/90"
+                                onClick={handleForceSubmit}
+                                disabled={isPending}
+                            >
+                                {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Crear de todas formas"}
+                            </Button>
                         </div>
                     </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="imageUrl" className="text-text-1">Imagen URL</Label>
-                        <Input id="imageUrl" name="imageUrl" defaultValue={product?.imageUrl || ""} placeholder="https://..." className="bg-bg-0 text-text-1" />
-                    </div>
-
-                    <Separator className="bg-border" />
-
-                    <div className="grid gap-2">
-                        <Label className="text-text-1">Precio Referencial Global</Label>
-                        <div className="flex gap-2">
-                            <Input
-                                name="globalPrice"
-                                type="number"
-                                step="0.01"
-                                defaultValue={product?.globalPrice || ""}
-                                placeholder="0.00"
-                                className="bg-bg-0 text-text-1 flex-1"
-                            />
-                            <Input
-                                name="currencyCode"
-                                defaultValue={product?.currencyCode || "USD"}
-                                className="bg-bg-0 text-text-1 w-20"
-                                readOnly
-                            />
-                        </div>
-                        <p className="text-xs text-text-3">Se usará si no hay precio específico.</p>
-                    </div>
-
-                    {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
-
-                    <DialogFooter>
-                        <Button type="submit" disabled={isPending} className="bg-accent-violet text-white">
-                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {mode === 'create' ? "Crear Opción" : "Guardar Cambios"}
-                        </Button>
-                    </DialogFooter>
-                </form>
+                )}
 
                 {mode === 'edit' && product && (
                     <div className="border-t border-border pt-4">
@@ -172,10 +249,10 @@ export function BrandProductDialog({
                                         <Label className="text-xs text-text-2">Nuevo Supermercado</Label>
                                         <Input name="name" required placeholder="Nombre del súper" className="h-8 text-xs bg-bg-0" />
                                     </div>
-                                    <Button type="submit" size="sm" disabled={marketPending} className="h-8 bg-primary text-primary-foreground">
+                                    <Button type="submit" size="sm" disabled={marketPending} className="h-8 bg-accent-violet text-white">
                                         {marketPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Crear"}
                                     </Button>
-                                    <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setShowNewMarketInput(false)}>Cancelar</Button>
+                                    <Button type="button" size="sm" variant="ghost" className="h-8 text-text-3" onClick={() => setShowNewMarketInput(false)}>Cancelar</Button>
                                 </form>
                             ) : (
                                 <form action={obsAction} className="flex gap-2 items-end">

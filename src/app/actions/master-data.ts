@@ -14,7 +14,7 @@ async function getUserId() {
 }
 
 // --- Supermarkets ---
-export async function createSupermarketAction(formData: FormData) {
+export async function createSupermarketAction(prevState: any, formData: FormData) {
     try {
         const userId = await getUserId();
         const name = formData.get("name") as string;
@@ -139,7 +139,7 @@ export async function deleteUnitAction(id: string) {
 }
 
 // --- Templates ---
-export async function createTemplateAction(formData: FormData) {
+export async function createTemplateAction(prevState: any, formData: FormData) {
     try {
         const userId = await getUserId();
         const name = formData.get("name") as string;

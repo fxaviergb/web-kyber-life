@@ -27,7 +27,7 @@ export const deleteGenericItemSchema = z.object({
 export const createBrandProductSchema = z.object({
     genericItemId: z.string().uuid(),
     brand: z.string().min(1, "La marca es requerida"),
-    presentation: z.string().min(1, "La presentación es requerida"),
+    presentation: z.string().optional(),
     imageUrl: z.string().url().optional().or(z.literal("")),
     globalPrice: z.coerce.number().min(0).optional(),
     currencyCode: z.string().min(3).max(3).optional().default("USD"),
@@ -36,7 +36,7 @@ export const createBrandProductSchema = z.object({
 export const updateBrandProductSchema = z.object({
     id: z.string().uuid(),
     brand: z.string().min(1, "La marca es requerida"),
-    presentation: z.string().min(1, "La presentación es requerida"),
+    presentation: z.string().optional(),
     imageUrl: z.string().url().optional().or(z.literal("")),
     globalPrice: z.coerce.number().min(0).optional(),
     currencyCode: z.string().min(3).max(3).optional().default("USD"),
