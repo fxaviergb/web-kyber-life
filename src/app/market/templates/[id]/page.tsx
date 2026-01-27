@@ -3,11 +3,12 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ShoppingBasket, LayoutList } from "lucide-react";
+import { ArrowLeft, ShoppingBasket, LayoutList, Edit } from "lucide-react";
 import Link from "next/link";
 import { AddItemDialog } from "./add-item-dialog";
 import { TemplateItemCard } from "./template-item-card";
 import { Badge } from "@/components/ui/badge";
+import { EditTemplateDialog } from "../edit-template-dialog";
 
 export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await initializeContainer();
@@ -70,12 +71,24 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
                     </div>
                 </div>
 
-                <AddItemDialog
-                    templateId={id}
-                    genericItems={genericItems}
-                    units={units}
-                    existingItemIds={templateItems.map(ti => ti.genericItemId)}
-                />
+                <div className="flex gap-2">
+                    <EditTemplateDialog
+                        template={{ id: template.id, name: template.name, tags: template.tags }}
+                        trigger={
+                            <Button variant="outline" className="border-border text-text-1 hover:bg-bg-2">
+                                <Edit className="w-4 h-4 mr-2" />
+                                Editar Plantilla
+                            </Button>
+                        }
+                    />
+                    <AddItemDialog
+                        templateId={id}
+                        genericItems={genericItems}
+                        units={units}
+                        categories={categories}
+                        existingItemIds={templateItems.map(ti => ti.genericItemId)}
+                    />
+                </div>
             </div>
 
             {itemsWithDetails.length === 0 ? (
@@ -85,7 +98,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
                     <p className="text-xs not-italic">Empieza añadiendo productos con el botón de arriba.</p>
                 </Card>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {itemsWithDetails.map(item => (
                         <TemplateItemCard
                             key={item.id}

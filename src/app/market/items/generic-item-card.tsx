@@ -1,14 +1,11 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBasket, Edit, Trash2, MoreVertical, Package, Tag } from "lucide-react";
+import { ShoppingBasket, Tag, Trash2 } from "lucide-react";
 import { GenericItem, Category } from "@/domain/entities";
 import Link from "next/link";
 import { DeleteGenericItemIconButton } from "./delete-generic-item-icon-button";
-import { Button } from "@/components/ui/button";
-
-import { GenericItemDialog } from "./generic-item-dialog";
 
 interface GenericItemCardProps {
     item: GenericItem;
@@ -21,71 +18,78 @@ export function GenericItemCard({ item, categories }: GenericItemCardProps) {
         : null;
 
     return (
-        <div className="cursor-pointer group relative h-full">
-            <Link href={`/market/items/${item.id}`} className="absolute inset-0 z-10" />
+        <Link href={`/market/items/${item.id}`}>
+            <Card className="bg-bg-1 border-border hover:bg-bg-2/30 transition-all duration-300 hover:border-accent-violet/30 hover:shadow-lg hover:shadow-accent-violet/5 overflow-hidden group">
+                <div className="flex items-center gap-3 px-3 py-2">
+                    {/* Image/Icon */}
+                    <div className="w-16 h-16 shrink-0 bg-bg-2 rounded-lg overflow-hidden flex items-center justify-center">
+                        {item.imageUrl ? (
+                            <img
+                                src={item.imageUrl}
+                                alt={item.canonicalName}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <ShoppingBasket className="w-6 h-6 text-text-3/30" />
+                        )}
+                    </div>
 
-            <Card className="bg-bg-1 border-border group-hover:bg-bg-2/30 transition-all duration-300 group-hover:border-accent-violet/30 group-hover:shadow-lg group-hover:shadow-accent-violet/5 h-full flex flex-col relative z-0">
-                <div className="aspect-video w-full bg-bg-2 relative overflow-hidden">
-                    {item.imageUrl ? (
-                        <img
-                            src={item.imageUrl}
-                            alt={item.canonicalName}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-text-3/30">
-                            <ShoppingBasket className="w-8 h-8" />
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
+                        {/* Left: Name and Category */}
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-text-1 group-hover:text-accent-violet transition-colors truncate text-sm">
+                                {item.canonicalName}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                {categoryName && (
+                                    <Badge variant="outline" className="text-[10px] border-border/50 text-text-3 px-1.5 py-0 h-4">
+                                        <Tag className="w-2.5 h-2.5 mr-1" />
+                                        {categoryName}
+                                    </Badge>
+                                )}
+                                {item.aliases.length > 0 && (
+                                    <span className="text-[10px] text-text-3">
+                                        +{item.aliases.length} alias
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    )}
 
-                    {categoryName && (
-                        <Badge className="absolute top-2 left-2 bg-black/40 backdrop-blur-sm text-text-2 text-[10px] px-1.5 py-0 h-5 border-none">
-                            {categoryName}
-                        </Badge>
-                    )}
-
-                    {item.globalPrice && (
-                        <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-medium text-accent-mint">
-                            ${item.globalPrice.toFixed(2)}
-                        </div>
-                    )}
-                </div>
-
-                <CardContent className="p-1.5 flex-1 flex flex-col justify-between">
-                    <div>
-                        <h3 className="font-semibold text-text-1 group-hover:text-accent-violet transition-colors line-clamp-2 text-xs leading-tight">
-                            {item.canonicalName}
-                        </h3>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                            {item.aliases.length > 0 && (
-                                <p className="text-[9px] text-text-3 truncate w-full opacity-70">
-                                    {item.aliases.join(", ")}
-                                </p>
+                        {/* Right: Price and Actions */}
+                        <div className="flex items-center gap-3 shrink-0">
+                            {/* Price */}
+                            {item.globalPrice ? (
+                                <div className="text-right">
+                                    <div className="font-bold text-accent-mint text-base">
+                                        ${item.globalPrice.toFixed(2)}
+                                    </div>
+                                    <div className="text-[10px] text-text-3">
+                                        {item.currencyCode}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-right w-16">
+                                    <div className="text-[10px] text-text-3 italic">
+                                        Sin precio
+                                    </div>
+                                </div>
                             )}
+
+                            {/* Delete Button */}
+                            <div
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <DeleteGenericItemIconButton id={item.id} />
+                            </div>
                         </div>
                     </div>
-                </CardContent>
-            </Card>
-
-            {/* Actions overlay - above the link */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
-                <GenericItemDialog
-                    mode="edit"
-                    item={item}
-                    categories={categories}
-                    trigger={
-                        <Button variant="ghost" size="icon" className="h-6 w-6 bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm rounded-full">
-                            <Edit className="w-3 h-3" />
-                        </Button>
-                    }
-                />
-                <div onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }}>
-                    <DeleteGenericItemIconButton id={item.id} />
                 </div>
-            </div>
-        </div>
+            </Card>
+        </Link>
     );
 }

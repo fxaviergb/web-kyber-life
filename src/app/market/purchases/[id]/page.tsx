@@ -45,7 +45,7 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
                 <div>
                     <h1 className="text-2xl font-bold text-white">Lista de Compra</h1>
                     <p className="text-text-3">
-                        {supermarket?.name} - {purchase.date}
+                        {supermarket ? `${supermarket.name} - ${purchase.date}` : purchase.date}
                     </p>
                 </div>
 

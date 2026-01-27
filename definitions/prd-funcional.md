@@ -1,4 +1,4 @@
-# Documento de Flujos Funcionales — Kyber Life (V1)
+# Documento de Flujos Funcionales — KYBER LIFE (V1)
 **Propósito:** Describir el funcionamiento del sistema mediante flujos funcionales y el paso a paso del usuario para lograr cada objetivo.  
 **Alcance:** V1 (in-memory, web responsive, sin uploads; imágenes como URL externa).  
 **Nota:** Este documento no reitera el PRD Técnico; se enfoca únicamente en flujos y comportamiento observable.

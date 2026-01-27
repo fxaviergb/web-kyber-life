@@ -15,7 +15,9 @@ export class ProductService {
         userId: UUID,
         canonicalName: string,
         primaryCategoryId?: UUID,
-        imageUrl?: string
+        imageUrl?: string,
+        globalPrice?: number,
+        currencyCode?: string
     ): Promise<GenericItem> {
         const item: GenericItem = {
             id: uuidv4(),
@@ -25,9 +27,9 @@ export class ProductService {
             primaryCategoryId: primaryCategoryId || null,
             secondaryCategoryIds: [],
             imageUrl: imageUrl || null,
-            globalPrice: null,
-            currencyCode: null,
-            lastPriceUpdate: null,
+            globalPrice: globalPrice ?? null,
+            currencyCode: currencyCode || null,
+            lastPriceUpdate: globalPrice ? new Date().toISOString() : null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isDeleted: false

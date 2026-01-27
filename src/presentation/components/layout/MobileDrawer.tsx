@@ -1,11 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Home, ShoppingCart, FileText, BarChart2, Settings, Store, Package, Tag, Scale, User, ChevronDown, ChevronRight, Sparkles, Command } from "lucide-react";
+import {
+    Home,
+    ShoppingCart,
+    FileText,
+    BarChart2,
+    Settings,
+    Store,
+    Package,
+    Tag,
+    Scale,
+    User,
+    X,
+    ChevronDown,
+    ChevronRight,
+    Sparkles
+} from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/presentation/components/auth/logout-button";
-import { useState } from "react";
 import { LucideIcon } from "lucide-react";
 
 type MenuItem = {
@@ -13,7 +30,7 @@ type MenuItem = {
     icon?: LucideIcon;
     href?: string;
     items?: MenuItem[];
-    isSection?: boolean; // If true, it's a section header, not a link or dropdown
+    isSection?: boolean;
 };
 
 const MENU_ITEMS: MenuItem[] = [
@@ -46,7 +63,12 @@ const MENU_ITEMS: MenuItem[] = [
     }
 ];
 
-export function Sidebar() {
+interface MobileDrawerProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
+
+export function MobileDrawer({ open, onOpenChange }: MobileDrawerProps) {
     const pathname = usePathname();
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
@@ -54,7 +76,7 @@ export function Sidebar() {
         setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
     };
 
-    const renderMenuItem = (item: MenuItem, level = 0) => {
+    const renderMenuItem = (item: MenuItem, level = 0): React.ReactElement | null => {
         // Section Header
         if (item.isSection) {
             return (
@@ -80,7 +102,7 @@ export function Sidebar() {
                         className={cn(
                             "w-full flex items-center justify-between px-4 py-2 rounded-lg transition-all duration-200 group text-sm",
                             "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
-                            level > 0 && "pl-8" // Indent nested items
+                            level > 0 && "pl-8"
                         )}
                     >
                         <div className="flex items-center gap-3">
@@ -91,7 +113,7 @@ export function Sidebar() {
                     </button>
 
                     {isOpen && (
-                        <div className="space-y-1 overflow-hidden transition-all duration-300">
+                        <div className="space-y-1">
                             {item.items.map(subItem => renderMenuItem(subItem, level + 1))}
                         </div>
                     )}
@@ -106,13 +128,14 @@ export function Sidebar() {
             <Link
                 key={item.href || item.label}
                 href={item.href || "#"}
+                onClick={() => onOpenChange(false)}
                 className={cn(
                     "flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 group text-sm",
                     isActive
-                        ? "bg-accent-primary/10 text-accent-primary font-medium border-l-2 border-accent-primary"
+                        ? "bg-accent-primary/10 text-accent-primary font-medium"
                         : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
-                    level > 0 && "pl-8", // Level 1 indent
-                    level > 1 && "pl-12" // Level 2 indent
+                    level > 0 && "pl-8",
+                    level > 1 && "pl-12"
                 )}
             >
                 {item.icon && <item.icon className={cn("w-4 h-4", isActive && "text-accent-primary")} />}
@@ -122,33 +145,34 @@ export function Sidebar() {
     };
 
     return (
-        <aside className="hidden lg:flex flex-col w-64 h-screen bg-bg-primary border-r border-border-base fixed left-0 top-0 z-40">
-            {/* Brand */}
-            <div className="h-16 flex items-center px-4 border-b border-border-base bg-bg-primary/50 backdrop-blur-sm">
-                <div className="flex items-center gap-3 group cursor-pointer">
-                    <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-accent-violet to-accent-cyan shadow-lg shadow-accent-violet/20 group-hover:shadow-accent-violet/40 transition-all duration-300">
-                        <Sparkles className="w-5 h-5 text-white" />
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent side="left" className="w-72 p-0 bg-bg-secondary border-border-base">
+                <SheetHeader className="h-16 flex flex-row items-center px-4 border-b border-border-base bg-bg-primary/50 backdrop-blur-sm space-y-0">
+                    <div className="flex items-center gap-3">
+                        <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-accent-violet to-accent-cyan shadow-lg shadow-accent-violet/20">
+                            <Sparkles className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex flex-col items-start">
+                            <SheetTitle className="text-lg font-bold tracking-tight text-text-primary">
+                                KYBER<span className="font-light text-text-tertiary">LIFE</span>
+                            </SheetTitle>
+                            <p className="text-[10px] text-accent-cyan font-medium tracking-wider uppercase">
+                                Pilot
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex flex-col">
-                        <h1 className="text-lg font-bold tracking-tight text-text-primary group-hover:text-accent-violet transition-colors">
-                            KYBER<span className="font-light text-text-tertiary">LIFE</span>
-                        </h1>
-                        <p className="text-[10px] text-accent-cyan font-medium tracking-wider uppercase">
-                            Pilot
-                        </p>
-                    </div>
+                </SheetHeader>
+
+                {/* Navigation */}
+                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 h-[calc(100vh-200px)]">
+                    {MENU_ITEMS.map((item) => renderMenuItem(item))}
+                </nav>
+
+                {/* User Profile / Logout */}
+                <div className="p-4 border-t border-border-base bg-bg-primary">
+                    <LogoutButton variant="destructive" className="w-full justify-center" />
                 </div>
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
-                {MENU_ITEMS.map((item) => renderMenuItem(item))}
-            </nav>
-
-            {/* CTA / Profile */}
-            <div className="p-4 border-t border-border-base">
-                <LogoutButton variant="destructive" className="w-full justify-center" />
-            </div>
-        </aside>
+            </SheetContent>
+        </Sheet>
     );
 }

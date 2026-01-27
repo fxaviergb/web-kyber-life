@@ -7,15 +7,14 @@ import { updateGenericGlobalPriceAction } from "@/app/actions/product";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
 import { CreateBrandProductModal } from "@/presentation/components/products/CreateBrandProductModal";
 import { UnplannedProductDialog } from "./UnplannedProductDialog";
 import { FinishPurchaseDialog } from "./FinishPurchaseDialog";
+import { PurchaseItemCard } from "./PurchaseItemCard";
+import { PurchaseItemDetailSheet } from "./PurchaseItemDetailSheet";
+import { ProductDetailModal } from "./ProductDetailModal";
 import { Template } from "@/domain/entities";
-import { CheckCircle, Globe, Tag, Plus, Trash2 } from "lucide-react";
-// import { toast } from "sonner"; // Assuming sonner is installed or use alert
+import { CheckCircle, Tag, Plus, Trash2 } from "lucide-react";
 
 export function PurchaseChecklist({
     purchase,
@@ -186,6 +185,11 @@ export function PurchaseChecklist({
         return catA.localeCompare(catB);
     });
 
+    const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+    const [editingLineId, setEditingLineId] = useState<string | null>(null);
+    const [detailModalOpen, setDetailModalOpen] = useState(false);
+    const [detailModalLineId, setDetailModalLineId] = useState<string | null>(null);
+
     const renderLine = (line: PurchaseLine) => {
         const brands = [
             ...(brandOptionsMap[line.genericItemId] || []),
@@ -193,116 +197,36 @@ export function PurchaseChecklist({
         ].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i); // Deduplicate
 
         const genericItem = genericItemsMap[line.genericItemId];
-        const genericName = genericItem?.canonicalName || "Item";
-        const needsPrice = line.checked && (!line.unitPrice || line.unitPrice <= 0);
 
         return (
-            <div key={line.id} className={cn(
-                "p-3 rounded-xl border transition-all",
-                line.checked
-                    ? "bg-bg-1/50 border-input opacity-75"
-                    : "bg-bg-1 border-border shadow-sm hover:border-accent-violet",
-                needsPrice && "border-destructive ring-1 ring-destructive"
-            )}>
-                <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
-                    {/* Check & Name */}
-                    <div className="flex items-center gap-3 flex-1 w-full">
-                        <Checkbox
-                            checked={line.checked}
-                            onCheckedChange={(c) => !isReadOnly && handleLineUpdate(line.id, { checked: !!c })}
-                            disabled={isReadOnly}
-                            className={cn(
-                                "h-6 w-6 border-2 data-[state=checked]:bg-accent-mint data-[state=checked]:border-accent-mint"
-                            )}
-                        />
-                        <div className="flex-1 min-w-0">
-                            <p className={cn("font-medium text-lg truncate", line.checked && "line-through text-text-3")}>
-                                {genericName}
-                            </p>
-                            {!line.brandProductId && genericItem?.globalPrice && (
-                                <p className="text-xs text-text-3 flex items-center gap-1">
-                                    <Globe className="w-3 h-3" /> Ref: ${genericItem.globalPrice}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="grid grid-cols-[1fr_auto_auto] gap-2 w-full md:w-auto items-center">
-                        <div className="w-full md:w-40 col-span-3 md:col-span-1">
-                            <select
-                                className="w-full h-10 rounded-md border border-input bg-bg-2 px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-                                value={line.brandProductId || ""}
-                                onChange={(e) => handleBrandChange(line.id, e.target.value, line.genericItemId)}
-                                disabled={line.checked || isReadOnly}
-                            >
-                                <option value="">Genérico</option>
-                                {brands.map(b => (
-                                    <option key={b.id} value={b.id}>
-                                        {b.brand} {b.presentation} {b.globalPrice ? `($${b.globalPrice})` : ""}
-                                    </option>
-                                ))}
-                                <option value="new_option" className="font-bold text-accent-violet">+ Crear nueva opción...</option>
-                            </select>
-                        </div>
-
-                        <div className="flex gap-1 w-full md:w-32 col-span-2 md:col-span-1">
-                            <Input
-                                type="number"
-                                placeholder="Cant"
-                                className="bg-bg-0 border-input w-16 text-center px-1"
-                                value={line.qty?.toString() || ""}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setLines(prev => prev.map(l => l.id === line.id ? { ...l, qty: val === "" ? 1 : parseFloat(val) } : l));
-                                }}
-                                disabled={line.checked || isReadOnly}
-                                onBlur={(e) => handleLineUpdate(line.id, { qty: parseFloat(e.target.value) })}
-                            />
-                            <select
-                                className="w-full h-10 rounded-md border border-input bg-bg-2 px-1 py-2 text-xs text-text-1 disabled:opacity-50"
-                                value={line.unitId || ""}
-                                onChange={(e) => handleLineUpdate(line.id, { unitId: e.target.value || null })}
-                                disabled={line.checked || isReadOnly}
-                            >
-                                <option value="">--</option>
-                                {units.map(u => (
-                                    <option key={u.id} value={u.id}>{u.symbol || u.name}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="w-full md:w-28 relative col-span-1 md:col-span-1">
-                            <span className="absolute left-3 top-2.5 text-text-3">$</span>
-                            <Input
-                                type="number"
-                                placeholder="0.00"
-                                className={cn(
-                                    "pl-7 bg-bg-0 border-input font-bold",
-                                    (!line.unitPrice || line.unitPrice <= 0) && line.checked && "border-destructive focus-visible:ring-destructive"
-                                )}
-                                value={line.unitPrice?.toString() || ""}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setLines(prev => prev.map(l => l.id === line.id ? { ...l, unitPrice: val === "" ? 0 : parseFloat(val) } : l));
-                                }}
-                                disabled={isReadOnly}
-                                onBlur={(e) => handlePriceBlur(line, e.target.value)}
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <PurchaseItemCard
+                key={line.id}
+                line={line}
+                genericItem={genericItem}
+                brandOptions={brands}
+                isChecked={line.checked}
+                isReadOnly={isReadOnly}
+                onCheckChange={(checked: boolean) => handleLineUpdate(line.id, { checked })}
+                onPriceChange={(price: number) => handleLineUpdate(line.id, { unitPrice: price })}
+                onOpenDetails={() => {
+                    setDetailModalLineId(line.id);
+                    setDetailModalOpen(true);
+                }}
+                onOpenEdit={() => {
+                    setEditingLineId(line.id);
+                    setDetailSheetOpen(true);
+                }}
+            />
         );
     };
 
     return (
         <div className="space-y-6">
             {!isReadOnly && (
-                <div className="flex justify-between items-center bg-bg-1 p-4 rounded-xl border border-border sticky top-0 z-30 shadow-lg backdrop-blur-md bg-opacity-90">
+                <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-lg border border-border-base sticky top-0 z-30 shadow-lg backdrop-blur-md">
                     <div>
-                        <p className="text-sm text-text-2">Total Estimado</p>
-                        <p className="text-2xl font-bold text-accent-mint">${totalEstimated.toFixed(2)}</p>
+                        <p className="text-sm text-text-tertiary">Total Estimado</p>
+                        <p className="text-2xl font-bold text-accent-success">${totalEstimated.toFixed(2)}</p>
                     </div>
                     <div className="flex gap-2">
                         <Button
@@ -317,7 +241,6 @@ export function PurchaseChecklist({
                             <Button
                                 onClick={onFinishClick}
                                 disabled={finishing}
-                                className="bg-accent-violet hover:bg-accent-violet/90"
                             >
                                 <CheckCircle className="w-4 h-4 mr-2" /> Finalizar
                             </Button>
@@ -344,13 +267,13 @@ export function PurchaseChecklist({
                     const catLines = groupedPending[catId];
 
                     return (
-                        <div key={catId} className="space-y-2">
-                            <div className="flex items-center gap-2 text-text-2 px-1">
+                        <div key={catId} className="space-y-3">
+                            <div className="flex items-center gap-2 text-text-tertiary px-1">
                                 <Tag className="w-4 h-4" />
                                 <h3 className="font-semibold text-sm uppercase tracking-wide">{catName}</h3>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                 {catLines.map(line => renderLine(line))}
                             </div>
                         </div>
@@ -361,10 +284,12 @@ export function PurchaseChecklist({
             {/* COMPLETED ITEMS */}
             {completedLines.length > 0 && (
                 <>
-                    <div className="border-t border-border my-8" />
+                    <div className="border-t border-border-base my-8" />
                     <div className="space-y-4">
-                        <h3 className="text-text-2 font-semibold text-sm uppercase tracking-wide px-1">Comprados ({completedLines.length})</h3>
-                        <div className="space-y-2 opacity-60 hover:opacity-100 transition-opacity">
+                        <h3 className="text-text-tertiary font-semibold text-sm uppercase tracking-wide px-1">
+                            Comprados ({completedLines.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 opacity-60 hover:opacity-100 transition-opacity">
                             {completedLines.map(line => renderLine(line))}
                         </div>
                     </div>
@@ -419,18 +344,9 @@ export function PurchaseChecklist({
                 templates={userTemplates}
                 existingItemIds={lines.map(l => l.genericItemId)}
                 onSuccess={() => {
-                    // Page revalidates via actions, but let's refresh local logic? 
-                    // Actually, actions called inside dialog revalidate path. 
-                    // But `router.refresh()` might be needed to see new lines immediately if they don't appear?
-                    // RevalidatePath usually updates server components. Client components using props (initialLines) might NOT update unless parent re-renders or we use router.refresh().
-                    // Since specific actions revalidate, Next.js should handle soft navigation update.
-                    // Or here.
-                    window.location.reload(); // Hard reload or router.refresh()
+                    window.location.reload();
                 }}
             />
-
-
-
 
             {
                 createForGenericId && (
@@ -449,6 +365,49 @@ export function PurchaseChecklist({
                     />
                 )
             }
+
+            {/* Item Detail Sheet */}
+            {editingLineId && (
+                <PurchaseItemDetailSheet
+                    open={detailSheetOpen}
+                    onOpenChange={setDetailSheetOpen}
+                    line={lines.find(l => l.id === editingLineId)!}
+                    genericItem={genericItemsMap[lines.find(l => l.id === editingLineId)?.genericItemId || ""]}
+                    brandOptions={[
+                        ...(brandOptionsMap[lines.find(l => l.id === editingLineId)?.genericItemId || ""] || []),
+                        ...(extraBrands[lines.find(l => l.id === editingLineId)?.genericItemId || ""] || [])
+                    ]}
+                    units={units}
+                    onUpdate={(updates) => handleLineUpdate(editingLineId, updates)}
+                    onCreateBrand={() => {
+                        const line = lines.find(l => l.id === editingLineId);
+                        if (line) {
+                            setCreateForGenericId(line.genericItemId);
+                            setCreateForLineId(editingLineId);
+                            setCreateModalOpen(true);
+                            setDetailSheetOpen(false);
+                        }
+                    }}
+                />
+            )}
+
+            {/* Product Detail Modal */}
+            {detailModalLineId && (
+                <ProductDetailModal
+                    open={detailModalOpen}
+                    onOpenChange={setDetailModalOpen}
+                    genericItem={genericItemsMap[lines.find(l => l.id === detailModalLineId)?.genericItemId || ""]}
+                    selectedBrand={brandOptionsMap[lines.find(l => l.id === detailModalLineId)?.genericItemId || ""]?.find(
+                        b => b.id === lines.find(l => l.id === detailModalLineId)?.brandProductId
+                    )}
+                    categories={categories}
+                    onEdit={() => {
+                        setEditingLineId(detailModalLineId);
+                        setDetailModalOpen(false);
+                        setDetailSheetOpen(true);
+                    }}
+                />
+            )}
         </div >
     );
 }

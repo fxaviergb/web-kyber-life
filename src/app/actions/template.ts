@@ -43,6 +43,28 @@ export async function deleteTemplateAction(id: string) {
     }
 }
 
+export async function updateTemplateAction(id: string, prevState: any, formData: FormData) {
+    try {
+        const userId = await getUserId();
+        const name = formData.get("name") as string;
+        const tagsRaw = formData.get("tags") as string;
+        const tags = tagsRaw ? tagsRaw.split(",").map(t => t.trim()).filter(t => t !== "") : [];
+
+        const result = createTemplateSchema.safeParse({ name, tags });
+        if (!result.success) return { error: result.error.issues[0].message };
+
+        await templateService.updateTemplate(userId, id, {
+            name: result.data.name,
+            tags: result.data.tags
+        });
+        revalidatePath("/market/templates");
+        revalidatePath(`/market/templates/${id}`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
 export async function addTemplateItemAction(templateId: string, prevState: any, formData: FormData) {
     try {
         const userId = await getUserId();

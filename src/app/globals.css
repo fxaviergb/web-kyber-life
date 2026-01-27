@@ -1,153 +1,262 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Custom Variant for Dark Mode (if needed, but we default to dark) */
-@custom-variant dark (&:is(.dark *));
+/* ============================================
+   KYBER LIFE DUAL THEME DESIGN SYSTEM
+   Dark Theme (Default) + Light Theme
+   Inspired by TailAdmin Dashboard
+   ============================================ */
 
+/* ===== DARK THEME (Default) ===== */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* === Backgrounds === */
+  --bg-primary: #0f172a;
+  /* Deep navy - main canvas */
+  --bg-secondary: #1e293b;
+  /* Elevated surfaces, cards */
+  --bg-tertiary: #334155;
+  /* Panels, hover states base */
+  --bg-hover: #475569;
+  /* Hover state for interactive elements */
+
+  /* === Text === */
+  --text-primary: #f1f5f9;
+  /* Headings, primary content */
+  --text-secondary: #cbd5e1;
+  /* Body text */
+  --text-tertiary: #94a3b8;
+  /* Muted text, captions, placeholders */
+
+  /* === Borders === */
+  --border-base: rgba(148, 163, 184, 0.15);
+  /* Subtle borders */
+  --border-strong: rgba(148, 163, 184, 0.3);
+  /* Emphasized borders */
+
+  /* === Accent Colors === */
+  --accent-primary: #6366f1;
+  /* Indigo - primary CTAs, links */
+  --accent-primary-hover: #4f46e5;
+  /* Darker indigo for hover */
+  --accent-success: #10b981;
+  /* Emerald green */
+  --accent-warning: #f59e0b;
+  /* Amber */
+  --accent-danger: #ef4444;
+  /* Red */
+  --accent-info: #3b82f6;
+  /* Blue */
+
+  /* === Semantic (Status Badges, Alerts) === */
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-text: #10b981;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-text: #f59e0b;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --danger-text: #ef4444;
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --info-text: #3b82f6;
+
+  /* === Shadows === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
+/* ===== LIGHT THEME ===== */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* === Backgrounds === */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-hover: #e2e8f0;
+
+  /* === Text === */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+
+  /* === Borders === */
+  --border-base: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.2);
+
+  /* === Accent Colors (Same as dark, work well on both) === */
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #4f46e5;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+  --accent-info: #3b82f6;
+
+  /* === Semantic === */
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-text: #059669;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-text: #d97706;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --danger-text: #dc2626;
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --info-text: #2563eb;
+
+  /* === Shadows === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.2);
+}
+
+/* ===== TAILWIND INTEGRATION ===== */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  /* New Design Tokens */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-hover: var(--bg-hover);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  --color-border-base: var(--border-base);
+  --color-border-strong: var(--border-strong);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-accent-success: var(--accent-success);
+  --color-accent-warning: var(--accent-warning);
+  --color-accent-danger: var(--accent-danger);
+  --color-accent-info: var(--accent-info);
+
+  --color-success-bg: var(--success-bg);
+  --color-success-text: var(--success-text);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-text: var(--warning-text);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-text: var(--danger-text);
+  --color-info-bg: var(--info-bg);
+  --color-info-text: var(--info-text);
+
+  /* Shadcn UI Compatibility (map new tokens to shadcn expected vars) */
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+
+  --color-card: var(--bg-secondary);
+  --color-card-foreground: var(--text-primary);
+
+  --color-popover: var(--bg-secondary);
+  --color-popover-foreground: var(--text-primary);
+
+  --color-primary: var(--accent-primary);
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: var(--bg-tertiary);
+  --color-secondary-foreground: var(--text-primary);
+
+  --color-muted: var(--bg-tertiary);
+  --color-muted-foreground: var(--text-tertiary);
+
+  --color-accent: var(--bg-tertiary);
+  --color-accent-foreground: var(--text-primary);
+
+  --color-destructive: var(--accent-danger);
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: var(--border-base);
+  --color-input: var(--bg-primary);
+  --color-ring: var(--accent-primary);
 
   /* Chart Colors */
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+  --color-chart-1: var(--accent-primary);
+  --color-chart-2: var(--accent-success);
+  --color-chart-3: var(--accent-info);
+  --color-chart-4: var(--accent-warning);
+  --color-chart-5: var(--accent-danger);
 
   /* Sidebar */
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar: var(--bg-primary);
+  --color-sidebar-foreground: var(--text-primary);
+  --color-sidebar-primary: var(--accent-primary);
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: var(--bg-tertiary);
+  --color-sidebar-accent-foreground: var(--text-primary);
+  --color-sidebar-border: var(--border-base);
+  --color-sidebar-ring: var(--accent-primary);
 
-  /* Custom Design Tokens */
-  --color-bg-0: var(--bg-0);
-  --color-bg-1: var(--bg-1);
-  --color-bg-2: var(--bg-2);
-  --color-glass: var(--glass);
-  
-  --color-text-1: var(--text-1);
-  --color-text-2: var(--text-2);
-  --color-text-3: var(--text-3);
-  
-  --color-accent-mint: var(--accent-mint);
-  --color-accent-coral: var(--accent-coral);
-  --color-accent-violet: var(--accent-violet);
-  --color-accent-magenta: var(--accent-magenta);
-  --color-accent-cyan: var(--accent-cyan);
-
-  /* Radii */
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
+  /* Legacy Tokens (backwards compatibility - will be deprecated) */
+  --color-bg-0: var(--bg-primary);
+  --color-bg-1: var(--bg-secondary);
+  --color-bg-2: var(--bg-tertiary);
+  --color-text-1: var(--text-primary);
+  --color-text-2: var(--text-secondary);
+  --color-text-3: var(--text-tertiary);
+  --color-accent-violet: var(--accent-primary);
+  --color-accent-mint: var(--accent-success);
+  --color-accent-cyan: var(--accent-info);
+  --color-accent-coral: var(--accent-warning);
+  --color-accent-magenta: var(--accent-danger);
+  --color-glass: rgba(255, 255, 255, 0.06);
 }
 
-:root {
-  /* Core Colors (Dark Mode Default) */
-  --bg-0: #0B0F24;
-  --bg-1: #10163A;
-  --bg-2: #151D4A;
-  --glass: rgba(255, 255, 255, 0.06);
-
-  --text-1: #E9ECFF;
-  --text-2: #A7B0D9;
-  --text-3: #7F88B8;
-  
-  /* Accents */
-  --accent-mint: #2EE59D;
-  --accent-coral: #FF7A5C;
-  --accent-violet: #8A5CFF;
-  --accent-magenta: #E10BA7;
-  --accent-cyan: #2DD4FF;
-
-  /* Semantic Mapping to Shadcn */
-  --background: var(--bg-0);
-  --foreground: var(--text-1);
-
-  --card: var(--bg-1);
-  --card-foreground: var(--text-1);
-
-  --popover: var(--bg-1);
-  --popover-foreground: var(--text-1);
-
-  --primary: var(--accent-violet);
-  --primary-foreground: #ffffff;
-
-  --secondary: var(--bg-2);
-  --secondary-foreground: var(--text-1);
-
-  --muted: var(--bg-2);
-  --muted-foreground: var(--text-2);
-
-  --accent: var(--bg-2);
-  --accent-foreground: var(--text-1);
-
-  --destructive: #FF4D6D; /* --error */
-  --destructive-foreground: #ffffff;
-
-  --border: rgba(255, 255, 255, 0.10); /* --border-1 */
-  --input: rgba(255, 255, 255, 0.06);  /* --border-2 */
-  --ring: var(--accent-violet);
-
-  /* Radius */
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius: 16px; /* Default radius used by shadcn components */
-
-  /* Charts (Using accents) */
-  --chart-1: var(--accent-violet);
-  --chart-2: var(--accent-mint);
-  --chart-3: var(--accent-cyan);
-  --chart-4: var(--accent-coral);
-  --chart-5: var(--accent-magenta);
-
-  /* Sidebar (Same as main dark theme) */
-  --sidebar: var(--bg-0);
-  --sidebar-foreground: var(--text-1);
-  --sidebar-primary: var(--accent-violet);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--bg-2);
-  --sidebar-accent-foreground: var(--text-1);
-  --sidebar-border: rgba(255, 255, 255, 0.10);
-  --sidebar-ring: var(--accent-violet);
-}
-
+/* ===== BASE STYLES ===== */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-bg-primary text-text-primary antialiased selection:bg-accent-primary selection:text-white;
+  }
+
+  /* Smooth theme transitions */
+  html {
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+@layer utilities {
+
+  /* Shadow utilities */
+  .shadow-custom-sm {
+    box-shadow: var(--shadow-sm);
+  }
+
+  .shadow-custom-md {
+    box-shadow: var(--shadow-md);
+  }
+
+  .shadow-custom-lg {
+    box-shadow: var(--shadow-lg);
+  }
+
+  .shadow-custom-xl {
+    box-shadow: var(--shadow-xl);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thumb-white\/10::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
 }

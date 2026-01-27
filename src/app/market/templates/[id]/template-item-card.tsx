@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBasket } from "lucide-react";
+import { ShoppingBasket, Tag } from "lucide-react";
 import { ItemDetailDialog } from "./item-detail-dialog";
 import { RemoveTemplateItemButton } from "./remove-item-button";
 import { Unit, Category } from "@/domain/entities";
@@ -41,59 +41,87 @@ export function TemplateItemCard({ templateId, item, unit, units, categories }: 
             units={units}
             categories={categories}
             trigger={
-                <div className="cursor-pointer group relative h-full">
-                    <Card className="bg-bg-1 border-border hover:bg-bg-2/30 transition-all duration-300 hover:border-accent-violet/30 hover:shadow-lg hover:shadow-accent-violet/5 h-full flex flex-col">
-                        <div className="aspect-video w-full bg-bg-2 relative overflow-hidden">
-                            {item.imageUrl ? (
-                                <img
-                                    src={item.imageUrl}
-                                    alt={item.genericName}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-text-3/30">
-                                    <ShoppingBasket className="w-8 h-8" />
-                                </div>
-                            )}
-                            {itemCategoryName && (
-                                <Badge className="absolute top-2 left-2 bg-black/40 backdrop-blur-sm text-text-2 text-[10px] px-1.5 py-0 h-5 border-none">
-                                    {itemCategoryName}
-                                </Badge>
-                            )}
-                            {item.globalPrice && (
-                                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-medium text-accent-mint">
-                                    ${item.globalPrice.toFixed(2)}
-                                </div>
-                            )}
-                        </div>
-                        <CardContent className="p-1.5 flex-1 flex flex-col justify-between">
-                            <div>
-                                <h3 className="font-semibold text-text-1 group-hover:text-accent-violet transition-colors line-clamp-2 text-xs leading-tight">
-                                    {item.genericName}
-                                </h3>
-                                <p className="text-[10px] text-text-3 mt-0.5 opacity-80">
-                                    {item.defaultQty ? `${item.defaultQty} ${unit?.symbol || "unid."}` : "Sin cantidad"}
-                                </p>
+                <div className="cursor-pointer group relative">
+                    <Card className="bg-bg-1 border-border hover:bg-bg-2/30 transition-all duration-300 hover:border-accent-violet/30 hover:shadow-lg hover:shadow-accent-violet/5 overflow-hidden">
+                        <div className="flex items-center gap-3 px-3 py-2">
+                            {/* Image/Icon */}
+                            <div className="w-16 h-16 shrink-0 bg-bg-2 rounded-lg overflow-hidden flex items-center justify-center">
+                                {item.imageUrl ? (
+                                    <img
+                                        src={item.imageUrl}
+                                        alt={item.genericName}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <ShoppingBasket className="w-6 h-6 text-text-3/30" />
+                                )}
                             </div>
 
-                            {lineTotal !== null && (
-                                <div className="mt-1 pt-1 border-t border-border/50 flex justify-between items-center text-[10px]">
-                                    <span className="text-text-3">Est:</span>
-                                    <span className="font-bold text-text-1">${lineTotal.toFixed(2)}</span>
+                            {/* Content */}
+                            <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
+                                {/* Left: Name and Category */}
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-text-1 group-hover:text-accent-violet transition-colors truncate text-sm">
+                                        {item.genericName}
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        {itemCategoryName && (
+                                            <Badge variant="outline" className="text-[10px] border-border/50 text-text-3 px-1.5 py-0 h-4">
+                                                <Tag className="w-2.5 h-2.5 mr-1" />
+                                                {itemCategoryName}
+                                            </Badge>
+                                        )}
+                                        {item.defaultQty && (
+                                            <span className="text-[10px] text-text-3">
+                                                {item.defaultQty} {unit?.symbol || "unid."}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                        </CardContent>
+
+                                {/* Right: Price and Total */}
+                                <div className="flex items-center gap-3 shrink-0">
+                                    {/* Price Info */}
+                                    {lineTotal !== null ? (
+                                        <div className="text-right">
+                                            <div className="font-bold text-accent-mint text-base">
+                                                ${lineTotal.toFixed(2)}
+                                            </div>
+                                            <div className="text-[10px] text-text-3">
+                                                Est. Total
+                                            </div>
+                                        </div>
+                                    ) : item.globalPrice ? (
+                                        <div className="text-right">
+                                            <div className="font-bold text-accent-mint text-base">
+                                                ${item.globalPrice.toFixed(2)}
+                                            </div>
+                                            <div className="text-[10px] text-text-3">
+                                                {item.currencyCode}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-right w-16">
+                                            <div className="text-[10px] text-text-3 italic">
+                                                Sin precio
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Delete Button */}
+                                    <div
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <RemoveTemplateItemButton templateId={templateId} itemId={item.id} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </Card>
-                    <div
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            // The actual button click is handled by the button itself, 
-                            // but we need to stop propagation here so the dialog doesn't open
-                        }}
-                    >
-                        <RemoveTemplateItemButton templateId={templateId} itemId={item.id} />
-                    </div>
                 </div>
             }
         />

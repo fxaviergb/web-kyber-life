@@ -1,4 +1,4 @@
-# Kyber Life (V1)
+# KYBER LIFE (V1)
 
 Plataforma de Optimización de Mercado Personal.
 

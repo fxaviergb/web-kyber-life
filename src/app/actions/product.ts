@@ -69,8 +69,10 @@ export async function createGenericItemAction(prevState: any, formData: FormData
         const newItem = await productService.createGenericItem(
             userId,
             result.data.name,
-            result.data.primaryCategoryId,
-            result.data.imageUrl
+            result.data.primaryCategoryId || undefined,
+            result.data.imageUrl || undefined,
+            result.data.globalPrice,
+            result.data.currencyCode
         );
         // Note: secondaryCategories support requires service update if not present.
         // Assuming createGenericItem handles basic creation.

@@ -1,7 +1,7 @@
 import { productService, masterDataService } from "@/infrastructure/container";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { GenericItemDialog } from "../generic-item-dialog";
+import { EditProductButton } from "../edit-product-button";
 import { BrandProductDialog } from "../brand-product-dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Edit, Plus, Trash2, Tag, ArrowLeft, Package, DollarSign, Globe } from "lucide-react";
@@ -57,34 +57,37 @@ export default async function GenericItemDetailPage({ params }: { params: Promis
                 {/* Left Column: Generic Item Details */}
                 <div className="md:col-span-1 space-y-6">
                     <Card className="overflow-hidden border-border/60 bg-bg-1 shadow-lg">
-                        <div className="aspect-square relative bg-bg-2">
-                            {item.imageUrl ? (
-                                <img src={item.imageUrl} alt={item.canonicalName} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center text-text-3">
-                                    <Package className="w-16 h-16 mb-2 opacity-20" />
-                                    <span className="text-sm">Sin imagen</span>
+                        {item.imageUrl ? (
+                            <div className="w-full bg-bg-2 relative">
+                                <img
+                                    src={item.imageUrl}
+                                    alt={item.canonicalName}
+                                    className="w-full h-auto block"
+                                />
+                                <div className="absolute top-4 right-4">
+                                    <Badge variant="default" className="bg-bg-1/80 backdrop-blur text-text-1 shadow-sm">
+                                        <Tag className="w-3 h-3 mr-1 text-accent-blue" />
+                                        {categoryName}
+                                    </Badge>
                                 </div>
-                            )}
-                            <div className="absolute top-4 right-4">
-                                <Badge variant="secondary" className="bg-bg-1/80 backdrop-blur text-text-1 shadow-sm">
-                                    <Tag className="w-3 h-3 mr-1 text-accent-blue" />
-                                    {categoryName}
-                                </Badge>
                             </div>
-                        </div>
-                        <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                                <CardTitle className="text-2xl font-bold text-text-1 break-words">{item.canonicalName}</CardTitle>
-                                <GenericItemDialog
-                                    mode="edit"
+                        ) : (
+                            <div className="w-full aspect-square bg-bg-2 flex flex-col items-center justify-center text-text-3">
+                                <Package className="w-16 h-16 mb-2 opacity-20" />
+                                <span className="text-sm">Sin imagen</span>
+                            </div>
+                        )}
+                        <CardHeader className="pb-3">
+                            <div className="flex justify-between items-start gap-3">
+                                <CardTitle className="text-2xl font-bold text-text-1 break-words flex-1">
+                                    {item.canonicalName}
+                                </CardTitle>
+                                <EditProductButton
                                     item={item}
                                     categories={categories}
-                                    trigger={
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-text-3 hover:text-accent-violet hover:bg-accent-violet/10">
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                    }
+                                    variant="outline"
+                                    size="sm"
+                                    className="shrink-0 text-text-2 border-border hover:text-accent-violet hover:border-accent-violet hover:bg-accent-violet/5"
                                 />
                             </div>
                         </CardHeader>
