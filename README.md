@@ -1,52 +1,70 @@
-# KYBER LIFE (V1)
+# KYBER LIFE (V1) - Personal Market Pilot
 
-Plataforma de Optimización de Mercado Personal.
+**Kyber Life** es una plataforma diseñada para optimizar la gestión de compras y consumo personal, actuando como un "Copiloto de Vida". Esta versión V1 se enfoca en la gestión de compras de supermercado, permitiendo el seguimiento de precios, control de gastos y análisis de hábitos de compra.
 
-## Requisitos
-- Node.js 18+
-- npm
+## 🚀 Funcionalidades Principales
 
-## Instalación
+### 🛒 Gestión de Mercado
+*   **Listas de Compra Flexibles**: Crea listas de compras planificadas o inicia una "Compra Rápida" sobre la marcha.
+*   **Checklist Interactivo**: Durante la compra, marca productos, ajusta precios reales y cantidades. El sistema calcula el total en tiempo real.
+*   **Productos No Planeados**: Añade fácilmente productos que no estaban en tu lista original sin perder el flujo.
 
-```bash
-npm install
-```
+### 📝 Plantillas Inteligentes
+*   **Reutilización**: Crea plantillas para compras recurrentes (ej. "Compra Semanal", "Asado del Domingo").
+*   **Generación de Compras**: Inicia una nueva compra basándote en una plantilla predefinida con un solo clic.
 
-## Ejecución (Modo Desarrollo)
+### 📊 Analítica e Historial
+*   **Historial de Compras**: Registro detallado de todas tus visitas al supermercado.
+*   **Dashboard**: Visualización de métricas clave como gasto total, tendencias y productos más comprados.
 
-```bash
-npm run dev
-```
+### ⚙️ Configuración Maestra
+*   **Gestión de Catálogo**: Administra Productos Genéricos, Categorías, Unidades de Medida y Supermercados.
 
-Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+---
 
-## Guía de Uso Rápida
+## 🛠️ Aspectos Técnicos del Repositorio
 
-1.  **Registro**: Al ser una demo con base de datos en memoria, **debes registrarte nuevamente** cada vez que reinicias el servidor. Ve a "No tienes cuenta? Regístrate".
-2.  **Dashboard**: Verás tu panel principal.
-3.  **Configuración**:
-    -   Ve a **Supermercados** y crea uno (ej. "Walmart").
-    -   Ve a **Items** y crea productos si lo deseas, o úsalos al vuelo.
-4.  **Compra**:
-    -   Ve a **Nueva Compra**.
-    -   Selecciona el Supermercado.
-    -   En la **Lista de Compra**, añade items, marca precios y cantidades.
-    -   Click en **Finalizar** para guardar el historial.
+Este proyecto está construido con una arquitectura moderna y escalable, priorizando la separación de responsabilidades y la experiencia de desarrollo.
 
-## Tests
+### Stack Tecnológico
+*   **Framework**: [Next.js 15+](https://nextjs.org/) (App Router, Server Actions).
+*   **Lenguaje**: TypeScript.
+*   **UI/UX**: Tailwind CSS 4, Shadcn/ui, Lucide React (Iconos).
+*   **Testing**: Jest + React Testing Library.
 
-Para ejecutar las pruebas unitarias:
+### Arquitectura de Software
+Implementamos **Clean Architecture** para garantizar mantenibilidad y testabilidad:
+1.  **Domain (`src/domain`)**: Entidades centrales y reglas de negocio puras.
+2.  **Application (`src/application`)**: Servicios y casos de uso que orquestan el dominio.
+3.  **Infrastructure (`src/infrastructure`)**: Implementación concreta de repositorios.
+    *   *Nota*: En la V1, utilizamos **Repositorios In-Memory**. Los datos persisten solo mientras la aplicación está en ejecución.
+4.  **Presentation (`src/presentation`)**: Componentes de UI y Vistas.
 
-```bash
-npm test
-```
+### Despliegue (Vercel)
+El proyecto está optimizado para desplegarse en **Vercel**.
+*   Consulte `DEPLOY.md` para instrucciones detalladas.
+*   Requiere Node.js 20+.
 
-## Arquitectura
+---
 
-Este proyecto sigue **Clean Architecture**:
--   `src/domain`: Entidades y reglas de negocio.
--   `src/application`: Casos de uso.
--   `src/infrastructure`: Repositorios (In-Memory).
--   `src/presentation`: UI Components (Shadcn/ui).
+## 🏁 Inicio Rápido
 
-> **Nota**: Los datos se perderán al detener el servidor (In-Memory Persistence).
+1.  **Instalar dependencias**:
+    ```bash
+    npm install
+    ```
+
+2.  **Ejecutar en desarrollo**:
+    ```bash
+    npm run dev
+    ```
+    Accede a [http://localhost:3000](http://localhost:3000).
+
+3.  **Usuario de Prueba**:
+    El sistema inicia con un seed de datos básico.
+    *   **Email**: `test@test.com`
+    *   **Password**: `test`
+
+---
+
+> **Nota Importante V1**: Al utilizar almacenamiento en memoria, **todos los datos se restablecen al reiniciar el servidor**. Esta versión está destinada a demostraciones funcionales y validación de flujos de UI/UX.
