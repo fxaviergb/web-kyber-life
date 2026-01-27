@@ -1,0 +1,15 @@
+[
+    {
+        "id": "template-1",
+        "ownerUserId": "mock-user-1",
+        "name": "Supermercado Semanal",
+        "description": "Lista base para compras semanales",
+        "tags": [
+            "Semanal",
+            "Casa"
+        ],
+        "isDeleted": false,
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+]

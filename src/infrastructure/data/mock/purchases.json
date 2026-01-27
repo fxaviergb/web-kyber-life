@@ -1,0 +1,16 @@
+[
+    {
+        "id": "purchase-1",
+        "ownerUserId": "mock-user-1",
+        "supermarketId": "supermarket-1",
+        "date": "2024-01-15",
+        "totalAmount": 15.50,
+        "status": "COMPLETED",
+        "name": "Compra Quincenal",
+        "description": "Compra de prueba",
+        "currencyCode": "USD",
+        "isDeleted": false,
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T11:00:00.000Z"
+    }
+]

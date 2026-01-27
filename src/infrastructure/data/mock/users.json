@@ -1,0 +1,11 @@
+[
+    {
+        "id": "mock-user-1",
+        "email": "test@test.com",
+        "passwordHash": "test",
+        "defaultCurrencyCode": "USD",
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z",
+        "isDeleted": false
+    }
+]

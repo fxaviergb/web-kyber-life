@@ -1,0 +1,20 @@
+[
+    {
+        "id": "cat-1",
+        "ownerUserId": null,
+        "name": "Lácteos",
+        "isDeleted": false
+    },
+    {
+        "id": "cat-2",
+        "ownerUserId": null,
+        "name": "Panadería",
+        "isDeleted": false
+    },
+    {
+        "id": "cat-6",
+        "ownerUserId": null,
+        "name": "Limpieza",
+        "isDeleted": false
+    }
+]
