@@ -13,7 +13,6 @@ import {
     InMemoryPasswordResetTokenRepository
 } from "./repositories/implementations";
 import { seedRepositories } from "./seed/seed-data";
-import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
 // Generic Global Singleton Helper
@@ -90,8 +89,9 @@ export async function initializeContainer() {
             const defaultUserEmail = "test@test.com";
             const existingUser = await userRepository.findByEmail(defaultUserEmail);
             if (!existingUser) {
-                const salt = await bcrypt.genSalt(10);
-                const hash = await bcrypt.hash("test", salt);
+                // Validation bypass: Creating user directly in repo
+                // PLAIN TEXT for V1 simplicity
+                const hash = "test";
 
                 await userRepository.create({
                     id: randomUUID(),
