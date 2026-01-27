@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kyber Life (V1)
 
-## Getting Started
+Plataforma de Optimización de Mercado Personal.
 
-First, run the development server:
+## Requisitos
+- Node.js 18+
+- npm
+
+## Instalación
+
+```bash
+npm install
+```
+
+## Ejecución (Modo Desarrollo)
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Guía de Uso Rápida
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1.  **Registro**: Al ser una demo con base de datos en memoria, **debes registrarte nuevamente** cada vez que reinicias el servidor. Ve a "No tienes cuenta? Regístrate".
+2.  **Dashboard**: Verás tu panel principal.
+3.  **Configuración**:
+    -   Ve a **Supermercados** y crea uno (ej. "Walmart").
+    -   Ve a **Items** y crea productos si lo deseas, o úsalos al vuelo.
+4.  **Compra**:
+    -   Ve a **Nueva Compra**.
+    -   Selecciona el Supermercado.
+    -   En la **Lista de Compra**, añade items, marca precios y cantidades.
+    -   Click en **Finalizar** para guardar el historial.
 
-## Learn More
+## Tests
 
-To learn more about Next.js, take a look at the following resources:
+Para ejecutar las pruebas unitarias:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm test
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Arquitectura
 
-## Deploy on Vercel
+Este proyecto sigue **Clean Architecture**:
+-   `src/domain`: Entidades y reglas de negocio.
+-   `src/application`: Casos de uso.
+-   `src/infrastructure`: Repositorios (In-Memory).
+-   `src/presentation`: UI Components (Shadcn/ui).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> **Nota**: Los datos se perderán al detener el servidor (In-Memory Persistence).
