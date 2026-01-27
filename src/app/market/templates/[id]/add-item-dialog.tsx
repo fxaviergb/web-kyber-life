@@ -89,21 +89,6 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
             if (newPrice) formData.set("globalPrice", newPrice);
             if (newCategoryId) formData.set("primaryCategoryId", newCategoryId);
 
-            // Import the action dynamically or assume it's available. 
-            // Since we can't import easily if it wasn't there before, we'll need to check imports.
-            // Assuming createGenericItemAction is imported. If not, I'll need to add the import in a separate step or included here.
-            // I'll add the import in the top of the file in a separate step if needed, but for now let's assume I can add it details later.
-            // Wait, I am replacing the whole function so I can't easily add imports here without replacing the whole file.
-            // I will return to the original plan: I should probably Read the file again to make sure imports are there.
-            // But I will try to include imports in this replacement if I replace the whole file.
-            // Since I am replacing from line 34, I missed imports.
-            // I'll assume I'll adding the import in a separate edit or I should have viewed the file carefully.
-            // I'll proceed with the logic, and then fix imports if missing.
-
-            // Actually, I can use the exact action name and fix imports in a second pass.
-            // Let's use `createGenericItemAction` which I saw in UnplannedProductDialog.
-
-
             const res = await createGenericItemAction(null, formData);
 
             if (res?.error) {
@@ -113,8 +98,23 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
 
             const newItemId = (res as any).id;
             if (newItemId) {
-                setSelectedItemId(newItemId);
-                setStep("configure");
+                // Immediately add to template with default values
+                const addFormData = new FormData();
+                addFormData.set("genericItemId", newItemId);
+                addFormData.set("defaultQty", "1");
+
+                // We use null for prevState as it is a server action called directly
+                const addRes = await addTemplateItemAction(templateId, null, addFormData);
+
+                if (addRes?.error) {
+                    alert(addRes.error);
+                    // If add failed but create succeeded, maybe we should let them configure?
+                    // For now, alert is consistent with existing error handling.
+                    setSelectedItemId(newItemId);
+                    setStep("configure");
+                } else {
+                    setOpen(false); // Success - close dialog
+                }
             }
         } catch (error) {
             console.error(error);
@@ -300,6 +300,21 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                </div>
+                                <div className="col-span-2 space-y-2">
+                                    <Label className="text-text-2">Precio Estimado (USD)</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-text-3">$</span>
+                                        <Input
+                                            name="globalPrice"
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            defaultValue={genericItems.find(i => i.id === selectedItemId)?.globalPrice || ''}
+                                            className="pl-7 bg-bg-2 border-border text-text-1"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-text-3">Este precio se actualizará en tu catálogo global.</p>
                                 </div>
                             </div>
 

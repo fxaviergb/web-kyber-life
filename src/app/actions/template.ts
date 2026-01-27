@@ -71,9 +71,28 @@ export async function addTemplateItemAction(templateId: string, prevState: any, 
         const genericItemId = formData.get("genericItemId") as string;
         const defaultQty = formData.get("defaultQty") ? Number(formData.get("defaultQty")) : null;
         const defaultUnitId = formData.get("defaultUnitId") as string || null;
+        const globalPrice = formData.get("globalPrice") ? Number(formData.get("globalPrice")) : undefined;
 
-        const result = addTemplateItemSchema.safeParse({ templateId, genericItemId, defaultQty, defaultUnitId });
+        const result = addTemplateItemSchema.safeParse({ templateId, genericItemId, defaultQty, defaultUnitId, globalPrice });
         if (!result.success) return { error: result.error.issues[0].message };
+
+        // Update Global Price if provided
+        if (globalPrice !== undefined) {
+            const item = await productService.getGenericItem(userId, genericItemId);
+            if (item) {
+                await productService.updateGenericItem(
+                    userId,
+                    item.id,
+                    item.canonicalName,
+                    item.primaryCategoryId,
+                    item.secondaryCategoryIds,
+                    item.imageUrl,
+                    item.aliases,
+                    globalPrice,
+                    item.currencyCode
+                );
+            }
+        }
 
         await templateService.addTemplateItem(userId, templateId, genericItemId, defaultQty, defaultUnitId);
         revalidatePath(`/market/templates/${templateId}`);

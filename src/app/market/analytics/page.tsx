@@ -37,7 +37,7 @@ export default async function AnalyticsPage() {
     return (
         <div className="p-4 md:p-8 space-y-6 pb-24">
             <div>
-                <h1 className="text-2xl font-bold text-white">Analítica</h1>
+                <h1 className="text-2xl font-bold text-text-1">Analítica</h1>
                 <p className="text-text-3">Insights de tus compras y gastos.</p>
             </div>
 

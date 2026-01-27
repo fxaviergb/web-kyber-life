@@ -49,7 +49,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
                     </Link>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-bold text-white">{template.name}</h1>
+                            <h1 className="text-2xl font-bold text-text-1">{template.name}</h1>
                             <div className="flex gap-1">
                                 {template.tags.map(tag => (
                                     <Badge key={tag} variant="outline" className="text-[10px] py-0 border-accent-violet/30 text-accent-violet">

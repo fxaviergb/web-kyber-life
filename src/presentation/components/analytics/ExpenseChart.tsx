@@ -16,24 +16,28 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
                         <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
                     </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-base)" vertical={false} />
                 <XAxis
                     dataKey="month"
-                    stroke="#888"
+                    stroke="var(--text-secondary)"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                 />
                 <YAxis
-                    stroke="#888"
+                    stroke="var(--text-secondary)"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(value) => `$${value}`}
                 />
                 <Tooltip
-                    contentStyle={{ backgroundColor: '#1E1E2E', borderColor: '#333', color: '#FFF' }}
-                    itemStyle={{ color: '#D4AF37' }}
+                    contentStyle={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        borderColor: 'var(--border-base)',
+                        color: 'var(--text-primary)'
+                    }}
+                    itemStyle={{ color: 'var(--accent-primary)' }}
                     formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "Total"]}
                 />
                 <Area
