@@ -93,8 +93,8 @@ export class AuthService {
 
         // In V1, we just return the RAW token in the message for testing since there is no email service.
         // Or we log it.
-        console.log(`[MOCK EMAIL] Password Reset Token for ${email}: ${token}`);
-        return `Recovery email sent (Check console for mock token: ${token})`;
+        console.log(`[MOCK EMAIL] Password Reset Link: http://localhost:3000/auth/restore?token=${token}`);
+        return `Recovery email sent (Check console for mock token)`;
     }
 
     async resetPassword(token: string, newPassword: string): Promise<void> {

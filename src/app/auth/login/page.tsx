@@ -60,6 +60,11 @@ export default function LoginPage() {
                     )}
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4">
+                    <div className="w-full flex justify-end">
+                        <Link href="/auth/recover" className="text-sm text-text-tertiary hover:text-accent-primary hover:underline">
+                            ¿Olvidaste tu contraseña?
+                        </Link>
+                    </div>
                     <Button
                         type="submit"
                         className="w-full bg-accent-violet hover:bg-accent-violet/90 text-white"
