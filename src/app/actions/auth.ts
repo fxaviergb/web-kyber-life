@@ -15,7 +15,12 @@ export async function loginAction(prevState: any, formData: FormData) {
     const result = loginSchema.safeParse(rawData);
 
     // Ensure container is initialized before proceeding
-    await initializeContainer();
+    try {
+        await initializeContainer();
+    } catch (error: any) {
+        console.error("Initialization failed:", error);
+        return { error: "Error de sistema: Fallo al inicializar servicios." };
+    }
 
     if (!result.success) {
         return { error: result.error.issues[0].message };
@@ -44,6 +49,12 @@ export async function loginAction(prevState: any, formData: FormData) {
 export async function registerAction(prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
     const result = registerSchema.safeParse(rawData);
+
+    try {
+        await initializeContainer();
+    } catch (error: any) {
+        return { error: "Error de sistema: Fallo al inicializar servicios." };
+    }
 
     if (!result.success) {
         // Return the first error message for simplicity in V1
