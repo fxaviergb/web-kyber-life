@@ -14,6 +14,9 @@ export async function loginAction(prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
     const result = loginSchema.safeParse(rawData);
 
+    // Ensure container is initialized before proceeding
+    await initializeContainer();
+
     if (!result.success) {
         return { error: result.error.issues[0].message };
     }
