@@ -1,0 +1,37 @@
+[
+    {
+        "id": "item-1",
+        "ownerUserId": "mock-user-1",
+        "categoryId": "cat-1",
+        "canonicalName": "Leche Entera",
+        "defaultUnitId": "unit-litros",
+        "aliases": [
+            "Leche",
+            "Leche de Vaca"
+        ],
+        "secondaryCategoryIds": [],
+        "isDeleted": false
+    },
+    {
+        "id": "item-2",
+        "ownerUserId": "mock-user-1",
+        "categoryId": "cat-2",
+        "canonicalName": "Pan Molde",
+        "defaultUnitId": "unit-unidades",
+        "aliases": [],
+        "secondaryCategoryIds": [],
+        "isDeleted": false
+    },
+    {
+        "id": "item-3",
+        "ownerUserId": "mock-user-1",
+        "categoryId": "cat-6",
+        "canonicalName": "Detergente Líquido",
+        "defaultUnitId": "unit-litros",
+        "aliases": [
+            "Jabón de ropa"
+        ],
+        "secondaryCategoryIds": [],
+        "isDeleted": false
+    }
+]

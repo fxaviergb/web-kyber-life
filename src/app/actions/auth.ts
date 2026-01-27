@@ -28,15 +28,8 @@ export async function loginAction(prevState: any, formData: FormData) {
 
     const { email, password } = result.data;
 
-    // LAZY SEEDING / AUTO-RECOVERY for Test User
-    if (email === "test@test.com") {
-        try {
-            // Attempt to register; if it fails (already exists), that's fine.
-            await authService.register({ email, password });
-        } catch (e) {
-            // User likely exists, ignore.
-        }
-    }
+    // Strict Login: User must exist (in Mock or DB)
+    // Lazy seeding removed as per user request to ensure mock integrity
 
     try {
         const user = await authService.login({ email, password });

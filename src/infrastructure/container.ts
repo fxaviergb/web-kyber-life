@@ -83,34 +83,51 @@ export async function initializeContainer() {
     // Create the cleanup/initialization promise
     initializationPromise = (async () => {
         try {
+            // ALWAYS seed basic master data (Category, Unit)
             await seedRepositories(categoryRepository, unitRepository);
 
-            // Seed default test user
-            const defaultUserEmail = "test@test.com";
-            const existingUser = await userRepository.findByEmail(defaultUserEmail);
-            if (!existingUser) {
-                // Validation bypass: Creating user directly in repo
-                // PLAIN TEXT for V1 simplicity
-                const hash = "test";
+            // DATA SOURCE STRATEGY
+            const dataSource = process.env.DATA_SOURCE || "MEMORY"; // Default to MEMORY
 
-                await userRepository.create({
-                    id: randomUUID(),
-                    email: defaultUserEmail,
-                    passwordHash: hash,
-                    defaultCurrencyCode: "USD",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    isDeleted: false
-                });
-                console.log(`Default test user seeded: ${defaultUserEmail} / test`);
+            if (dataSource === "MOCK") {
+                console.log("Initializing in MOCK mode...");
+                const { loadMockData } = await import("./seed/mock-loader");
+                await loadMockData(
+                    userRepository,
+                    supermarketRepository,
+                    genericItemRepository,
+                    purchaseRepository,
+                    categoryRepository,
+                    templateRepository,
+                    templateItemRepository
+                );
+            } else {
+                // MEMORY MODE (Default)
+                console.log("Initializing in MEMORY mode...");
+
+                // Seed default test user if not exists
+                const defaultUserEmail = "test@test.com";
+                const existingUser = await userRepository.findByEmail(defaultUserEmail);
+                if (!existingUser) {
+                    const hash = "test"; // PLAIN TEXT for V1
+                    await userRepository.create({
+                        id: randomUUID(),
+                        email: defaultUserEmail,
+                        passwordHash: hash,
+                        defaultCurrencyCode: "USD",
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        isDeleted: false
+                    });
+                    console.log(`Default test user seeded: ${defaultUserEmail} / test`);
+                }
             }
 
             // @ts-ignore
             global.__kyber_initialized = true;
-            console.log("Container initialized and seeded (Global).");
+            console.log(`Container initialized (Source: ${dataSource}).`);
         } catch (error) {
             console.error("Failed to initialize container:", error);
-            // Reset promise on failure so we can retry? Or let it fail.
             initializationPromise = null;
             throw error;
         }
