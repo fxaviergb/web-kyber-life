@@ -1,6 +1,6 @@
-# KYBER LIFE (V1) - Personal Market Pilot
+# KYBER LIFE (V1) - Personal Pilot
 
-**Kyber Life** es una plataforma diseñada para optimizar la gestión de compras y consumo personal, actuando como un "Copiloto de Vida". Esta versión V1 se enfoca en la gestión de compras de supermercado, permitiendo el seguimiento de precios, control de gastos y análisis de hábitos de compra.
+**Kyber Life** es una plataforma diseñada para optimizar la gestión de proceso de la vida cotidiana, actuando como un "Copiloto de Vida". Esta versión V1 se enfoca en la gestión de compras de supermercado, permitiendo el seguimiento de precios, control de gastos y análisis de hábitos de compra.
 
 ## 🚀 Funcionalidades Principales
 
@@ -40,11 +40,6 @@ Implementamos **Clean Architecture** para garantizar mantenibilidad y testabilid
     *   *Nota*: En la V1, utilizamos **Repositorios In-Memory**. Los datos persisten solo mientras la aplicación está en ejecución.
 4.  **Presentation (`src/presentation`)**: Componentes de UI y Vistas.
 
-### Despliegue (Vercel)
-El proyecto está optimizado para desplegarse en **Vercel**.
-*   Consulte `DEPLOY.md` para instrucciones detalladas.
-*   Requiere Node.js 20+.
-
 ---
 
 ## 🏁 Inicio Rápido
@@ -68,3 +63,7 @@ El proyecto está optimizado para desplegarse en **Vercel**.
 ---
 
 > **Nota Importante V1**: Al utilizar almacenamiento en memoria, **todos los datos se restablecen al reiniciar el servidor**. Esta versión está destinada a demostraciones funcionales y validación de flujos de UI/UX.
+
+---
+
+Desarrollado por **Teamdroid** 🤖
