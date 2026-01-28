@@ -1,6 +1,6 @@
 import { templateService, productService, masterDataService, initializeContainer } from "@/infrastructure/container";
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, ShoppingBasket, LayoutList, Edit } from "lucide-react";
@@ -13,7 +13,11 @@ import { EditTemplateDialog } from "../edit-template-dialog";
 export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await initializeContainer();
     const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value!;
+    const userId = cookieStore.get("kyber_session")?.value;
+
+    if (!userId) {
+        redirect("/auth/login");
+    }
     const { id } = await params;
 
     const template = await templateService.getTemplate(userId, id);

@@ -206,7 +206,7 @@ export default async function GenericItemDetailPage({ params }: { params: Promis
                                                     </Badge>
                                                 )}
                                                 {bp.prices.length > 0 ? (
-                                                    <Badge variant="secondary" className="text-xs bg-accent-green/10 text-accent-green hover:bg-accent-green/20 border-0">
+                                                    <Badge variant="outline" className="text-xs bg-accent-green/10 text-accent-green hover:bg-accent-green/20 border-0">
                                                         {bp.prices.length} precios locales
                                                     </Badge>
                                                 ) : (

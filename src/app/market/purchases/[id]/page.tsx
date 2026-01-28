@@ -1,6 +1,6 @@
 import { purchaseService, productService, masterDataService, initializeContainer } from "@/infrastructure/container";
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PurchaseChecklist } from "@/presentation/components/purchase/PurchaseChecklist";
 import { PurchaseCompletedView } from "@/presentation/components/purchase/PurchaseCompletedView";
 import { PurchaseLine, BrandProduct, GenericItem } from "@/domain/entities";
@@ -8,7 +8,11 @@ import { PurchaseLine, BrandProduct, GenericItem } from "@/domain/entities";
 export default async function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await initializeContainer();
     const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value!;
+    const userId = cookieStore.get("kyber_session")?.value;
+
+    if (!userId) {
+        redirect("/auth/login");
+    }
     const { id } = await params;
 
     const result = await purchaseService.getPurchase(userId, id);

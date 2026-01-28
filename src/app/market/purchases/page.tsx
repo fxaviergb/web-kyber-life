@@ -1,5 +1,6 @@
 import { purchaseService, initializeContainer } from "@/infrastructure/container";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,11 @@ import { Card } from "@/components/ui/card";
 export default async function PurchasesListPage() {
     await initializeContainer();
     const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value!;
+    const userId = cookieStore.get("kyber_session")?.value;
+
+    if (!userId) {
+        redirect("/auth/login");
+    }
 
     const { purchaseRepository, supermarketRepository } = await import("@/infrastructure/container");
     const purchases = await purchaseRepository.findByOwnerId(userId);

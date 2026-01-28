@@ -1,6 +1,7 @@
 
 import { analyticsService, initializeContainer, purchaseRepository, genericItemRepository } from "@/infrastructure/container";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { TrendingUp, CreditCard, Plus } from "lucide-react";
 import { MetricCard } from "@/presentation/components/dashboard/metric-card";
 import { SalesBarChart } from "@/presentation/components/dashboard/sales-bar-chart";
@@ -14,7 +15,11 @@ import Link from "next/link";
 export default async function DashboardPage() {
     await initializeContainer();
     const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value!;
+    const userId = cookieStore.get("kyber_session")?.value;
+
+    if (!userId) {
+        redirect("/auth/login");
+    }
 
     // Fetch Data: Get 7 months (Current + 6 previous)
     const monthlyData = await analyticsService.getMonthlyExpenses(userId, 7);
