@@ -43,7 +43,7 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
         <div className="p-4 md:p-8 space-y-6 pb-24">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Lista de Compra</h1>
+                    <h1 className="text-2xl font-bold text-text-primary">Lista de Compras</h1>
                     <p className="text-text-3">
                         {supermarket ? `${supermarket.name} - ${purchase.date}` : purchase.date}
                     </p>

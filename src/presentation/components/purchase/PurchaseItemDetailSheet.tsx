@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PurchaseLine, BrandProduct, Unit, GenericItem } from "@/domain/entities";
 import {
     Dialog,
@@ -40,22 +40,20 @@ export function PurchaseItemDetailSheet({
     const [tempUnit, setTempUnit] = useState(line.unitId || "");
     const [tempPrice, setTempPrice] = useState(line.unitPrice?.toString() || "");
 
+    useEffect(() => {
+        const defaultUnitId = units.find(u => u.symbol?.toLowerCase() === "und" || u.name.toLowerCase() === "unidad")?.id || "";
+
+        setTempBrand(line.brandProductId || "");
+        setTempQty(line.qty?.toString() || "1");
+        setTempUnit(line.unitId || defaultUnitId);
+        setTempPrice(line.unitPrice?.toString() || "");
+    }, [line, units]);
+
     const handleSave = () => {
         const updates: Partial<PurchaseLine> = {};
 
-        if (tempBrand !== line.brandProductId) {
+        if ((tempBrand || "") !== (line.brandProductId || "")) {
             updates.brandProductId = tempBrand || null;
-
-            // Update price based on brand selection
-            if (tempBrand) {
-                const brand = brandOptions.find(b => b.id === tempBrand);
-                if (brand && typeof brand.globalPrice === 'number') {
-                    updates.unitPrice = brand.globalPrice;
-                }
-            } else {
-                // Revert to generic price
-                updates.unitPrice = genericItem.globalPrice || 0;
-            }
         }
 
         const qty = parseFloat(tempQty);
@@ -63,7 +61,7 @@ export function PurchaseItemDetailSheet({
             updates.qty = qty;
         }
 
-        if (tempUnit !== line.unitId) {
+        if ((tempUnit || "") !== (line.unitId || "")) {
             updates.unitId = tempUnit || null;
         }
 
@@ -102,10 +100,21 @@ export function PurchaseItemDetailSheet({
                             className="flex h-10 w-full rounded-md border border-border-base bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary"
                             value={tempBrand}
                             onChange={(e) => {
-                                if (e.target.value === "new_option") {
+                                const val = e.target.value;
+                                if (val === "new_option") {
                                     onCreateBrand();
                                 } else {
-                                    setTempBrand(e.target.value);
+                                    setTempBrand(val);
+
+                                    // Auto-update price based on selection
+                                    if (val) {
+                                        const brand = brandOptions.find(b => b.id === val);
+                                        if (brand && typeof brand.globalPrice === 'number') {
+                                            setTempPrice(brand.globalPrice.toString());
+                                        }
+                                    } else {
+                                        setTempPrice((genericItem.globalPrice || 0).toString());
+                                    }
                                 }
                             }}
                         >

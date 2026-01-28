@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useActionState, useState } from "react";
 import { createPurchaseAction } from "@/app/actions/purchase";
 import { createSupermarketAction, createTemplateAction } from "@/app/actions/master-data";
@@ -8,7 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+    ResponsiveDialog,
+    ResponsiveDialogContent,
+    ResponsiveDialogHeader,
+    ResponsiveDialogTitle,
+    ResponsiveDialogTrigger,
+    ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog";
 import { Plus, Loader2, Check, ChevronsUpDown, Search, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -123,8 +132,8 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
     return (
         <Card className="bg-bg-1 border-border shadow-xl">
             <CardHeader className="pb-4">
-                <CardTitle className="text-2xl text-white font-bold">Iniciar Nueva Compra</CardTitle>
-                <CardDescription className="text-text-3">Configura los detalles de tu nueva lista de compra.</CardDescription>
+                <CardTitle className="text-2xl text-text-1 font-bold">Nueva Compra</CardTitle>
+                <CardDescription className="text-text-3">Configura los detalles de tu compra.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form action={formAction} className="space-y-8">
@@ -138,17 +147,17 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <Label className="text-text-2 font-medium">Supermercado</Label>
-                            <Dialog open={isSmDialogOpen} onOpenChange={setIsSmDialogOpen}>
-                                <DialogTrigger asChild>
+                            <ResponsiveDialog open={isSmDialogOpen} onOpenChange={setIsSmDialogOpen}>
+                                <ResponsiveDialogTrigger asChild>
                                     <Button type="button" variant="outline" size="sm" className="h-8 text-accent-mint border-accent-mint/30 hover:bg-accent-mint/10 hover:text-accent-mint">
                                         <Plus className="h-3.5 w-3.5 mr-1" /> Nuevo
                                     </Button>
-                                </DialogTrigger>
-                                <DialogContent className="bg-bg-1 border-border">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-white">Nuevo Supermercado</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4 pt-4">
+                                </ResponsiveDialogTrigger>
+                                <ResponsiveDialogContent className="bg-bg-1 border-border sm:max-w-[425px]">
+                                    <ResponsiveDialogHeader>
+                                        <ResponsiveDialogTitle className="text-text-1">Nuevo Supermercado</ResponsiveDialogTitle>
+                                    </ResponsiveDialogHeader>
+                                    <div className="space-y-4 pt-4 px-1">
                                         <div className="space-y-2">
                                             <Label>Nombre</Label>
                                             <Input
@@ -158,14 +167,14 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
                                                 placeholder="Ej. Walmart"
                                             />
                                         </div>
-                                        <DialogFooter>
-                                            <Button type="button" onClick={handleCreateSupermarket} disabled={isCreatingSm} className="bg-accent-mint text-bg-1 font-bold">
+                                        <ResponsiveDialogFooter>
+                                            <Button type="button" onClick={handleCreateSupermarket} disabled={isCreatingSm} className="bg-accent-mint text-bg-1 font-bold w-full sm:w-auto">
                                                 {isCreatingSm ? <Loader2 className="w-4 h-4 animate-spin" /> : "Crear"}
                                             </Button>
-                                        </DialogFooter>
+                                        </ResponsiveDialogFooter>
                                     </div>
-                                </DialogContent>
-                            </Dialog>
+                                </ResponsiveDialogContent>
+                            </ResponsiveDialog>
                         </div>
 
                         {/* Combobox for Supermarket */}
@@ -210,7 +219,7 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
                                                         setSupermarketSearch(""); // Reset search on select
                                                     }}
                                                     className={cn(
-                                                        "w-full flex items-center px-2 py-1.5 text-sm rounded-sm text-left transition-colors hover:bg-bg-1 hover:text-white text-text-1",
+                                                        "w-full flex items-center px-2 py-1.5 text-sm rounded-sm text-left transition-colors hover:bg-accent-violet hover:text-white text-text-1",
                                                         selectedSm === s.id && "bg-accent-violet/10 text-accent-violet"
                                                     )}
                                                 >
@@ -234,24 +243,24 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <Label className="text-text-2 font-medium">Plantillas (Opcional)</Label>
-                            <Dialog open={isTmplDialogOpen} onOpenChange={(open) => {
+                            <ResponsiveDialog open={isTmplDialogOpen} onOpenChange={(open) => {
                                 if (!open) handleCloseTmplDialog();
                                 else setIsTmplDialogOpen(true);
                             }}>
-                                <DialogTrigger asChild>
+                                <ResponsiveDialogTrigger asChild>
                                     <Button type="button" variant="outline" size="sm" className="h-8 text-accent-mint border-accent-mint/30 hover:bg-accent-mint/10 hover:text-accent-mint">
                                         <Plus className="h-3.5 w-3.5 mr-1" /> Nueva
                                     </Button>
-                                </DialogTrigger>
-                                <DialogContent className="bg-bg-1 border-border sm:max-w-[500px]">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-white">
+                                </ResponsiveDialogTrigger>
+                                <ResponsiveDialogContent className="bg-bg-1 border-border sm:max-w-[500px]">
+                                    <ResponsiveDialogHeader>
+                                        <ResponsiveDialogTitle className="text-text-1">
                                             {createdTemplateId ? "Agregar Productos a Plantilla" : "Nueva Plantilla"}
-                                        </DialogTitle>
-                                    </DialogHeader>
+                                        </ResponsiveDialogTitle>
+                                    </ResponsiveDialogHeader>
 
                                     {!createdTemplateId ? (
-                                        <div className="space-y-4 pt-4">
+                                        <div className="space-y-4 pt-4 px-1">
                                             <div className="space-y-2">
                                                 <Label>Nombre</Label>
                                                 <Input
@@ -261,32 +270,34 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
                                                     placeholder="Ej. Compra Semanal"
                                                 />
                                             </div>
-                                            <DialogFooter>
-                                                <Button type="button" onClick={handleCreateTemplate} disabled={isCreatingTmpl} className="bg-accent-mint text-bg-1 font-bold">
+                                            <ResponsiveDialogFooter>
+                                                <Button type="button" onClick={handleCreateTemplate} disabled={isCreatingTmpl} className="bg-accent-mint text-bg-1 font-bold w-full sm:w-auto">
                                                     {isCreatingTmpl ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuar"}
                                                 </Button>
-                                            </DialogFooter>
+                                            </ResponsiveDialogFooter>
                                         </div>
                                     ) : (
-                                        <div className="pt-2 animate-in fade-in slide-in-from-right-4 duration-300">
+                                        <div className="pt-2 animate-in fade-in slide-in-from-right-4 duration-300 px-1">
                                             <p className="text-sm text-text-2 mb-4">
                                                 La plantilla se ha creado. Ahora puedes agregar productos.
                                             </p>
-                                            <AddItemForm
-                                                templateId={createdTemplateId}
-                                                genericItems={genericItems}
-                                                units={units}
-                                                onSuccess={() => { /* maybe show toast? */ }}
-                                            />
+                                            <div className="max-h-[60vh] overflow-y-auto">
+                                                <AddItemForm
+                                                    templateId={createdTemplateId}
+                                                    genericItems={genericItems}
+                                                    units={units}
+                                                    onSuccess={() => { /* maybe show toast? */ }}
+                                                />
+                                            </div>
                                             <div className="mt-6 flex justify-end">
-                                                <Button type="button" onClick={handleCloseTmplDialog} className="bg-accent-cyan text-bg-1 font-bold">
+                                                <Button type="button" onClick={handleCloseTmplDialog} className="bg-accent-cyan text-bg-1 font-bold w-full sm:w-auto">
                                                     Terminar
                                                 </Button>
                                             </div>
                                         </div>
                                     )}
-                                </DialogContent>
-                            </Dialog>
+                                </ResponsiveDialogContent>
+                            </ResponsiveDialog>
                         </div>
 
                         {/* Searchable Template List */}
@@ -336,9 +347,14 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
                         </div>
                     )}
 
-                    <Button type="submit" className="w-full h-12 bg-accent-violet hover:bg-accent-violet/90 text-white font-bold text-lg shadow-lg hover:shadow-accent-violet/20 transition-all mt-4" disabled={isPending}>
-                        {isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : "Comenzar Lista"}
-                    </Button>
+                    <div className="flex flex-col gap-3 mt-6">
+                        <Button type="submit" className="w-full h-12 bg-accent-violet hover:bg-accent-violet/90 text-white font-bold text-lg shadow-lg hover:shadow-accent-violet/20 transition-all" disabled={isPending}>
+                            {isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : "Comenzar Lista"}
+                        </Button>
+                        <Button variant="ghost" type="button" asChild className="w-full text-text-3 hover:text-text-1 hover:bg-white/5">
+                            <Link href="/dashboard">Cancelar</Link>
+                        </Button>
+                    </div>
                 </form>
             </CardContent>
         </Card>

@@ -13,7 +13,7 @@ export function CategoryAnalytics({ data }: CategoryAnalyticsProps) {
     return (
         <Card className="bg-bg-2 border-border">
             <CardHeader>
-                <CardTitle className="text-white">Gasto por Categoría</CardTitle>
+                <CardTitle className="text-text-1">Gasto por Categoría</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="h-[300px] w-full">

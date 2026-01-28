@@ -98,8 +98,9 @@ export async function finishPurchaseAction(purchaseId: string, formData: FormDat
         const subtotal = formData.get("subtotal") ? parseFloat(formData.get("subtotal") as string) : undefined;
         const discount = formData.get("discount") ? parseFloat(formData.get("discount") as string) : undefined;
         const tax = formData.get("tax") ? parseFloat(formData.get("tax") as string) : undefined;
+        const finishedAt = formData.get("finishedAt") as string | undefined;
 
-        await purchaseService.finishPurchase(userId, purchaseId, totalPaid, subtotal, discount, tax);
+        await purchaseService.finishPurchase(userId, purchaseId, totalPaid, subtotal, discount, tax, finishedAt);
     } catch (e: any) {
         return { error: e.message };
     }

@@ -135,7 +135,7 @@ export function PurchaseCompletedView({
 
             {/* Actions */}
             <div className="pt-8 border-t border-border flex justify-between">
-                <Button variant="ghost" onClick={() => router.back()} disabled={deleting}>
+                <Button variant="ghost" onClick={() => router.push('/market/purchases')} disabled={deleting}>
                     <ArrowLeft className="w-4 h-4 mr-2" /> Volver
                 </Button>
 

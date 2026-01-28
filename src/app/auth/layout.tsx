@@ -1,18 +1,20 @@
+import { Sparkles } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 export default function AuthLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-bg-2 via-bg-0 to-bg-0">
-            <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:32px_32px] pointer-events-none" />
-            <div className="w-full max-w-md p-6 relative z-10">
-                <div className="mb-8 text-center">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-accent-coral via-accent-magenta to-accent-violet bg-clip-text text-transparent mb-2">
-                        KYBER LIFE
-                    </h1>
-                    <p className="text-text-2">Tu supermercado personal inteligente</p>
-                </div>
+        <div className="flex min-h-screen w-full items-center justify-center bg-bg-primary transition-colors duration-300 relative">
+            {/* Theme Toggle - Top Right */}
+            <div className="absolute top-4 right-4 z-50">
+                <ThemeToggle className="text-text-primary hover:bg-bg-hover" />
+            </div>
+
+            {/* Main Content */}
+            <div className="w-full max-w-[400px] p-4">
                 {children}
             </div>
         </div>

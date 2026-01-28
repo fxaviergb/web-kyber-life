@@ -1,14 +1,13 @@
 "use client";
 
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+    ResponsiveDialog,
+    ResponsiveDialogContent,
+    ResponsiveDialogDescription,
+    ResponsiveDialogFooter,
+    ResponsiveDialogHeader,
+    ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -104,21 +103,21 @@ export function CreateBrandProductModal({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-bg-1 border-border sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle className="text-text-1">
+        <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+            <ResponsiveDialogContent className="bg-bg-1 border-border sm:max-w-[500px]">
+                <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle className="text-text-1">
                         {step === "form" ? `Nueva Opción para ${genericItemName}` : "Marca Existente"}
-                    </DialogTitle>
-                    <DialogDescription className="text-text-2">
+                    </ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription className="text-text-2">
                         {step === "form"
                             ? "Si no encontraste la marca o presentación, créala aquí."
                             : `Ya existe una opción para la marca "${brand}".`}
-                    </DialogDescription>
-                </DialogHeader>
+                    </ResponsiveDialogDescription>
+                </ResponsiveDialogHeader>
 
                 {step === "form" ? (
-                    <form onSubmit={handlePreSubmit} className="grid gap-4 py-4">
+                    <form onSubmit={handlePreSubmit} className="grid gap-4 py-4 px-1">
                         <div className="grid gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="brand" className="text-text-1">Marca</Label>
@@ -171,12 +170,12 @@ export function CreateBrandProductModal({
 
                         {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-text-3">Cancelar</Button>
-                            <Button type="submit" disabled={isPending || loading} className="bg-accent-violet text-white">
+                        <ResponsiveDialogFooter className="gap-2 sm:gap-0">
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-text-3 w-full sm:w-auto">Cancelar</Button>
+                            <Button type="submit" disabled={isPending || loading} className="bg-accent-violet text-white w-full sm:w-auto">
                                 {isPending || loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Crear Opción"}
                             </Button>
-                        </DialogFooter>
+                        </ResponsiveDialogFooter>
                     </form>
                 ) : (
                     <div className="space-y-6 py-6">
@@ -206,7 +205,7 @@ export function CreateBrandProductModal({
                         </div>
                     </div>
                 )}
-            </DialogContent>
-        </Dialog>
+            </ResponsiveDialogContent>
+        </ResponsiveDialog>
     );
 }

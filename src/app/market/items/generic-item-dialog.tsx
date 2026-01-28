@@ -36,6 +36,7 @@ interface GenericItemDialogProps {
 
 export function GenericItemDialog({ mode, item, trigger, open: controlledOpen, onOpenChange, categories }: GenericItemDialogProps) {
     const [open, setOpen] = useState(false);
+    const [showDetails, setShowDetails] = useState(false);
     const isControlled = controlledOpen !== undefined;
     const effectiveOpen = isControlled ? controlledOpen : open;
     const effectiveSetOpen = isControlled ? onOpenChange! : setOpen;
@@ -88,7 +89,7 @@ export function GenericItemDialog({ mode, item, trigger, open: controlledOpen, o
                             Categoría Principal
                         </Label>
                         <Select name="primaryCategoryId" defaultValue={item?.primaryCategoryId || "null"}>
-                            <SelectTrigger className="bg-bg-secondary border-border-base text-text-primary focus:ring-accent-primary">
+                            <SelectTrigger className="w-full bg-bg-secondary border-border-base text-text-primary focus:ring-accent-primary">
                                 <SelectValue placeholder="Seleccionar categoría" />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-primary border-border-base">
@@ -115,66 +116,77 @@ export function GenericItemDialog({ mode, item, trigger, open: controlledOpen, o
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 border-t border-border-base pt-4">
-                        <div className="space-y-2">
-                            <Label className="text-text-secondary">Precio Global (Referencial)</Label>
-                            <Input
-                                name="globalPrice"
-                                type="number"
-                                step="0.01"
-                                defaultValue={item?.globalPrice || ""}
-                                className="bg-bg-secondary border-border-base text-text-primary"
-                                placeholder="0.00"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-text-secondary">Moneda</Label>
+                    <div className="border-t border-border-base pt-4 space-y-2">
+                        <Label className="text-text-secondary">Precio Global y Moneda</Label>
+                        <div className="flex items-center">
+                            <div className="relative flex-1">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-sm">$</span>
+                                <Input
+                                    name="globalPrice"
+                                    type="number"
+                                    step="0.01"
+                                    defaultValue={item?.globalPrice || ""}
+                                    className="bg-bg-secondary border-border-base text-text-primary pl-7 rounded-r-none focus-visible:ring-accent-primary focus-visible:z-10 h-10"
+                                    placeholder="0.00"
+                                />
+                            </div>
                             <Input
                                 name="currencyCode"
                                 defaultValue={item?.currencyCode || "USD"}
-                                className="bg-bg-secondary border-border-base text-text-primary"
-                                maxLength={3}
+                                className="bg-bg-secondary text-text-tertiary w-[80px] rounded-l-none border-l-0 text-center font-medium focus-visible:ring-0 focus-visible:ring-offset-0 cursor-not-allowed h-10"
+                                readOnly
+                                tabIndex={-1}
                             />
                         </div>
-                        <p className="col-span-2 text-xs text-text-tertiary">
-                            Este precio se usará como referencia en tus compras si no hay un precio específico del supermercado.
+                        <p className="text-xs text-text-tertiary">
+                            Este precio se usará como referencia si no hay uno específico del súper.
                         </p>
                     </div>
 
-                    {/* Aliases Section */}
-                    {mode === 'edit' && (
-                        <div className="grid gap-2 border-t border-border-base pt-4 mt-2">
-                            <Label className="text-text-secondary">Sinónimos / Alias</Label>
-                            <p className="text-xs text-text-tertiary mb-2">
-                                Agrega nombres alternativos para encontrar este producto (ej. "Pan de molde").
-                            </p>
-                            <div className="space-y-2">
-                                {item?.aliases.map((alias, index) => (
-                                    <div key={index} className="flex items-center gap-2">
+                    <div className="pt-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setShowDetails(!showDetails)}
+                            className="text-accent-primary hover:text-accent-primary/80 hover:bg-transparent px-0 font-medium h-auto"
+                        >
+                            {showDetails ? "- Ocultar detalles" : "+ Agregar más detalles"}
+                        </Button>
+
+                        {showDetails && (
+                            <div className="grid gap-2 border-t border-border-base pt-4 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <Label className="text-text-secondary">Sinónimos / Alias</Label>
+                                <p className="text-xs text-text-tertiary mb-2">
+                                    Agrega nombres alternativos para encontrar este producto (ej. "Pan de molde").
+                                </p>
+                                <div className="space-y-2">
+                                    {(item?.aliases || []).map((alias, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <Input
+                                                name="aliases"
+                                                defaultValue={alias}
+                                                className="bg-bg-secondary border-border-base text-text-primary h-9 text-sm"
+                                            />
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center gap-2">
                                         <Input
                                             name="aliases"
-                                            defaultValue={alias}
-                                            className="bg-bg-secondary border-border-base text-text-primary h-8 text-sm"
+                                            placeholder="Nuevo alias..."
+                                            className="bg-bg-secondary border-border-base text-text-primary h-9 text-sm focus-visible:ring-accent-primary"
                                         />
                                     </div>
-                                ))}
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        name="aliases"
-                                        placeholder="Nuevo alias..."
-                                        className="bg-bg-secondary border-border-base text-text-primary h-8 text-sm focus-visible:ring-accent-primary"
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        name="aliases"
-                                        placeholder="Otro alias..."
-                                        className="bg-bg-secondary border-border-base text-text-primary h-8 text-sm focus-visible:ring-accent-primary"
-                                    />
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            name="aliases"
+                                            placeholder="Otro alias..."
+                                            className="bg-bg-secondary border-border-base text-text-primary h-9 text-sm focus-visible:ring-accent-primary"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {state?.error && (
                         <p className="text-sm text-accent-danger font-medium">{state.error}</p>

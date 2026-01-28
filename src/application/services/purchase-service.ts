@@ -211,7 +211,8 @@ export class PurchaseService {
         totalPaid: number,
         subtotal?: number,
         discount?: number,
-        tax?: number
+        tax?: number,
+        finishedAt?: string
     ): Promise<Purchase> {
         const p = await this.purchaseRepo.findById(purchaseId);
         if (!p || p.ownerUserId !== userId) throw new Error("Purchase not found");
@@ -233,6 +234,7 @@ export class PurchaseService {
         p.discount = discount || null;
         p.tax = tax || null;
         p.updatedAt = new Date().toISOString();
+        p.completedAt = finishedAt || new Date().toISOString();
         await this.purchaseRepo.update(p);
 
         // Create Price Observations (RB-042)

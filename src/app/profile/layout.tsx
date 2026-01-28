@@ -21,5 +21,5 @@ export default async function ProfileLayout({
         redirect("/auth/login");
     }
 
-    return <AppLayout>{children}</AppLayout>;
+    return <AppLayout user={user}>{children}</AppLayout>;
 }

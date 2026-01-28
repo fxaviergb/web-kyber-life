@@ -25,7 +25,7 @@ export default async function PurchasesListPage() {
             {/* Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-text-primary">Historial de Compras</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-text-primary">Compras</h1>
                     <p className="text-text-tertiary mt-1">Gestiona tus compras planificadas y completadas</p>
                 </div>
                 <Button asChild>

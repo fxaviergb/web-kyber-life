@@ -18,7 +18,7 @@ export function ProductAnalytics({ data, mode }: ProductAnalyticsProps) {
     return (
         <Card className="bg-bg-2 border-border h-full">
             <CardHeader>
-                <CardTitle className="text-white">Productos Más Frecuentes</CardTitle>
+                <CardTitle className="text-text-1">Productos Más Frecuentes</CardTitle>
                 <CardDescription className="text-text-3">
                     Top 10 por {mode === 'count' ? "impresiones en tickets" : "cantidad total"}
                 </CardDescription>

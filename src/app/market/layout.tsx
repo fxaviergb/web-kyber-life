@@ -24,5 +24,5 @@ export default async function MarketLayout({
         redirect("/auth/login");
     }
 
-    return <AppLayout>{children}</AppLayout>;
+    return <AppLayout user={user}>{children}</AppLayout>;
 }

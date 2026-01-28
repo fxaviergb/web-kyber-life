@@ -54,6 +54,7 @@ export async function createGenericItemAction(prevState: any, formData: FormData
 
     const parseData = {
         ...rawData,
+        primaryCategoryId: rawData.primaryCategoryId === "null" ? null : rawData.primaryCategoryId,
         secondaryCategoryIds: secondaryCategoryIds.length > 0 ? secondaryCategoryIds : undefined,
         globalPrice: rawData.globalPrice ? Number(rawData.globalPrice) : undefined,
     };
@@ -92,6 +93,7 @@ export async function updateGenericItemAction(prevState: any, formData: FormData
 
     const parseData = {
         ...rawData,
+        primaryCategoryId: rawData.primaryCategoryId === "null" ? null : rawData.primaryCategoryId,
         secondaryCategoryIds: secondaryCategoryIds.length > 0 ? secondaryCategoryIds : undefined,
         aliases: cleanAliases,
         globalPrice: rawData.globalPrice ? Number(rawData.globalPrice) : undefined,

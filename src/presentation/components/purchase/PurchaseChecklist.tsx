@@ -223,36 +223,40 @@ export function PurchaseChecklist({
     return (
         <div className="space-y-6">
             {!isReadOnly && (
-                <div className="flex justify-between items-center bg-bg-secondary p-4 rounded-lg border border-border-base sticky top-0 z-30 shadow-lg backdrop-blur-md">
-                    <div>
-                        <p className="text-sm text-text-tertiary">Total Estimado</p>
-                        <p className="text-2xl font-bold text-accent-success">${totalEstimated.toFixed(2)}</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setUnplannedModalOpen(true)}
-                            disabled={finishing}
-                        >
-                            <Plus className="w-4 h-4 mr-2" /> Agregar Item
-                        </Button>
+                <div className="bg-bg-secondary p-5 rounded-2xl border border-white/5 shadow-xl mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                        <div className="flex flex-col gap-1">
+                            <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider">Total Estimado</p>
+                            <p className="text-3xl font-bold text-accent-success">${totalEstimated.toFixed(2)}</p>
+                        </div>
 
-                        {hasCheckedItems ? (
+                        <div className="flex gap-2 w-full sm:w-auto">
                             <Button
-                                onClick={onFinishClick}
+                                className="flex-1 sm:flex-none bg-white/5 hover:bg-white/10 text-text-primary border-0 h-10 px-4 rounded-lg transition-all whitespace-nowrap"
+                                onClick={() => setUnplannedModalOpen(true)}
                                 disabled={finishing}
                             >
-                                <CheckCircle className="w-4 h-4 mr-2" /> Finalizar
+                                <Plus className="w-4 h-4 mr-2" /> Agregar Item
                             </Button>
-                        ) : (
-                            <Button
-                                onClick={onDiscardClick}
-                                disabled={finishing}
-                                variant="destructive"
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" /> Descartar
-                            </Button>
-                        )}
+
+                            {hasCheckedItems ? (
+                                <Button
+                                    className="flex-1 sm:flex-none bg-accent-success hover:bg-accent-success/90 text-white h-10 px-4 rounded-lg shadow-lg shadow-accent-success/20 transition-all whitespace-nowrap"
+                                    onClick={onFinishClick}
+                                    disabled={finishing}
+                                >
+                                    <CheckCircle className="w-4 h-4 mr-2" /> Finalizar
+                                </Button>
+                            ) : (
+                                <Button
+                                    className="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 text-white h-10 px-4 rounded-lg shadow-lg shadow-red-500/20 transition-all whitespace-nowrap"
+                                    onClick={onDiscardClick}
+                                    disabled={finishing}
+                                >
+                                    <Trash2 className="w-4 h-4 mr-2" /> Descartar
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

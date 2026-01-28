@@ -1,26 +1,30 @@
 # Kyber Life (V1)
 
-Plataforma de control de procesos cotidianos de vida. Gestiona tus gastos, supermercados y gastos de manera eficiente para tomar mejores decisiones financieras.
+Plataforma de control de procesos cotidianos de vida. Gestiona tus gastos, supermercados y compras de manera eficiente para tomar mejores decisiones financieras.
 
 ## 🚀 Funcionalidades del Sistema
 
 ### 🔐 Autenticación y Seguridad
-- **Login y Registro**: Sistema completo de acceso para usuarios.
+- **Login y Registro**: Sistema completo de acceso para usuarios con diseño optimizado.
 - **Recuperación de Contraseña**: Flujo funcional para restablecer credenciales (`/auth/recover`).
-- **Seguridad**: Implementación segura con hashing de contraseñas (`bcryptjs`) y manejo de sesiones vía cookies.
 
 ### 🛒 Gestión de Mercado
+- **Dashboard Interactivo**: Métricas de consumo, gráficos de tendencias y acceso rápido a operaciones frecuentes.
 - **Supermercados**: Administra tus lugares de compra, direcciones y preferencias.
-- **Productos (Items)**: Catálogo personalizable de productos, categorización y unidades de medida.
-- **Listas de Compra**: Crea listas dinámicas, registra precios en tiempo real y calcula totales automáticamente.
+- **Productos (Items)**: Catálogo personalizable con soporte para marcas, alias y unidades de medida globales (por defecto "und").
+- **Listas de Compra Inteligentes**: 
+  - Crea listas dinámicas desde plantillas o desde cero.
+  - Registro de precios en tiempo real con cálculo automático de totales.
+  - Soporte para validación de impuestos y descuentos.
 - **Plantillas**: Guarda tus listas recurrentes para generar nuevas compras con un solo clic.
 
 ### 📊 Análisis y Control
 - **Historial de Compras**: Registro detallado de todas tus transacciones pasadas.
-- **Analytics**: Tableros visuales con gráficos de gasto mensual y distribución por categorías para entender tus hábitos de consumo.
+- **Analytics**: Tableros visuales con gráficos de gasto mensual, distribución por categorías y productos más comprados.
 
 ### 👤 Perfil de Usuario
-- Gestión centralizada de información personal y configuración de cuenta.
+- **Gestión Integral**: Personalización de perfil, cambio de contraseña y gestión de datos personales.
+- **Configuración**: Ajustes de preferencias de usuario.
 
 ## 🛠️ Aspectos Técnicos
 
@@ -86,3 +90,7 @@ Para compilar y ejecutar la versión optimizada para producción:
     ```bash
     npm start
     ```
+
+---
+
+Desarrollado por Teamdroid 🤖

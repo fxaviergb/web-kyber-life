@@ -290,7 +290,7 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-text-2">Unidad</Label>
-                                    <Select name="defaultUnitId">
+                                    <Select name="defaultUnitId" defaultValue={units.find(u => u.symbol?.toLowerCase() === "und" || u.name.toLowerCase() === "unidad")?.id}>
                                         <SelectTrigger className="bg-bg-2 border-border text-text-1">
                                             <SelectValue placeholder="Unidad" />
                                         </SelectTrigger>

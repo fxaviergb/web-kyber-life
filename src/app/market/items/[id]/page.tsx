@@ -107,7 +107,7 @@ export default async function GenericItemDetailPage({ params }: { params: Promis
 
                             <div className="bg-bg-2/50 rounded-lg p-3 border border-border/50">
                                 <h4 className="text-xs font-semibold text-text-3 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                    <Globe className="w-3 h-3" /> Precio Global Ref.
+                                    <Globe className="w-3 h-3" /> Precio Global
                                 </h4>
                                 {item.globalPrice ? (
                                     <div className="flex items-baseline gap-1">
