@@ -146,30 +146,27 @@ export function MobileDrawer({ open, onOpenChange }: MobileDrawerProps) {
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="left" className="w-72 p-0 bg-bg-secondary border-border-base">
-                <SheetHeader className="h-16 flex flex-row items-center px-4 border-b border-border-base bg-bg-primary/50 backdrop-blur-sm space-y-0">
-                    <div className="flex items-center gap-3">
-                        <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-accent-violet to-accent-cyan shadow-lg shadow-accent-violet/20">
-                            <Sparkles className="w-5 h-5 text-white" />
+            <SheetContent side="left" className="w-72 p-0 bg-bg-primary rounded-r-[2.5rem] border-r-0 shadow-2xl">
+                <SheetHeader className="h-24 flex flex-row items-center px-6 bg-transparent space-y-0">
+                    <div className="flex items-center gap-4">
+                        <div className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-accent-violet to-accent-cyan shadow-lg shadow-accent-violet/20">
+                            <Sparkles className="w-7 h-7 text-white" />
                         </div>
                         <div className="flex flex-col items-start">
-                            <SheetTitle className="text-lg font-bold tracking-tight text-text-primary">
+                            <SheetTitle className="text-2xl font-bold tracking-tight text-text-primary">
                                 KYBER<span className="font-light text-text-tertiary">LIFE</span>
                             </SheetTitle>
-                            <p className="text-[10px] text-accent-cyan font-medium tracking-wider uppercase">
-                                Pilot
-                            </p>
                         </div>
                     </div>
                 </SheetHeader>
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 h-[calc(100vh-200px)]">
+                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 h-[calc(100vh-200px)] scrollbar-thin scrollbar-thumb-white/10">
                     {MENU_ITEMS.map((item) => renderMenuItem(item))}
                 </nav>
 
                 {/* User Profile / Logout */}
-                <div className="p-4 border-t border-border-base bg-bg-primary">
+                <div className="p-4 bg-transparent">
                     <LogoutButton variant="destructive" className="w-full justify-center" />
                 </div>
             </SheetContent>

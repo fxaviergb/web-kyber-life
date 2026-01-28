@@ -1,5 +1,6 @@
 import { templateService, initializeContainer } from "@/infrastructure/container";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { FileText } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CreateTemplateDialog } from "./create-template-dialog";
@@ -8,7 +9,11 @@ import { TemplateCard } from "./template-card";
 export default async function TemplatesPage() {
     await initializeContainer();
     const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value!;
+    const userId = cookieStore.get("kyber_session")?.value;
+
+    if (!userId) {
+        redirect("/auth/login");
+    }
 
     const templates = await templateService.getTemplates(userId);
 

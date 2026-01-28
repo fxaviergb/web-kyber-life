@@ -17,6 +17,12 @@ export const BASE_CATEGORIES = [
     "Mascotas",
     "Congelados",
     "Snacks",
+    "Vegetales",
+    "Frutas",
+    "Pescados y Mariscos",
+    "Bebidas Alcohólicas",
+    "Farmacia",
+    "Bebé",
     "Sin categoría"
 ];
 

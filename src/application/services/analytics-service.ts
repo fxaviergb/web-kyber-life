@@ -130,9 +130,13 @@ export class AnalyticsService {
      * Flow 21: Frequent Products
      * mode: 'count' (frequency of purchase events) | 'units' (total quantity)
      */
-    async getFrequentProducts(userId: UUID, mode: 'count' | 'units' = 'count') {
+    async getFrequentProducts(userId: UUID, mode: 'count' | 'units' = 'count', monthsBack: number = 6) {
+        // Calculate start date
+        const now = new Date();
+        const startDate = new Date(now.setMonth(now.getMonth() - monthsBack));
+
         const purchases = (await this.purchaseRepo.findByOwnerId(userId))
-            .filter(p => p.status === 'completed');
+            .filter(p => p.status === 'completed' && new Date(p.date) >= startDate);
 
         // Generic Item Frequency
         const genericFreq = new Map<UUID, number>();
@@ -173,6 +177,45 @@ export class AnalyticsService {
             generics: generics.sort((a, b) => b.value - a.value).slice(0, 10),
             brands: brands.sort((a, b) => b.value - a.value).slice(0, 10)
         };
+    }
+
+    /**
+     * Get top products by total amount spent.
+     */
+    async getTopSpendingProducts(userId: UUID, limit: number = 5) {
+        const purchases = (await this.purchaseRepo.findByOwnerId(userId))
+            .filter(p => p.status === 'completed');
+
+        const genericSpending = new Map<UUID, number>();
+
+        for (const p of purchases) {
+            const lines = await this.lineRepo.findByPurchaseId(p.id);
+            for (const line of lines) {
+                if (line.genericItemId) {
+                    // Calculate amount: override > unit * qty
+                    let amount = 0;
+                    if (line.lineAmountOverride !== null) {
+                        amount = line.lineAmountOverride;
+                    } else if (line.unitPrice !== null && line.qty !== null) {
+                        amount = line.unitPrice * line.qty;
+                    }
+
+                    if (amount > 0) {
+                        genericSpending.set(line.genericItemId, (genericSpending.get(line.genericItemId) || 0) + amount);
+                    }
+                }
+            }
+        }
+
+        const result = [];
+        for (const [id, value] of genericSpending.entries()) {
+            const item = await this.genericItemRepo.findById(id);
+            if (item) {
+                result.push({ id, name: item.canonicalName, value });
+            }
+        }
+
+        return result.sort((a, b) => b.value - a.value).slice(0, limit);
     }
 
     /**

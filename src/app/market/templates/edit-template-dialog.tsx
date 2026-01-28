@@ -3,7 +3,15 @@
 import { updateTemplateAction } from "@/app/actions/template";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+    ResponsiveDialog,
+    ResponsiveDialogContent,
+    ResponsiveDialogHeader,
+    ResponsiveDialogTitle,
+    ResponsiveDialogDescription,
+    ResponsiveDialogTrigger,
+    ResponsiveDialogFooter
+} from "@/components/ui/responsive-dialog";
 import { Label } from "@/components/ui/label";
 import { Edit, Tag as TagIcon, Loader2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -32,72 +40,76 @@ export function EditTemplateDialog({ template, trigger }: EditTemplateDialogProp
     }, [state]);
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
+        <ResponsiveDialog open={open} onOpenChange={setOpen}>
+            <ResponsiveDialogTrigger asChild>
                 {trigger || (
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-text-3 hover:text-accent-violet">
                         <Edit className="w-4 h-4" />
                     </Button>
                 )}
-            </DialogTrigger>
-            <DialogContent className="bg-bg-1 border-border text-text-1">
-                <DialogHeader>
-                    <DialogTitle className="text-text-1">Editar Plantilla</DialogTitle>
-                    <div id="dialog-description" className="sr-only">
-                        Formulario para editar el nombre y las etiquetas de la plantilla.
-                    </div>
-                </DialogHeader>
+            </ResponsiveDialogTrigger>
+            <ResponsiveDialogContent className="bg-bg-1 border-border text-text-1 sm:max-w-[500px]">
+                <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle className="text-xl font-bold text-text-1">Editar Plantilla</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription className="text-text-2">
+                        Modifica el nombre o las etiquetas de tu plantilla.
+                    </ResponsiveDialogDescription>
+                </ResponsiveDialogHeader>
+
                 <form
                     ref={formRef}
                     action={formAction}
-                    className="space-y-4"
-                    aria-describedby="dialog-description"
+                    className="space-y-6 py-4"
                 >
                     <div className="space-y-2">
-                        <Label htmlFor="name" className="text-text-2">Nombre de la Plantilla</Label>
+                        <Label htmlFor="name" className="text-text-1 font-medium">Nombre de la Plantilla</Label>
                         <Input
                             id="name"
                             name="name"
                             defaultValue={template.name}
-                            placeholder="Ej. Compras mensuales - Casa"
-                            className="bg-bg-2 border-border text-text-1"
+                            placeholder="Ej. Supermercado Semanal"
+                            className="bg-bg-2 border-border text-text-1 h-11"
                             required
                         />
                     </div>
+
                     <div className="space-y-2">
-                        <Label htmlFor="tags" className="text-text-2">Etiquetas (opcional)</Label>
+                        <Label htmlFor="tags" className="text-text-1 font-medium">
+                            Etiquetas <span className="text-text-3 font-normal text-xs ml-1">(Opcional)</span>
+                        </Label>
                         <div className="relative">
                             <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-3" />
                             <Input
                                 id="tags"
                                 name="tags"
                                 defaultValue={template.tags.join(", ")}
-                                placeholder="Comida, aseo, casa (separadas por coma)"
-                                className="bg-bg-2 border-border text-text-1 pl-9"
+                                placeholder="casa, comida, mensual..."
+                                className="bg-bg-2 border-border text-text-1 pl-10 h-11"
                             />
                         </div>
-                        <p className="text-xs text-text-3">Separa las etiquetas con comas</p>
+                        <p className="text-[11px] text-text-3 pl-1">Separa las etiquetas usando comas.</p>
                     </div>
-                    {state?.error && <p className="text-destructive text-sm">{state.error}</p>}
-                    <div className="flex justify-end gap-2 pt-2">
+
+                    {state?.error && (
+                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+                            {state.error}
+                        </div>
+                    )}
+
+                    <ResponsiveDialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={() => setOpen(false)}
                             disabled={isPending}
+                            className="w-full sm:w-auto text-text-2 hover:text-text-1 hover:bg-bg-2"
                         >
                             Cancelar
                         </Button>
                         <Button
                             type="submit"
                             disabled={isPending}
-                            className="bg-accent-violet hover:bg-accent-violet/90 text-white"
-                            onClick={(e) => {
-                                // Force submission in case something is preventing default behavior
-                                if (formRef.current) {
-                                    formRef.current.requestSubmit();
-                                }
-                            }}
+                            className="w-full sm:w-auto bg-accent-violet hover:bg-accent-violet/90 text-white min-w-[140px]"
                         >
                             {isPending ? (
                                 <>
@@ -111,9 +123,9 @@ export function EditTemplateDialog({ template, trigger }: EditTemplateDialogProp
                                 </>
                             )}
                         </Button>
-                    </div>
+                    </ResponsiveDialogFooter>
                 </form>
-            </DialogContent>
-        </Dialog>
+            </ResponsiveDialogContent>
+        </ResponsiveDialog>
     );
 }

@@ -4,6 +4,26 @@ export interface User extends BaseEntity {
     email: string;
     passwordHash: string;
     defaultCurrencyCode: CurrencyCode;
+    image: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    bio: string | null;
+    country: string | null;
+    province: string | null;
+    city: string | null;
+    parish: string | null;
+    neighborhood: string | null;
+    primaryStreet: string | null;
+    secondaryStreet: string | null;
+    addressReference: string | null;
+    postalCode: string | null;
+    socials: {
+        facebook?: string | null;
+        twitter?: string | null;
+        linkedin?: string | null;
+        instagram?: string | null;
+    } | null;
 }
 
 export interface PasswordResetToken {
@@ -82,6 +102,7 @@ export interface Purchase extends BaseEntity {
     discount?: number | null;
     tax?: number | null;
     status: PurchaseStatus;
+    completedAt?: ISODate | null;
 }
 
 export interface PurchaseLine extends BaseEntity {

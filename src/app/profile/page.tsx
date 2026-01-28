@@ -16,9 +16,7 @@ export default async function ProfilePage() {
         <div className="space-y-6">
             <h1 className="text-3xl font-bold text-text-1">Perfil</h1>
 
-            <div className="grid gap-6 md:grid-cols-2">
-                <ProfileForm user={user} />
-            </div>
+            <ProfileForm user={user} />
         </div>
     );
 }

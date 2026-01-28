@@ -84,7 +84,7 @@ export function EditTemplateItemDialog({ templateId, item, units }: EditTemplate
                         </div>
                         <div className="space-y-2">
                             <Label className="text-text-2">Unidad</Label>
-                            <Select name="defaultUnitId" defaultValue={item.defaultUnitId || undefined}>
+                            <Select name="defaultUnitId" defaultValue={item.defaultUnitId || units.find(u => u.symbol?.toLowerCase() === "und" || u.name.toLowerCase() === "unidad")?.id}>
                                 <SelectTrigger className="bg-bg-2 border-border">
                                     <SelectValue placeholder="Unidad" />
                                 </SelectTrigger>

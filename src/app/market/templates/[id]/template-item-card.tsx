@@ -61,7 +61,7 @@ export function TemplateItemCard({ templateId, item, unit, units, categories }: 
                             <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
                                 {/* Left: Name and Category */}
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-text-1 group-hover:text-accent-violet transition-colors truncate text-sm">
+                                    <h3 className="font-semibold text-text-1 group-hover:text-accent-violet transition-colors text-sm line-clamp-2 leading-tight" title={item.genericName}>
                                         {item.genericName}
                                     </h3>
                                     <div className="flex items-center gap-2">

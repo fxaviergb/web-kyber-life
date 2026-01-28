@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+    ResponsiveDialog,
+    ResponsiveDialogContent,
+    ResponsiveDialogHeader,
+    ResponsiveDialogTitle,
+    ResponsiveDialogDescription,
+    ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,11 +89,9 @@ export function UnplannedProductDialog({
 
     async function handleSelectExisting(item: GenericItem) {
         setLoading(true);
-        // Direct Add
         const newItemId = item.id;
         setCreatedGenericId(newItemId);
 
-        // Use global price if available
         const parsedPrice = item.globalPrice || undefined;
 
         const resAdd = await addPurchaseLineAction(purchaseId, newItemId, parsedPrice);
@@ -109,7 +114,6 @@ export function UnplannedProductDialog({
         if (!name.trim()) return;
         setLoading(true);
 
-        // Duplicate Detection (if not forcing)
         if (!force) {
             const allItems = await getGenericItemsAction();
             const match = allItems.find(i => i.canonicalName.toLowerCase() === name.trim().toLowerCase());
@@ -125,7 +129,6 @@ export function UnplannedProductDialog({
         formData.set("name", name);
         formData.set("primaryCategoryId", categoryId);
 
-        // 1. Create Generic Item
         const resItem = await createGenericItemAction(null, formData);
         if (resItem?.error) {
             alert(resItem.error);
@@ -141,7 +144,6 @@ export function UnplannedProductDialog({
 
         setCreatedGenericId(newItemId);
 
-        // 2. Add to Purchase with Price
         const parsedPrice = price ? parseFloat(price) : undefined;
         const resAdd = await addPurchaseLineAction(purchaseId, newItemId, parsedPrice);
         if (resAdd?.error) {
@@ -155,7 +157,6 @@ export function UnplannedProductDialog({
     }
 
     function checkTemplatesAndNext() {
-        // Skip template prompt as per user request
         onSuccess();
         onOpenChange(false);
     }
@@ -178,7 +179,6 @@ export function UnplannedProductDialog({
         onOpenChange(false);
     }
 
-    // Reset state on open/close
     if (!open && step !== "search") {
         setTimeout(() => {
             setStep("search");
@@ -193,208 +193,220 @@ export function UnplannedProductDialog({
         }, 200);
     }
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-bg-1 border-border">
-                <DialogHeader>
-                    <DialogTitle>
-                        {step === "search" && "Agregar Producto"}
-                        {step === "create" && "Crear Nuevo Producto"}
-                        {step === "confirm_existing" && "Producto Existente"}
-                        {step === "template" && "¿Agregar a una plantilla?"}
-                    </DialogTitle>
-                    <DialogDescription>
-                        {step === "search" && "Busca en el catálogo o crea uno nuevo."}
-                        {step === "confirm_existing" && `Encontramos "${duplicateMatch?.canonicalName}" en tu catálogo.`}
-                        {step === "create" && "Detalles del nuevo producto."}
-                        {step === "template" && "Guarda este producto para el futuro."}
-                    </DialogDescription>
-                </DialogHeader>
+    const title = step === "search" ? "Agregar Producto" :
+        step === "create" ? "Crear Nuevo Producto" :
+            step === "confirm_existing" ? "Producto Existente" :
+                step === "template" ? "¿Agregar a una plantilla?" : "";
 
-                {step === "search" && (
-                    <div className="space-y-4 py-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-3 h-4 w-4 text-text-3" />
-                            <Input
-                                placeholder="Buscar producto..."
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                className="pl-9 bg-bg-0 border-input text-text-1"
-                                autoFocus
-                            />
-                            {searching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-text-3" />}
-                        </div>
+    const description = step === "search" ? "Busca en el catálogo o crea uno nuevo." :
+        step === "confirm_existing" ? `Encontramos "${duplicateMatch?.canonicalName}" en tu catálogo.` :
+            step === "create" ? "Detalles del nuevo producto." :
+                step === "template" ? "Guarda este producto para el futuro." : "";
 
-                        <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">
-                            {!searchQuery.trim() && searchResults.length === 0 && (
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start text-text-3 border-dashed border-border hover:bg-glass"
-                                    onClick={handleLoadAll}
-                                >
-                                    <Eye className="w-4 h-4 mr-2 text-accent-cyan" />
-                                    Ver todos los productos
-                                </Button>
-                            )}
-
-
-                            {searchResults
-                                .filter(item => !existingItemIds.includes(item.id))
-                                .map(item => (
-                                    <Button
-                                        key={item.id}
-                                        variant="ghost"
-                                        className="w-full justify-between font-normal group hover:bg-glass text-text-1"
-                                        onClick={() => handleSelectExisting(item)}
-                                        disabled={loading}
-                                    >
-                                        <span className="flex items-center">
-                                            <Tag className="w-4 h-4 mr-2 text-text-3 group-hover:text-accent-violet" />
-                                            {item.canonicalName}
-                                        </span>
-                                        {item.globalPrice && (
-                                            <span className="text-xs font-mono text-accent-mint bg-accent-mint/10 px-2 py-0.5 rounded">
-                                                ${item.globalPrice.toFixed(2)}
-                                            </span>
-                                        )}
-                                    </Button>
-                                ))}
-
-                            {searchQuery.trim() && (
-                                <Button
-                                    variant="ghost"
-                                    className="w-full justify-start text-accent-violet hover:text-accent-violet/80 hover:bg-accent-violet/10 group"
-                                    onClick={handleGoToCreate}
-                                >
-                                    <Plus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                                    Crear &quot;{searchQuery}&quot;
-                                </Button>
-                            )}
-                            {!searchQuery.trim() && (
-                                <Button
-                                    variant="ghost"
-                                    className="w-full justify-start text-text-2 hover:bg-glass"
-                                    onClick={() => setStep("create")}
-                                >
-                                    <Plus className="w-4 h-4 mr-2 text-accent-violet" />
-                                    Crear nuevo producto
-                                </Button>
-                            )}
-                        </div>
+    const sharedContent = (
+        <div className="px-4">
+            {step === "search" && (
+                <div className="space-y-4 py-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-text-3" />
+                        <Input
+                            placeholder="Buscar producto..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="pl-9 bg-bg-0 border-input text-text-1"
+                            autoFocus
+                        />
+                        {searching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-text-3" />}
                     </div>
-                )}
 
-                {step === "create" && (
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label className="text-text-1">Nombre del producto</Label>
-                            <Input
-                                placeholder="Ej: Salsa de Tomate"
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                className="bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-text-1">Precio (Opcional)</Label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-2.5 text-text-3">$</span>
-                                <Input
-                                    type="number"
-                                    placeholder="0.00"
-                                    className="pl-7 bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
-                                    value={price}
-                                    onChange={e => setPrice(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-text-1">Categoría (Opcional)</Label>
-                            <select
-                                className="w-full h-10 rounded-md border border-input bg-bg-0 px-3 py-2 text-sm text-text-1 focus:ring-2 focus:ring-accent-violet outline-none"
-                                value={categoryId}
-                                onChange={e => setCategoryId(e.target.value)}
-                            >
-                                <option value="">Sin Categoría</option>
-                                {categories.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                )}
-
-                {step === "confirm_existing" && duplicateMatch && (
-                    <div className="space-y-6 py-6">
-                        <div className="p-4 rounded-xl bg-accent-violet/5 border border-accent-violet/20 text-center space-y-2">
-                            <p className="text-text-1 text-sm">
-                                Este producto ya existe en tu catálogo. ¿Quieres usar el existente o crear uno nuevo de todos modos?
-                            </p>
-                        </div>
-
-                        <div className="grid gap-3">
-                            <Button
-                                className="w-full bg-accent-violet text-white hover:bg-accent-violet/90"
-                                onClick={() => handleSelectExisting(duplicateMatch)}
-                                disabled={loading}
-                            >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Tag className="w-4 h-4 mr-2" />}
-                                Usar &quot;{duplicateMatch.canonicalName}&quot;
-                            </Button>
+                    <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">
+                        {!searchQuery.trim() && searchResults.length === 0 && (
                             <Button
                                 variant="outline"
-                                className="w-full border-border text-text-2 hover:bg-glass"
-                                onClick={() => handleCreate(true)}
-                                disabled={loading}
+                                className="w-full justify-start text-text-3 border-dashed border-border hover:bg-glass"
+                                onClick={handleLoadAll}
                             >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                                Crear como producto nuevo
+                                <Eye className="w-4 h-4 mr-2 text-accent-cyan" />
+                                Ver todos los productos
                             </Button>
-                        </div>
-                    </div>
-                )}
+                        )}
 
-                {step === "template" && (
-                    <div className="space-y-4 py-4 max-h-[300px] overflow-y-auto">
-                        <div className="grid gap-2">
-                            {templates.map(t => (
+
+                        {searchResults
+                            .filter(item => !existingItemIds.includes(item.id))
+                            .map(item => (
                                 <Button
-                                    key={t.id}
-                                    variant="outline"
-                                    className="justify-start border-border hover:bg-glass text-text-1"
-                                    onClick={() => handleAddToTemplate(t.id)}
+                                    key={item.id}
+                                    variant="ghost"
+                                    className="w-full justify-between font-normal group hover:bg-glass text-text-1 h-auto py-3"
+                                    onClick={() => handleSelectExisting(item)}
                                     disabled={loading}
                                 >
-                                    <Plus className="w-4 h-4 mr-2 text-accent-violet" /> {t.name}
+                                    <span className="flex items-center">
+                                        <Tag className="w-4 h-4 mr-2 text-text-3 group-hover:text-accent-violet shrink-0" />
+                                        <span className="truncate">{item.canonicalName}</span>
+                                    </span>
+                                    {item.globalPrice && (
+                                        <span className="text-xs font-mono text-accent-mint bg-accent-mint/10 px-2 py-0.5 rounded ml-2 shrink-0">
+                                            ${item.globalPrice.toFixed(2)}
+                                        </span>
+                                    )}
                                 </Button>
                             ))}
+
+                        {searchQuery.trim() && (
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-accent-violet hover:text-accent-violet/80 hover:bg-accent-violet/10 group h-auto py-3"
+                                onClick={handleGoToCreate}
+                            >
+                                <Plus className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform shrink-0" />
+                                <span className="truncate">Crear &quot;{searchQuery}&quot;</span>
+                            </Button>
+                        )}
+                        {!searchQuery.trim() && (
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-text-2 hover:bg-glass h-auto py-3"
+                                onClick={() => setStep("create")}
+                            >
+                                <Plus className="w-4 h-4 mr-2 text-accent-violet shrink-0" />
+                                Crear nuevo producto
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {step === "create" && (
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label className="text-text-1">Nombre del producto</Label>
+                        <Input
+                            placeholder="Ej: Salsa de Tomate"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            className="bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-text-1">Precio (Opcional)</Label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-2.5 text-text-3">$</span>
+                            <Input
+                                type="number"
+                                placeholder="0.00"
+                                className="pl-7 bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
+                                value={price}
+                                onChange={e => setPrice(e.target.value)}
+                            />
                         </div>
-                        <Button variant="ghost" className="w-full text-text-3 hover:text-text-1" onClick={handleSkipTemplate}>
-                            No agregar a plantilla
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-text-1">Categoría (Opcional)</Label>
+                        <select
+                            className="w-full h-10 rounded-md border border-input bg-bg-0 px-3 py-2 text-sm text-text-1 focus:ring-2 focus:ring-accent-violet outline-none"
+                            value={categoryId}
+                            onChange={e => setCategoryId(e.target.value)}
+                        >
+                            <option value="">Sin Categoría</option>
+                            {categories.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            )}
+
+            {step === "confirm_existing" && duplicateMatch && (
+                <div className="space-y-6 py-6">
+                    <div className="p-4 rounded-xl bg-accent-violet/5 border border-accent-violet/20 text-center space-y-2">
+                        <p className="text-text-1 text-sm">
+                            Este producto ya existe en tu catálogo. ¿Quieres usar el existente o crear uno nuevo de todos modos?
+                        </p>
+                    </div>
+
+                    <div className="grid gap-3">
+                        <Button
+                            className="w-full bg-accent-violet text-white hover:bg-accent-violet/90"
+                            onClick={() => handleSelectExisting(duplicateMatch)}
+                            disabled={loading}
+                        >
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Tag className="w-4 h-4 mr-2" />}
+                            Usar &quot;{duplicateMatch.canonicalName}&quot;
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full border-border text-text-2 hover:bg-glass"
+                            onClick={() => handleCreate(true)}
+                            disabled={loading}
+                        >
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                            Crear como producto nuevo
                         </Button>
                     </div>
-                )}
+                </div>
+            )}
 
-                <DialogFooter>
-                    {step === "create" && (
-                        <div className="flex gap-2 w-full justify-between items-center border-t border-border pt-4">
-                            <Button variant="ghost" className="text-text-3 hover:text-text-1" onClick={() => setStep("search")}>Atrás</Button>
+            {step === "template" && (
+                <div className="space-y-4 py-4 max-h-[300px] overflow-y-auto">
+                    <div className="grid gap-2">
+                        {templates.map(t => (
                             <Button
-                                onClick={() => handleCreate()}
-                                disabled={!name.trim() || loading}
-                                className="bg-accent-violet text-white hover:bg-accent-violet/90 shadow-lg shadow-accent-violet/20"
+                                key={t.id}
+                                variant="outline"
+                                className="justify-start border-border hover:bg-glass text-text-1"
+                                onClick={() => handleAddToTemplate(t.id)}
+                                disabled={loading}
                             >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar y añadir"}
+                                <Plus className="w-4 h-4 mr-2 text-accent-violet" /> {t.name}
                             </Button>
-                        </div>
-                    )}
-                    {step === "confirm_existing" && (
-                        <Button variant="ghost" className="w-full text-text-3" onClick={() => setStep("create")} disabled={loading}>
-                            Cancelar
-                        </Button>
-                    )}
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                        ))}
+                    </div>
+                    <Button variant="ghost" className="w-full text-text-3 hover:text-text-1" onClick={handleSkipTemplate}>
+                        No agregar a plantilla
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+
+    const sharedFooter = (
+        <>
+            {step === "create" && (
+                <div className="flex gap-2 w-full justify-between items-center border-t border-border pt-4 mt-4">
+                    <Button variant="ghost" className="text-text-3 hover:text-text-1" onClick={() => setStep("search")}>Atrás</Button>
+                    <Button
+                        onClick={() => handleCreate()}
+                        disabled={!name.trim() || loading}
+                        className="bg-accent-violet text-white hover:bg-accent-violet/90 shadow-lg shadow-accent-violet/20"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar y añadir"}
+                    </Button>
+                </div>
+            )}
+            {step === "confirm_existing" && (
+                <Button variant="ghost" className="w-full text-text-3 mt-4" onClick={() => setStep("create")} disabled={loading}>
+                    Cancelar
+                </Button>
+            )}
+        </>
+    );
+
+    return (
+        <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+            <ResponsiveDialogContent className="bg-bg-1 border-border sm:max-w-[425px]">
+                <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription>{description}</ResponsiveDialogDescription>
+                </ResponsiveDialogHeader>
+                <div className="overflow-y-auto px-1 max-h-[70vh]">
+                    {sharedContent}
+                </div>
+                <ResponsiveDialogFooter>
+                    {sharedFooter}
+                </ResponsiveDialogFooter>
+            </ResponsiveDialogContent>
+        </ResponsiveDialog>
     );
 }

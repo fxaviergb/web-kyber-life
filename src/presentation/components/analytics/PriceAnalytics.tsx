@@ -72,7 +72,7 @@ export function PriceAnalytics({ searchableProducts, searchableGenericItems }: P
             <CardHeader>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <CardTitle className="text-white">Análisis de Precios</CardTitle>
+                        <CardTitle className="text-text-1">Análisis de Precios</CardTitle>
                         <CardDescription className="text-text-3">
                             Comparativa entre supermercados e historial
                         </CardDescription>

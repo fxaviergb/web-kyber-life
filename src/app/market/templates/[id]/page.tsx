@@ -1,6 +1,6 @@
 import { templateService, productService, masterDataService, initializeContainer } from "@/infrastructure/container";
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, ShoppingBasket, LayoutList, Edit } from "lucide-react";
@@ -13,7 +13,11 @@ import { EditTemplateDialog } from "../edit-template-dialog";
 export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await initializeContainer();
     const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value!;
+    const userId = cookieStore.get("kyber_session")?.value;
+
+    if (!userId) {
+        redirect("/auth/login");
+    }
     const { id } = await params;
 
     const template = await templateService.getTemplate(userId, id);
@@ -49,7 +53,7 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
                     </Link>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-bold text-white">{template.name}</h1>
+                            <h1 className="text-2xl font-bold text-text-1">{template.name}</h1>
                             <div className="flex gap-1">
                                 {template.tags.map(tag => (
                                     <Badge key={tag} variant="outline" className="text-[10px] py-0 border-accent-violet/30 text-accent-violet">

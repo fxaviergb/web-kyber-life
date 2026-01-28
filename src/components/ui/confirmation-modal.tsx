@@ -1,15 +1,14 @@
 "use client";
 
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+    ResponsiveDialog,
+    ResponsiveDialogContent,
+    ResponsiveDialogHeader,
+    ResponsiveDialogTitle,
+    ResponsiveDialogDescription,
+    ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog";
+import { Button } from "@/components/ui/button";
 
 interface ConfirmationModalProps {
     open: boolean;
@@ -20,6 +19,7 @@ interface ConfirmationModalProps {
     cancelText?: string;
     onConfirm: () => void;
     variant?: "default" | "destructive";
+    showCancel?: boolean;
     isLoading?: boolean;
 }
 
@@ -32,39 +32,43 @@ export function ConfirmationModal({
     cancelText = "Cancelar",
     onConfirm,
     variant = "default",
-    showCancel = true, // New prop
+    showCancel = true,
     isLoading = false
-}: ConfirmationModalProps & { showCancel?: boolean }) {
+}: ConfirmationModalProps) {
     return (
-        <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="bg-bg-1 border-border">
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="text-text-1">{title}</AlertDialogTitle>
-                    <AlertDialogDescription className="text-text-2">
+        <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+            <ResponsiveDialogContent className="bg-bg-1 border-border sm:max-w-md">
+                <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle className="text-text-1">{title}</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription className="text-text-2">
                         {description}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
+                    </ResponsiveDialogDescription>
+                </ResponsiveDialogHeader>
+                <ResponsiveDialogFooter className="gap-2 sm:gap-0">
                     {showCancel && (
-                        <AlertDialogCancel
-                            className="bg-bg-2 text-text-1 border-border hover:bg-bg-3"
+                        <Button
+                            variant="outline"
+                            className="w-full sm:w-auto bg-bg-2 text-text-1 border-border hover:bg-bg-3"
+                            onClick={() => onOpenChange(false)}
                             disabled={isLoading}
                         >
                             {cancelText}
-                        </AlertDialogCancel>
+                        </Button>
                     )}
-                    <AlertDialogAction
+                    <Button
                         onClick={(e) => {
                             e.preventDefault();
                             onConfirm();
                         }}
-                        className={variant === "destructive" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-accent-violet text-white hover:bg-accent-violet/90"}
+                        className={variant === "destructive"
+                            ? "w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            : "w-full sm:w-auto bg-accent-violet text-white hover:bg-accent-violet/90"}
                         disabled={isLoading}
                     >
                         {isLoading ? "Procesando..." : confirmText}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+                    </Button>
+                </ResponsiveDialogFooter>
+            </ResponsiveDialogContent>
+        </ResponsiveDialog>
     );
 }

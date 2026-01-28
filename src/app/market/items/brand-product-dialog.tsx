@@ -163,21 +163,25 @@ export function BrandProductDialog({
                         <Separator className="bg-border" />
 
                         <div className="grid gap-2">
-                            <Label className="text-text-1">Precio Referencial Global</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    name="globalPrice"
-                                    type="number"
-                                    step="0.01"
-                                    defaultValue={product?.globalPrice || ""}
-                                    placeholder="0.00"
-                                    className="bg-bg-0 text-text-1 flex-1"
-                                />
+                            <Label className="text-text-1">Precio Referencial</Label>
+                            <div className="flex items-center">
+                                <div className="relative flex-1">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3 text-sm">$</span>
+                                    <Input
+                                        name="globalPrice"
+                                        type="number"
+                                        step="0.01"
+                                        defaultValue={product?.globalPrice || ""}
+                                        placeholder="0.00"
+                                        className="bg-bg-0 text-text-1 pl-7 rounded-r-none focus-visible:z-10 h-10"
+                                    />
+                                </div>
                                 <Input
                                     name="currencyCode"
                                     defaultValue={product?.currencyCode || "USD"}
-                                    className="bg-bg-0 text-text-1 w-20"
+                                    className="bg-bg-2 text-text-2 w-[80px] rounded-l-none border-l-0 text-center font-medium focus-visible:ring-0 focus-visible:ring-offset-0 cursor-not-allowed h-10"
                                     readOnly
+                                    tabIndex={-1}
                                 />
                             </div>
                             <p className="text-xs text-text-3">Se usará si no hay precio específico.</p>

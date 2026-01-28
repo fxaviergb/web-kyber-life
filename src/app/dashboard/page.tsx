@@ -1,148 +1,101 @@
-import { analyticsService, purchaseService, initializeContainer } from "@/infrastructure/container";
+
+import { analyticsService, initializeContainer, purchaseRepository, genericItemRepository } from "@/infrastructure/container";
 import { cookies } from "next/headers";
-import { DollarSign, ShoppingBag, TrendingUp, Calendar } from "lucide-react";
-import { ExpenseChart } from "@/presentation/components/analytics/ExpenseChart";
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { TrendingUp, CreditCard, Plus } from "lucide-react";
+import { MetricCard } from "@/presentation/components/dashboard/metric-card";
+import { SalesBarChart } from "@/presentation/components/dashboard/sales-bar-chart";
+import { TopProductsChart } from "@/presentation/components/dashboard/top-products-chart";
+import { RecentPurchasesCard } from "@/presentation/components/dashboard/recent-purchases-card";
+import { TopExpensesCard } from "@/presentation/components/dashboard/top-expenses-card";
+import { PriceHistoryCard } from "@/presentation/components/dashboard/price-history-card";
 import { Button } from "@/components/ui/button";
-import { StatCard } from "@/components/ui/stat-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 export default async function DashboardPage() {
     await initializeContainer();
     const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value!;
+    const userId = cookieStore.get("kyber_session")?.value;
 
-    const monthlyData = await analyticsService.getMonthlyExpenses(userId, 6);
-    const avgMonthly = monthlyData.average;
+    if (!userId) {
+        redirect("/auth/login");
+    }
+
+    // Fetch Data: Get 7 months (Current + 6 previous)
+    const monthlyData = await analyticsService.getMonthlyExpenses(userId, 7);
+    const frequentProducts = await analyticsService.getFrequentProducts(userId, 'count', 6);
+
+    // Bottom Row Data
+    const recentPurchases = await purchaseRepository.findRecent(userId, 5);
+    const topSpending = await analyticsService.getTopSpendingProducts(userId, 5);
+    const allProducts = (await genericItemRepository.findByOwnerId(userId))
+        .sort((a, b) => a.canonicalName.localeCompare(b.canonicalName))
+        .map(p => ({ id: p.id, name: p.canonicalName }));
 
     const currentMonthKey = new Date().toISOString().slice(0, 7);
     const currentMonthEntry = monthlyData.history.find(h => h.month === currentMonthKey);
     const currentMonthSpending = currentMonthEntry ? currentMonthEntry.total : 0;
 
-    const { purchaseRepository } = await import("@/infrastructure/container");
-    const recentPurchases = await purchaseRepository.findRecent(userId, 5);
+    // Calculate Average (Last 6 months, excluding current)
+    const pastMonths = monthlyData.history.filter(h => h.month !== currentMonthKey);
+    const totalPast = pastMonths.reduce((sum, h) => sum + h.total, 0);
+    const averageSpending = pastMonths.length > 0 ? totalPast / pastMonths.length : 0;
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6 pb-8">
             {/* Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-text-primary">Dashboard</h1>
-                    <p className="text-text-tertiary mt-1">Bienvenido a tu panel de control</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-text-primary">Panel General</h1>
+                    <p className="text-text-tertiary text-sm">Resumen de tu actividad y métricas clave.</p>
                 </div>
-                <Button asChild>
+                <Button asChild className="bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/20 rounded-full px-6">
                     <Link href="/market/purchases/new">
-                        <ShoppingBag className="mr-2 h-4 w-4" />
+                        <Plus className="mr-2 h-4 w-4" />
                         Nueva Compra
                     </Link>
                 </Button>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                    title="Gasto este mes"
-                    value={`$${currentMonthSpending.toFixed(2)}`}
-                    icon={DollarSign}
-                    description="Mes actual"
-                    iconClassName="text-accent-success"
-                />
-                <StatCard
-                    title="Promedio Mensual"
-                    value={`$${avgMonthly.toFixed(2)}`}
-                    icon={TrendingUp}
-                    description="Últimos 6 meses"
-                    iconClassName="text-accent-info"
-                />
-                <StatCard
-                    title="Compras Recientes"
-                    value={recentPurchases.length}
-                    icon={ShoppingBag}
-                    description="Últimas 5 compras"
-                    iconClassName="text-accent-warning"
-                />
-                <StatCard
-                    title="Fecha"
-                    value={new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
-                    icon={Calendar}
-                    description={new Date().toLocaleDateString('es-ES', { weekday: 'long' })}
-                    iconClassName="text-accent-danger"
-                />
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+                {/* Left Column Group */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                    {/* Top Row: Metrics (Height controlled to match Target Chart visually if possible, or just standard) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <MetricCard
+                            title="Promedio (6 meses)"
+                            value={`$${averageSpending.toFixed(2)} `}
+                            icon={TrendingUp}
+                            iconClassName="text-accent-info"
+                            trend={{ value: 5.2, label: "vs Año pas.", positive: true }}
+                        />
+                        <MetricCard
+                            title="Gasto Mes Actual"
+                            value={`$${currentMonthSpending.toFixed(2)} `}
+                            icon={CreditCard}
+                            iconClassName="text-accent-primary"
+                            trend={{ value: 0, label: "En curso", positive: true }}
+                        />
+                    </div>
+                    {/* Middle Row: Sales Bar Chart */}
+                    <div className="h-[320px]">
+                        <SalesBarChart data={monthlyData.history} />
+                    </div>
+                </div>
+
+                {/* Right Column: Top Products */}
+                <div className="lg:col-span-1 h-full min-h-[464px]">
+                    <TopProductsChart data={frequentProducts.generics} />
+                </div>
             </div>
 
-            {/* Charts & Recent Activity */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                {/* Expense Chart */}
-                <Card className="col-span-full lg:col-span-4">
-                    <CardHeader>
-                        <CardTitle className="text-text-primary">Resumen de Gastos</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pl-2">
-                        <div className="h-[300px]">
-                            <ExpenseChart data={monthlyData.history} />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Recent Purchases */}
-                <Card className="col-span-full lg:col-span-3">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-text-primary">Últimas Compras</CardTitle>
-                            <Button variant="ghost" size="sm" asChild>
-                                <Link href="/market/purchases">Ver todas</Link>
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {recentPurchases.length === 0 ? (
-                                <p className="text-sm text-text-tertiary text-center py-8">
-                                    No hay compras recientes
-                                </p>
-                            ) : null}
-                            {recentPurchases.map(p => (
-                                <div
-                                    key={p.id}
-                                    className="flex items-center justify-between border-b border-border-base pb-3 last:border-0 last:pb-0 hover:bg-bg-hover/50 -mx-2 px-2 py-2 rounded-lg transition-colors"
-                                >
-                                    <div className="space-y-1 flex-1">
-                                        <p className="text-sm font-medium text-text-primary">
-                                            {new Date(p.date).toLocaleDateString('es-ES', {
-                                                day: '2-digit',
-                                                month: 'short',
-                                                year: 'numeric'
-                                            })}
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <Badge
-                                                variant={
-                                                    p.status === 'completed' ? 'success' :
-                                                        p.status === 'in_progress' ? 'warning' :
-                                                            p.status === 'draft' ? 'info' :
-                                                                'default'
-                                                }
-                                                className="text-xs"
-                                            >
-                                                {p.status === 'completed' ? 'Completada' :
-                                                    p.status === 'in_progress' ? 'En progreso' :
-                                                        p.status === 'draft' ? 'Borrador' :
-                                                            'Planificada'}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="font-bold text-accent-success">
-                                            ${(p.totalPaid || 0).toFixed(2)}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Bottom Row: 3 Column Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-[400px]">
+                <RecentPurchasesCard purchases={recentPurchases} />
+                <TopExpensesCard products={topSpending} />
+                <PriceHistoryCard initialProducts={allProducts} />
             </div>
         </div>
     );
 }
+

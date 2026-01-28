@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+    ResponsiveDialog,
+    ResponsiveDialogContent,
+    ResponsiveDialogHeader,
+    ResponsiveDialogTitle,
+    ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +56,7 @@ export function FinishPurchaseDialog({
     const [discount, setDiscount] = useState<string>("0");
     const [tax, setTax] = useState<string>("0");
     const [totalPaid, setTotalPaid] = useState<string>("0");
+    const [finishTime, setFinishTime] = useState<string>("");
 
     // Reset when opened
     useEffect(() => {
@@ -57,16 +64,40 @@ export function FinishPurchaseDialog({
             setSubtotal(totalEstimated.toFixed(2));
             setDiscount("0");
             setTax("0");
+            // Set current time HH:mm
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            setFinishTime(timeStr);
             setStep("totals");
             setLoading(false);
         }
     }, [open, totalEstimated]);
 
     useEffect(() => {
-        const s = parseFloat(subtotal) || 0;
-        const d = parseFloat(discount) || 0;
-        const t = parseFloat(tax) || 0;
-        const calculated = Math.max(0, s - d + t);
+        const parseValue = (val: string) => {
+            if (!val) return 0;
+            // Handle "1.000,00" (Spanish/Euro) -> Remove dots, replace comma with dot
+            if (val.includes('.') && val.includes(',')) {
+                if (val.indexOf('.') < val.indexOf(',')) {
+                    // 1.234,56
+                    return parseFloat(val.replace(/\./g, '').replace(',', '.'));
+                } else {
+                    // 1,234.56 (English/US alternative) -> Remove commas
+                    return parseFloat(val.replace(/,/g, ''));
+                }
+            }
+            // Assume single comma is decimal separator
+            if (val.includes(',')) {
+                return parseFloat(val.replace(/,/g, '.'));
+            }
+            return parseFloat(val);
+        };
+
+        const s = parseValue(subtotal);
+        const d = parseValue(discount);
+        const t = parseValue(tax);
+        // Allow negative so user sees why it's 0 (e.g. discount > subtotal)
+        const calculated = s - d + t;
         setTotalPaid(calculated.toFixed(2));
     }, [subtotal, discount, tax]);
 
@@ -136,7 +167,10 @@ export function FinishPurchaseDialog({
     // -- Navigation --
 
     const canGoNext = () => {
-        if (step === "totals") return !!totalPaid;
+        if (step === "totals") {
+            const val = parseFloat(totalPaid);
+            return !isNaN(val) && val >= 0;
+        }
         return true;
     };
 
@@ -197,6 +231,14 @@ export function FinishPurchaseDialog({
         if (discount) formData.set("discount", discount);
         if (tax) formData.set("tax", tax);
 
+        if (finishTime) {
+            const datePart = purchase.date.split('T')[0];
+            // We'll trust the user wants this time on that date.
+            // TODO: Proper Timezone handling if moved to server-side rendering with user preferences.
+            const finishedAtISO = `${datePart}T${finishTime}:00.000Z`;
+            formData.set("finishedAt", finishedAtISO);
+        }
+
         const res = await finishPurchaseAction(purchaseId, formData);
         if (res?.error) {
             alert(res.error);
@@ -211,7 +253,7 @@ export function FinishPurchaseDialog({
     const renderStepContent = () => {
         if (step === "totals") {
             return (
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-4 px-1">
                     <p className="text-sm text-text-2">Confirma los valores finales del ticket.</p>
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
@@ -229,11 +271,19 @@ export function FinishPurchaseDialog({
                                 <Label htmlFor="tax">Impuestos</Label>
                                 <Input id="tax" type="number" value={tax} onChange={e => setTax(e.target.value)} />
                             </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="finishTime">Hora</Label>
+                                <Input id="finishTime" type="time" value={finishTime} onChange={e => setFinishTime(e.target.value)} />
+                            </div>
                         </div>
-                        <div className="space-y-2 pt-2">
-                            <Label htmlFor="totalPaid" className="text-base font-semibold">Total Pagado (Real)</Label>
-                            <Input id="totalPaid" type="number" value={totalPaid} onChange={e => setTotalPaid(e.target.value)} className="text-xl font-bold bg-accent-violet/10" />
-                        </div>
+                    </div>
+
+                    <div className="space-y-2 pt-2">
+                        <Label htmlFor="totalPaid" className="text-base font-semibold">Total Pagado (Real)</Label>
+                        <Input id="totalPaid" type="number" value={totalPaid} onChange={e => setTotalPaid(e.target.value)} className={cn("text-xl font-bold bg-accent-violet/10", parseFloat(totalPaid) < 0 && "text-destructive border-destructive focus-visible:ring-destructive")} />
+                        {parseFloat(totalPaid) < 0 && (
+                            <p className="text-xs text-destructive font-bold">El total no puede ser negativo.</p>
+                        )}
                     </div>
                 </div>
             );
@@ -241,9 +291,9 @@ export function FinishPurchaseDialog({
 
         if (step === "prices") {
             return (
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-4 px-1">
                     <p className="text-sm text-text-2">Se detectaron cambios de precio en estos productos. Selecciona cuáles deseas actualizar en el catálogo global.</p>
-                    <div className="max-h-[300px] overflow-y-auto space-y-2 border rounded-md p-2">
+                    <div className="max-h-[50vh] overflow-y-auto space-y-2 border rounded-md p-2">
                         {priceCandidates.map(c => (
                             <div key={c.lineId} className="flex items-start gap-3 p-2 hover:bg-secondary/10 rounded">
                                 <Checkbox
@@ -274,9 +324,9 @@ export function FinishPurchaseDialog({
 
         if (step === "templates") {
             return (
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-4 px-1">
                     <p className="text-sm text-text-2">Agregaste nuevos productos en esta compra. ¿Deseas guardarlos en tus plantillas?</p>
-                    <div className="max-h-[300px] overflow-y-auto space-y-4 pr-2">
+                    <div className="max-h-[50vh] overflow-y-auto space-y-4 pr-2">
                         {newLines.map(line => {
                             const itemName = genericItemsMap[line.genericItemId]?.canonicalName || "Item";
                             const selections = templateSelections[line.id] || [];
@@ -313,7 +363,7 @@ export function FinishPurchaseDialog({
 
         if (step === "processing") {
             return (
-                <div className="py-10 flex flex-col items-center justify-center space-y-4">
+                <div className="py-10 flex flex-col items-center justify-center space-y-4 px-1">
                     <Loader2 className="w-10 h-10 animate-spin text-accent-violet" />
                     <p className="text-text-2">Finalizando compra...</p>
                 </div>
@@ -329,36 +379,36 @@ export function FinishPurchaseDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={step === "processing" ? () => { } : onOpenChange}>
-            <DialogContent className="max-w-md sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>{getTitle()}</DialogTitle>
-                </DialogHeader>
+        <ResponsiveDialog open={open} onOpenChange={step === "processing" ? () => { } : onOpenChange}>
+            <ResponsiveDialogContent className="max-w-md sm:max-w-lg bg-bg-1 text-text-1 border-border">
+                <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle>{getTitle()}</ResponsiveDialogTitle>
+                </ResponsiveDialogHeader>
 
                 {renderStepContent()}
 
                 {step !== "processing" && (
-                    <DialogFooter className="flex gap-2 sm:justify-between">
+                    <ResponsiveDialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
                         {step !== "totals" ? (
-                            <Button variant="ghost" onClick={handleBack} disabled={loading}>
+                            <Button variant="ghost" onClick={handleBack} disabled={loading} className="flex-1 sm:flex-none">
                                 <ArrowLeft className="w-4 h-4 mr-2" /> Atrás
                             </Button>
                         ) : (
-                            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
+                            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="flex-1 sm:flex-none">
                                 Cancelar
                             </Button>
                         )}
 
-                        <Button onClick={handleNext} disabled={!canGoNext() || loading} className="bg-accent-violet">
+                        <Button onClick={handleNext} disabled={!canGoNext() || loading} className="bg-accent-violet flex-1 sm:flex-none">
                             {step === "templates" || (step === "prices" && !hasNewItems) || (step === "totals" && priceCandidates.length === 0 && !hasNewItems) ? (
-                                <>Confirmar y Terminar <Check className="w-4 h-4 ml-2" /></>
+                                <>Confirmar <Check className="w-4 h-4 ml-2" /></>
                             ) : (
                                 <>Siguiente <ArrowRight className="w-4 h-4 ml-2" /></>
                             )}
                         </Button>
-                    </DialogFooter>
+                    </ResponsiveDialogFooter>
                 )}
-            </DialogContent>
-        </Dialog>
+            </ResponsiveDialogContent>
+        </ResponsiveDialog>
     );
 }

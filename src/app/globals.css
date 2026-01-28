@@ -8,68 +8,8 @@
    ============================================ */
 
 /* ===== DARK THEME (Default) ===== */
-:root,
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  /* === Backgrounds === */
-  --bg-primary: #0f172a;
-  /* Deep navy - main canvas */
-  --bg-secondary: #1e293b;
-  /* Elevated surfaces, cards */
-  --bg-tertiary: #334155;
-  /* Panels, hover states base */
-  --bg-hover: #475569;
-  /* Hover state for interactive elements */
-
-  /* === Text === */
-  --text-primary: #f1f5f9;
-  /* Headings, primary content */
-  --text-secondary: #cbd5e1;
-  /* Body text */
-  --text-tertiary: #94a3b8;
-  /* Muted text, captions, placeholders */
-
-  /* === Borders === */
-  --border-base: rgba(148, 163, 184, 0.15);
-  /* Subtle borders */
-  --border-strong: rgba(148, 163, 184, 0.3);
-  /* Emphasized borders */
-
-  /* === Accent Colors === */
-  --accent-primary: #6366f1;
-  /* Indigo - primary CTAs, links */
-  --accent-primary-hover: #4f46e5;
-  /* Darker indigo for hover */
-  --accent-success: #10b981;
-  /* Emerald green */
-  --accent-warning: #f59e0b;
-  /* Amber */
-  --accent-danger: #ef4444;
-  /* Red */
-  --accent-info: #3b82f6;
-  /* Blue */
-
-  /* === Semantic (Status Badges, Alerts) === */
-  --success-bg: rgba(16, 185, 129, 0.1);
-  --success-text: #10b981;
-  --warning-bg: rgba(245, 158, 11, 0.1);
-  --warning-text: #f59e0b;
-  --danger-bg: rgba(239, 68, 68, 0.1);
-  --danger-text: #ef4444;
-  --info-bg: rgba(59, 130, 246, 0.1);
-  --info-text: #3b82f6;
-
-  /* === Shadows === */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
-}
-
-/* ===== LIGHT THEME ===== */
-[data-theme="light"] {
+/* ===== LIGHT THEME (Default / :root) ===== */
+:root {
   color-scheme: light;
 
   /* === Backgrounds === */
@@ -87,7 +27,7 @@
   --border-base: rgba(15, 23, 42, 0.1);
   --border-strong: rgba(15, 23, 42, 0.2);
 
-  /* === Accent Colors (Same as dark, work well on both) === */
+  /* === Accent Colors === */
   --accent-primary: #6366f1;
   --accent-primary-hover: #4f46e5;
   --accent-success: #10b981;
@@ -111,6 +51,52 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.2);
+}
+
+/* ===== DARK THEME (.dark) ===== */
+.dark {
+  color-scheme: dark;
+
+  /* === Backgrounds === */
+  --bg-primary: #0f172a;
+  /* Deep navy */
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-hover: #475569;
+
+  /* === Text === */
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+
+  /* === Borders === */
+  --border-base: rgba(148, 163, 184, 0.15);
+  --border-strong: rgba(148, 163, 184, 0.3);
+
+  /* === Accent Colors === */
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #4f46e5;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+  --accent-info: #3b82f6;
+
+  /* === Semantic === */
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-text: #10b981;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-text: #f59e0b;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --danger-text: #ef4444;
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --info-text: #3b82f6;
+
+  /* === Shadows === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
 }
 
 /* ===== TAILWIND INTEGRATION ===== */
@@ -258,5 +244,42 @@
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
+  }
+
+  /* Typography System */
+  .type-page-title {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.33;
+  }
+
+  .type-card-title {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .type-body {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .type-secondary {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .type-label {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.33;
+  }
+
+  .type-button {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
   }
 }
