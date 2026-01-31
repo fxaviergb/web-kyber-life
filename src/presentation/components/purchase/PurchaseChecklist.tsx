@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Purchase, PurchaseLine, BrandProduct, Unit, GenericItem, Category } from "@/domain/entities";
-import { updateLineJsonAction, finishPurchaseAction, deletePurchaseAction } from "@/app/actions/purchase";
+import { updateLineJsonAction, finishPurchaseAction, deletePurchaseAction, deleteLineAction } from "@/app/actions/purchase";
 import { updateGenericGlobalPriceAction } from "@/app/actions/product";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -97,6 +97,11 @@ export function PurchaseChecklist({
             handleLineUpdate(line.id, { unitPrice: newPrice });
         }
 
+    }
+
+    async function handleDeleteLine(lineId: string) {
+        setLines(prev => prev.filter(l => l.id !== lineId));
+        await deleteLineAction(lineId);
     }
 
     function handleBrandChange(lineId: string, value: string, genericItemId: string, brandOverride?: BrandProduct) {
@@ -216,6 +221,7 @@ export function PurchaseChecklist({
                     setEditingLineId(line.id);
                     setDetailSheetOpen(true);
                 }}
+                onDelete={() => handleDeleteLine(line.id)}
             />
         );
     };

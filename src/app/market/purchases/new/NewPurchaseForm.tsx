@@ -82,7 +82,7 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
         setIsCreatingSm(true);
         const formData = new FormData();
         formData.append("name", newSmName);
-        const res = await createSupermarketAction(formData);
+        const res = await createSupermarketAction(null, formData);
         if (res.success && res.data) {
             setSupermarkets([...supermarkets, res.data]);
             setSelectedSm(res.data.id);
@@ -99,7 +99,7 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
         setIsCreatingTmpl(true);
         const formData = new FormData();
         formData.append("name", newTmplName);
-        const res = await createTemplateAction(formData);
+        const res = await createTemplateAction(null, formData);
         if (res.success && res.data) {
             const newTmpl = res.data;
             setTemplates([...templates, newTmpl]);

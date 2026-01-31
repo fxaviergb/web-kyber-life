@@ -30,32 +30,35 @@ export function RecentPurchasesCard({ purchases }: RecentPurchasesCardProps) {
                 {purchases.length === 0 ? (
                     <p className="text-sm text-text-tertiary text-center py-8">No hay compras</p>
                 ) : (
-                    purchases.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between group">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center text-accent-primary group-hover:bg-accent-primary group-hover:text-white transition-colors">
-                                    <ShoppingBag size={18} />
+                    purchases.map((p) => {
+                        const isCompleted = p.status.toLowerCase() === 'completed';
+                        return (
+                            <div key={p.id} className="flex items-center justify-between group">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center text-accent-primary group-hover:bg-accent-primary group-hover:text-white transition-colors">
+                                        <ShoppingBag size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-text-primary">
+                                            {new Date(p.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                                        </p>
+                                        <p className="text-xs text-text-tertiary">
+                                            {new Date(p.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-text-primary">
-                                        {new Date(p.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
-                                    </p>
-                                    <p className="text-xs text-text-tertiary">
-                                        {new Date(p.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                                    </p>
+                                <div className="text-right">
+                                    <p className="font-bold text-text-primary">${(p.totalPaid || 0).toFixed(2)}</p>
+                                    <Badge
+                                        variant={isCompleted ? 'success' : 'warning'}
+                                        className="text-[10px] h-5 px-1.5"
+                                    >
+                                        {isCompleted ? 'Completa' : 'En Curso'}
+                                    </Badge>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <p className="font-bold text-text-primary">${(p.totalPaid || 0).toFixed(2)}</p>
-                                <Badge
-                                    variant={p.status.toLowerCase() === 'completed' ? 'success' : 'secondary'}
-                                    className="text-[10px] h-5 px-1.5"
-                                >
-                                    {p.status.toLowerCase() === 'completed' ? 'Completa' : p.status}
-                                </Badge>
-                            </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
 

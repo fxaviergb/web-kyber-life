@@ -5,12 +5,32 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { LogoutButton } from "@/presentation/components/auth/logout-button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MENU_ITEMS, MenuItem } from "@/config/menu-items";
 
 export function Sidebar({ isOpen = true }: { isOpen?: boolean }) {
     const pathname = usePathname();
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+    const [isMounted, setIsMounted] = useState(false);
+
+    // Prevent hydration mismatch for Radix UI components by delaying render until client-side mount
+    // or by accepting a small layout shift, but for Sidebar fixed position, it's better to render consistent structure
+    // and only hydrate interactions? No, easiest fix is useEffect.
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    if (!isMounted) {
+        return (
+            <aside className={cn(
+                "hidden lg:flex flex-col h-screen bg-bg-primary fixed left-0 top-0 z-40 transition-all duration-300 ease-in-out overflow-hidden shadow-[20px_0_40px_-10px_rgba(0,0,0,0.03)] rounded-r-[2.5rem]",
+                isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full opacity-0"
+            )}>
+                {/* Simplified loading/placeholder state to match server HTML structure implicitly or just return empty if acceptable */}
+                {/* To avoid layout shift, better to render the same container but empty content or static content */}
+            </aside>
+        )
+    }
 
     const toggleMenu = (label: string) => {
         setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
@@ -109,7 +129,10 @@ export function Sidebar({ isOpen = true }: { isOpen?: boolean }) {
 
             {/* CTA / Profile */}
             <div className="p-4">
-                <LogoutButton variant="destructive" className="w-full justify-center" />
+                <LogoutButton
+                    variant="outline"
+                    className="w-full justify-center border-border/40 text-text-tertiary hover:text-destructive hover:bg-destructive/5 hover:border-destructive/20 transition-all font-medium"
+                />
             </div>
         </aside>
     );

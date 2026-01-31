@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Edit2, Loader2, Save, X, ImageIcon, ExternalLink } from "lucide-react";
 import { Unit, Category } from "@/domain/entities";
+import { RemoveTemplateItemButton } from "./remove-item-button";
 import Link from "next/link";
 
 interface ItemDetailDialogProps {
@@ -82,14 +83,17 @@ export function ItemDetailDialog({ templateId, item, units, categories, trigger 
                             {isEditing ? "Editar Producto" : "Detalle del Producto"}
                         </DialogTitle>
                         {!isEditing && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setIsEditing(true)}
-                                className="border-accent-violet/50 text-accent-violet hover:bg-accent-violet/10"
-                            >
-                                <Edit2 className="w-3 h-3 mr-2" /> Editar
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <RemoveTemplateItemButton templateId={templateId} itemId={item.id} />
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsEditing(true)}
+                                    className="border-accent-violet/50 text-accent-violet hover:bg-accent-violet/10"
+                                >
+                                    <Edit2 className="w-3 h-3 mr-2" /> Editar
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </DialogHeader>
@@ -101,33 +105,33 @@ export function ItemDetailDialog({ templateId, item, units, categories, trigger 
                         <input type="hidden" name="currencyCode" value={currency} />
 
                         <div className="space-y-4">
-                            {/* Image URL */}
+                            {/* Name */}
                             <div className="space-y-2">
-                                <Label className="text-text-2">URL de Imagen</Label>
+                                <Label className="text-text-2">Nombre del Producto</Label>
                                 <Input
-                                    name="imageUrl"
-                                    type="url"
-                                    defaultValue={item.imageUrl || ""}
-                                    placeholder="https://..."
-                                    className="bg-bg-2 border-border"
+                                    name="name"
+                                    defaultValue={item.genericName}
+                                    className="bg-bg-2 border-border w-full"
+                                    required
                                 />
                             </div>
 
-                            {/* Name & Category */}
-                            <div className="grid grid-cols-2 gap-4">
+                            {/* Image URL & Category */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-text-2">Nombre del Producto</Label>
+                                    <Label className="text-text-2">URL de Imagen</Label>
                                     <Input
-                                        name="name"
-                                        defaultValue={item.genericName}
+                                        name="imageUrl"
+                                        type="url"
+                                        defaultValue={item.imageUrl || ""}
+                                        placeholder="https://..."
                                         className="bg-bg-2 border-border"
-                                        required
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-text-2">Categoría</Label>
                                     <Select name="categoryId" defaultValue={item.categoryId || undefined}>
-                                        <SelectTrigger className="bg-bg-2 border-border">
+                                        <SelectTrigger className="bg-bg-2 border-border w-full">
                                             <SelectValue placeholder="Categoría" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -140,7 +144,7 @@ export function ItemDetailDialog({ templateId, item, units, categories, trigger 
                             </div>
 
                             {/* Default Qty & Unit */}
-                            <div className="grid grid-cols-2 gap-4 border-t border-border pt-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border pt-4">
                                 <div className="space-y-2">
                                     <Label className="text-text-2">Cant. Sugerida</Label>
                                     <Input
@@ -148,13 +152,13 @@ export function ItemDetailDialog({ templateId, item, units, categories, trigger 
                                         type="number"
                                         step="0.01"
                                         defaultValue={item.defaultQty || ""}
-                                        className="bg-bg-2 border-border"
+                                        className="bg-bg-2 border-border w-full"
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-text-2">Unidad</Label>
                                     <Select name="defaultUnitId" defaultValue={item.defaultUnitId || units.find(u => u.symbol?.toLowerCase() === "und" || u.name.toLowerCase() === "unidad")?.id}>
-                                        <SelectTrigger className="bg-bg-2 border-border">
+                                        <SelectTrigger className="bg-bg-2 border-border w-full">
                                             <SelectValue placeholder="Unidad" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -170,8 +174,7 @@ export function ItemDetailDialog({ templateId, item, units, categories, trigger 
                             {/* Global Price */}
                             <div className="space-y-2 border-t border-border pt-4">
                                 <Label className="text-text-2 flex justify-between">
-                                    <span>Precio Referencial Global</span>
-                                    <span className="text-xs text-text-3">Actualiza en todo el sistema</span>
+                                    <span>Precio Referencial</span>
                                 </Label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3 font-semibold">$</span>
@@ -180,7 +183,7 @@ export function ItemDetailDialog({ templateId, item, units, categories, trigger 
                                         type="number"
                                         step="0.01"
                                         defaultValue={item.globalPrice || ""}
-                                        className="pl-7 bg-bg-2 border-border"
+                                        className="pl-7 bg-bg-2 border-border w-full"
                                     />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-3 text-xs">{currency}</span>
                                 </div>

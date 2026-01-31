@@ -222,9 +222,17 @@ export class PurchaseService {
         // Validate lines
         const lines = await this.lineRepo.findByPurchaseId(purchaseId);
         for (const line of lines) {
-            if (line.checked && (line.unitPrice === null || line.unitPrice <= 0)) {
-                // Warning: PRD RB-041 says 'unitPrice' required if checked.
-                throw new Error(`Line for item ${line.genericItemId} is checked but missing price`);
+            if (line.checked) {
+                // Default quantity to 1 if missing
+                if (!line.qty || line.qty <= 0) {
+                    line.qty = 1;
+                    await this.lineRepo.update(line);
+                }
+
+                if (line.unitPrice === null || line.unitPrice <= 0) {
+                    // Warning: PRD RB-041 says 'unitPrice' required if checked.
+                    throw new Error(`Line for item ${line.genericItemId} is checked but missing price`);
+                }
             }
         }
 
@@ -299,6 +307,18 @@ export class PurchaseService {
 
         await this.lineRepo.create(line);
         return line;
+    }
+
+    async removeLine(userId: UUID, lineId: UUID): Promise<void> {
+        const line = await this.lineRepo.findById(lineId);
+        if (!line) throw new Error("Line not found");
+
+        const purchase = await this.purchaseRepo.findById(line.purchaseId);
+        if (!purchase || purchase.ownerUserId !== userId) throw new Error("Access denied");
+
+        if (purchase.status === 'completed') throw new Error("Cannot edit completed purchase");
+
+        await this.lineRepo.delete(lineId);
     }
 
     async deletePurchase(userId: UUID, purchaseId: UUID): Promise<void> {

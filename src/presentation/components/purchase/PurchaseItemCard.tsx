@@ -3,7 +3,8 @@
 import { GenericItem, PurchaseLine, BrandProduct } from "@/domain/entities";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingBasket, Edit, Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ShoppingBasket, Edit, Eye, Package, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 interface PurchaseItemCardProps {
@@ -16,6 +17,7 @@ interface PurchaseItemCardProps {
     onPriceChange: (price: number) => void;
     onOpenDetails: () => void;
     onOpenEdit: () => void;
+    onDelete?: () => void;
 }
 
 export function PurchaseItemCard({
@@ -27,7 +29,8 @@ export function PurchaseItemCard({
     onCheckChange,
     onPriceChange,
     onOpenDetails,
-    onOpenEdit
+    onOpenEdit,
+    onDelete
 }: PurchaseItemCardProps) {
     const [priceInput, setPriceInput] = useState(line.unitPrice?.toString() || "");
 
@@ -66,10 +69,11 @@ export function PurchaseItemCard({
                         <h3 className={`font-semibold transition-colors line-clamp-2 leading-tight text-base ${isChecked ? 'line-through text-text-3' : 'text-text-1 group-hover:text-accent-violet'}`}>
                             {displayName}
                         </h3>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-text-3">
+                        <div className="flex flex-col items-start gap-1 mt-1">
+                            <Badge variant="outline" className="text-[10px] border-border/50 text-text-3 px-1.5 py-0 h-4 whitespace-nowrap">
+                                <Package className="w-2.5 h-2.5 mr-1" />
                                 {line.qty || 1} unid
-                            </span>
+                            </Badge>
                             {selectedBrand && (
                                 <span className="text-[10px] text-accent-violet">
                                     • {selectedBrand.brand}
@@ -108,18 +112,36 @@ export function PurchaseItemCard({
                             </div>
                         )}
 
-                        {/* Eye Button */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-[30px] w-[75px] bg-bg-2 border border-border hover:bg-bg-3 hover:border-accent-turquoise/50 text-text-3 hover:text-accent-turquoise rounded-md"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenDetails();
-                            }}
-                        >
-                            <Eye className="w-3.5 h-3.5" />
-                        </Button>
+                        {/* Action Buttons Row */}
+                        <div className="flex items-center gap-1 w-[75px]">
+                            {/* Eye Button */}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-[30px] bg-bg-2 border border-border hover:bg-bg-3 hover:border-accent-turquoise/50 text-text-3 hover:text-accent-turquoise rounded-md ${!isChecked && onDelete ? 'flex-1' : 'w-full'}`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenDetails();
+                                }}
+                            >
+                                <Eye className="w-3.5 h-3.5" />
+                            </Button>
+
+                            {/* Delete Button - Only shows if not checked and deletion enabled */}
+                            {!isChecked && onDelete && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-[30px] flex-1 bg-bg-2 border border-border hover:bg-red-500/10 hover:border-red-500/50 text-text-3 hover:text-red-500 rounded-md"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDelete();
+                                    }}
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
