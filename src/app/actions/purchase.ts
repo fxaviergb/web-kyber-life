@@ -118,6 +118,17 @@ export async function addPurchaseLineAction(purchaseId: string, genericItemId: s
     }
 }
 
+export async function deleteLineAction(lineId: string) {
+    try {
+        const userId = await getUserId();
+        await purchaseService.removeLine(userId, lineId);
+        revalidatePath("/market/purchases/[id]");
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
 export async function deletePurchaseAction(purchaseId: string) {
     try {
         const userId = await getUserId();

@@ -48,7 +48,10 @@ export function EditTemplateDialog({ template, trigger }: EditTemplateDialogProp
                     </Button>
                 )}
             </ResponsiveDialogTrigger>
-            <ResponsiveDialogContent className="bg-bg-1 border-border text-text-1 sm:max-w-[500px]">
+            <ResponsiveDialogContent
+                className="bg-bg-1 border-border text-text-1 sm:max-w-[500px]"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <ResponsiveDialogHeader>
                     <ResponsiveDialogTitle className="text-xl font-bold text-text-1">Editar Plantilla</ResponsiveDialogTitle>
                     <ResponsiveDialogDescription className="text-text-2">

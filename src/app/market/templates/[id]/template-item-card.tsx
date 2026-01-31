@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBasket, Tag } from "lucide-react";
+import { ShoppingBasket, Tag, Package } from "lucide-react";
 import { ItemDetailDialog } from "./item-detail-dialog";
 import { RemoveTemplateItemButton } from "./remove-item-button";
 import { Unit, Category } from "@/domain/entities";
@@ -64,7 +64,7 @@ export function TemplateItemCard({ templateId, item, unit, units, categories }: 
                                     <h3 className="font-semibold text-text-1 group-hover:text-accent-violet transition-colors text-sm line-clamp-2 leading-tight" title={item.genericName}>
                                         {item.genericName}
                                     </h3>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-col items-start gap-1 mt-1">
                                         {itemCategoryName && (
                                             <Badge variant="outline" className="text-[10px] border-border/50 text-text-3 px-1.5 py-0 h-4">
                                                 <Tag className="w-2.5 h-2.5 mr-1" />
@@ -72,9 +72,10 @@ export function TemplateItemCard({ templateId, item, unit, units, categories }: 
                                             </Badge>
                                         )}
                                         {item.defaultQty && (
-                                            <span className="text-[10px] text-text-3">
+                                            <Badge variant="outline" className="text-[10px] border-border/50 text-text-3 px-1.5 py-0 h-4 whitespace-nowrap">
+                                                <Package className="w-2.5 h-2.5 mr-1" />
                                                 {item.defaultQty} {unit?.symbol || "unid."}
-                                            </span>
+                                            </Badge>
                                         )}
                                     </div>
                                 </div>
@@ -86,9 +87,6 @@ export function TemplateItemCard({ templateId, item, unit, units, categories }: 
                                         <div className="text-right">
                                             <div className="font-bold text-accent-mint text-base">
                                                 ${lineTotal.toFixed(2)}
-                                            </div>
-                                            <div className="text-[10px] text-text-3">
-                                                Est. Total
                                             </div>
                                         </div>
                                     ) : item.globalPrice ? (
@@ -114,7 +112,7 @@ export function TemplateItemCard({ templateId, item, unit, units, categories }: 
                                             e.preventDefault();
                                             e.stopPropagation();
                                         }}
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
                                     >
                                         <RemoveTemplateItemButton templateId={templateId} itemId={item.id} />
                                     </div>

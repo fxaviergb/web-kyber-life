@@ -167,7 +167,10 @@ export function MobileDrawer({ open, onOpenChange }: MobileDrawerProps) {
 
                 {/* User Profile / Logout */}
                 <div className="p-4 bg-transparent">
-                    <LogoutButton variant="destructive" className="w-full justify-center" />
+                    <LogoutButton
+                        variant="outline"
+                        className="w-full justify-center border-border/40 text-text-tertiary hover:text-destructive hover:bg-destructive/5 hover:border-destructive/20 transition-all font-medium"
+                    />
                 </div>
             </SheetContent>
         </Sheet>

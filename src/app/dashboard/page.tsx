@@ -3,7 +3,7 @@ import { analyticsService, initializeContainer, purchaseRepository, genericItemR
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { TrendingUp, CreditCard, Plus } from "lucide-react";
-import { MetricCard } from "@/presentation/components/dashboard/metric-card";
+import { MetricsCarousel } from "@/presentation/components/dashboard/metrics-carousel";
 import { SalesBarChart } from "@/presentation/components/dashboard/sales-bar-chart";
 import { TopProductsChart } from "@/presentation/components/dashboard/top-products-chart";
 import { RecentPurchasesCard } from "@/presentation/components/dashboard/recent-purchases-card";
@@ -60,23 +60,12 @@ export default async function DashboardPage() {
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
                 {/* Left Column Group */}
                 <div className="lg:col-span-2 flex flex-col gap-6">
-                    {/* Top Row: Metrics (Height controlled to match Target Chart visually if possible, or just standard) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <MetricCard
-                            title="Promedio (6 meses)"
-                            value={`$${averageSpending.toFixed(2)} `}
-                            icon={TrendingUp}
-                            iconClassName="text-accent-info"
-                            trend={{ value: 5.2, label: "vs Año pas.", positive: true }}
-                        />
-                        <MetricCard
-                            title="Gasto Mes Actual"
-                            value={`$${currentMonthSpending.toFixed(2)} `}
-                            icon={CreditCard}
-                            iconClassName="text-accent-primary"
-                            trend={{ value: 0, label: "En curso", positive: true }}
-                        />
-                    </div>
+                    {/* Top Row: Metrics (Carousel on mobile, Grid on desktop) */}
+                    <MetricsCarousel
+                        averageSpending={averageSpending}
+                        currentMonthSpending={currentMonthSpending}
+                    />
+
                     {/* Middle Row: Sales Bar Chart */}
                     <div className="h-[320px]">
                         <SalesBarChart data={monthlyData.history} />
