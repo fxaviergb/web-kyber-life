@@ -131,6 +131,10 @@ export class InMemoryPurchaseLineRepository implements IPurchaseLineRepository {
     async findByPurchaseId(purchaseId: UUID): Promise<PurchaseLine[]> {
         return Array.from(this.items.values()).filter(l => l.purchaseId === purchaseId);
     }
+    async findByPurchaseIds(purchaseIds: UUID[]): Promise<PurchaseLine[]> {
+        const set = new Set(purchaseIds);
+        return Array.from(this.items.values()).filter(l => set.has(l.purchaseId));
+    }
     async update(line: PurchaseLine): Promise<PurchaseLine> {
         this.items.set(line.id, line);
         return line;

@@ -7,9 +7,11 @@ import { MetricCard } from "@/presentation/components/dashboard/metric-card";
 interface MetricsCarouselProps {
     averageSpending: number;
     currentMonthSpending: number;
+    avgTrend: number;
+    currentTrend: number;
 }
 
-export function MetricsCarousel({ averageSpending, currentMonthSpending }: MetricsCarouselProps) {
+export function MetricsCarousel({ averageSpending, currentMonthSpending, avgTrend, currentTrend }: MetricsCarouselProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -45,7 +47,7 @@ export function MetricsCarousel({ averageSpending, currentMonthSpending }: Metri
     return (
         <div
             ref={scrollContainerRef}
-            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-2 -mx-4 px-4 sm:grid sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0 no-scrollbar"
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-2 -mx-4 px-4 sm:grid sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         >
             <div className="min-w-full snap-center sm:min-w-0 sm:w-auto h-full">
                 <MetricCard
@@ -53,7 +55,11 @@ export function MetricsCarousel({ averageSpending, currentMonthSpending }: Metri
                     value={`$${averageSpending.toFixed(2)} `}
                     icon={TrendingUp}
                     iconClassName="text-accent-info"
-                    trend={{ value: 5.2, label: "vs Año pas.", positive: true }}
+                    trend={{
+                        value: Number(avgTrend.toFixed(1)),
+                        label: "vs Mes Anterior",
+                        positive: avgTrend > 0
+                    }}
                 />
             </div>
             <div className="min-w-full snap-center sm:min-w-0 sm:w-auto h-full">
@@ -62,7 +68,11 @@ export function MetricsCarousel({ averageSpending, currentMonthSpending }: Metri
                     value={`$${currentMonthSpending.toFixed(2)} `}
                     icon={CreditCard}
                     iconClassName="text-accent-primary"
-                    trend={{ value: 0, label: "En curso", positive: true }}
+                    trend={{
+                        value: Number(currentTrend.toFixed(1)),
+                        label: "vs Promedio",
+                        positive: currentTrend > 0
+                    }}
                 />
             </div>
         </div>

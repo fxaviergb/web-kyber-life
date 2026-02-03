@@ -15,6 +15,23 @@ import {
 import { seedRepositories } from "./seed/seed-data";
 import { randomUUID } from "crypto";
 
+// Supabase Repositories
+import {
+    SupabaseUserRepository,
+    SupabaseSupermarketRepository,
+    SupabaseCategoryRepository,
+    SupabaseUnitRepository,
+    SupabaseGenericItemRepository,
+    SupabaseBrandProductRepository,
+    SupabaseTemplateRepository,
+    SupabaseTemplateItemRepository,
+    SupabasePurchaseRepository,
+    SupabasePurchaseLineRepository,
+    SupabasePriceObservationRepository
+} from "./repositories/supabase"; // Need to create this index or import individually
+
+// ... Previous imports ...
+
 // Generic Global Singleton Helper
 function singleton<T>(name: string, value: () => T): T {
     // @ts-ignore
@@ -28,19 +45,25 @@ function singleton<T>(name: string, value: () => T): T {
     return globalStore.__kyber_container[name];
 }
 
+const isSupabase = process.env.DATA_SOURCE === 'SUPABASE';
+
 // Singleton instances (Persisted across Hot Reloads in Dev)
-export const userRepository = singleton("userRepo", () => new InMemoryUserRepository());
+export const userRepository = singleton("userRepo", () => isSupabase ? new SupabaseUserRepository() : new InMemoryUserRepository());
+// For PasswordResetToken, Supabase handles it, but AuthService needs an instance. 
+// If Supabase, we can use InMemory as a placeholder since it won't be used by our modified actions, 
+// OR simpler: just keep InMemory for now as it's harmless.
 export const passwordResetTokenRepository = singleton("tokenRepo", () => new InMemoryPasswordResetTokenRepository());
-export const supermarketRepository = singleton("supermarketRepo", () => new InMemorySupermarketRepository());
-export const categoryRepository = singleton("categoryRepo", () => new InMemoryCategoryRepository());
-export const unitRepository = singleton("unitRepo", () => new InMemoryUnitRepository());
-export const genericItemRepository = singleton("genericItemRepo", () => new InMemoryGenericItemRepository());
-export const brandProductRepository = singleton("brandProductRepo", () => new InMemoryBrandProductRepository());
-export const templateRepository = singleton("templateRepo", () => new InMemoryTemplateRepository());
-export const templateItemRepository = singleton("templateItemRepo_v2", () => new InMemoryTemplateItemRepository());
-export const purchaseRepository = singleton("purchaseRepo", () => new InMemoryPurchaseRepository());
-export const purchaseLineRepository = singleton("purchaseLineRepo_v2", () => new InMemoryPurchaseLineRepository());
-export const priceObservationRepository = singleton("priceObservationRepo", () => new InMemoryPriceObservationRepository());
+
+export const supermarketRepository = singleton("supermarketRepo", () => isSupabase ? new SupabaseSupermarketRepository() : new InMemorySupermarketRepository());
+export const categoryRepository = singleton("categoryRepo", () => isSupabase ? new SupabaseCategoryRepository() : new InMemoryCategoryRepository());
+export const unitRepository = singleton("unitRepo", () => isSupabase ? new SupabaseUnitRepository() : new InMemoryUnitRepository());
+export const genericItemRepository = singleton("genericItemRepo", () => isSupabase ? new SupabaseGenericItemRepository() : new InMemoryGenericItemRepository());
+export const brandProductRepository = singleton("brandProductRepo", () => isSupabase ? new SupabaseBrandProductRepository() : new InMemoryBrandProductRepository());
+export const templateRepository = singleton("templateRepo", () => isSupabase ? new SupabaseTemplateRepository() : new InMemoryTemplateRepository());
+export const templateItemRepository = singleton("templateItemRepo_v2", () => isSupabase ? new SupabaseTemplateItemRepository() : new InMemoryTemplateItemRepository());
+export const purchaseRepository = singleton("purchaseRepo", () => isSupabase ? new SupabasePurchaseRepository() : new InMemoryPurchaseRepository());
+export const purchaseLineRepository = singleton("purchaseLineRepo_v3", () => isSupabase ? new SupabasePurchaseLineRepository() : new InMemoryPurchaseLineRepository());
+export const priceObservationRepository = singleton("priceObservationRepo", () => isSupabase ? new SupabasePriceObservationRepository() : new InMemoryPriceObservationRepository());
 
 // Services
 import { AuthService } from "@/application/services/auth-service";
@@ -106,20 +129,38 @@ export async function initializeContainer() {
                 console.log("Initializing in MEMORY mode...");
 
                 // Seed default test user if not exists
-                const defaultUserEmail = "test@test.com";
-                const existingUser = await userRepository.findByEmail(defaultUserEmail);
-                if (!existingUser) {
-                    const hash = "test"; // PLAIN TEXT for V1
-                    await userRepository.create({
-                        id: randomUUID(),
-                        email: defaultUserEmail,
-                        passwordHash: hash,
-                        defaultCurrencyCode: "USD",
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        isDeleted: false
-                    });
-                    console.log(`Default test user seeded: ${defaultUserEmail} / test`);
+                // SKIP for Supabase to avoid "cookies() outside request" error during container init
+                if (dataSource !== 'SUPABASE') {
+                    const defaultUserEmail = "test@test.com";
+                    const existingUser = await userRepository.findByEmail(defaultUserEmail);
+                    if (!existingUser) {
+                        const hash = "test"; // PLAIN TEXT for V1
+                        await userRepository.create({
+                            id: randomUUID(),
+                            email: defaultUserEmail,
+                            passwordHash: hash,
+                            defaultCurrencyCode: "USD",
+                            image: null,
+                            firstName: null,
+                            lastName: null,
+                            phone: null,
+                            bio: null,
+                            country: null,
+                            province: null,
+                            city: null,
+                            parish: null,
+                            neighborhood: null,
+                            primaryStreet: null,
+                            secondaryStreet: null,
+                            addressReference: null,
+                            postalCode: null,
+                            socials: null,
+                            createdAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString(),
+                            isDeleted: false
+                        });
+                        console.log(`Default test user seeded: ${defaultUserEmail} / test`);
+                    }
                 }
             }
 

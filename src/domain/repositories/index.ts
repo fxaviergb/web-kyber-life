@@ -63,6 +63,7 @@ export interface IPurchaseLineRepository {
     findById(id: UUID): Promise<PurchaseLine | null>;
     createMany(lines: PurchaseLine[]): Promise<PurchaseLine[]>;
     findByPurchaseId(purchaseId: UUID): Promise<PurchaseLine[]>;
+    findByPurchaseIds(purchaseIds: UUID[]): Promise<PurchaseLine[]>;
     update(line: PurchaseLine): Promise<PurchaseLine>;
     delete(id: UUID): Promise<void>;
     deleteByPurchaseId(purchaseId: UUID): Promise<void>;

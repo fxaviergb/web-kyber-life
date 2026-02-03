@@ -7,21 +7,43 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 export default function RegisterPage() {
     const [state, formAction, isPending] = useActionState(registerAction, null);
     const router = useRouter();
 
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
     useEffect(() => {
         if (state?.success) {
-            router.push("/dashboard");
+            // @ts-ignore - Dynamic return type from server action
+            if (state.confirmationRequired) {
+                setShowConfirmation(true);
+            } else {
+                router.push("/dashboard");
+            }
         }
     }, [state, router]);
 
     return (
         <div className="w-full">
+            <ConfirmationModal
+                open={showConfirmation}
+                onOpenChange={(open) => {
+                    if (!open) router.push('/auth/login');
+                    setShowConfirmation(open);
+                }}
+                onConfirm={() => router.push('/auth/login')}
+                title="Confirma tu Correo"
+                description="Hemos enviado un enlace de confirmación a tu correo electrónico. Por favor revisa tu bandeja de entrada (y spam) para activar tu cuenta antes de iniciar sesión."
+                confirmText="Ir al Login"
+                cancelText="Cerrar"
+                variant="default"
+            />
+
             <div className="mb-10 flex flex-col items-center text-center">
                 {/* Logo */}
                 <div className="flex items-center gap-4 mb-2">

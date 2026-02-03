@@ -132,7 +132,7 @@ export function PurchaseItemCard({
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-[30px] flex-1 bg-bg-2 border border-border hover:bg-red-500/10 hover:border-red-500/50 text-text-3 hover:text-red-500 rounded-md"
+                                    className="h-[30px] flex-1 bg-bg-2 border border-border hover:bg-bg-3 hover:border-red-500/30 text-text-3 hover:text-red-500 rounded-md transition-colors"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onDelete();

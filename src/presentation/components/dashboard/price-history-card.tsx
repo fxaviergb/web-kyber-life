@@ -6,18 +6,12 @@ import { MoreVertical, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { getProductPriceHistory } from "@/app/dashboard/actions";
 
 interface PriceHistoryCardProps {
@@ -25,7 +19,6 @@ interface PriceHistoryCardProps {
 }
 
 export function PriceHistoryCard({ initialProducts }: PriceHistoryCardProps) {
-    const [open, setOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<string>(initialProducts[0]?.id || "");
     const [data, setData] = useState<{ date: string; price: number }[]>([]);
     const [loading, setLoading] = useState(false);
@@ -52,51 +45,18 @@ export function PriceHistoryCard({ initialProducts }: PriceHistoryCardProps) {
                         {data.length} Observaciones
                     </p>
                 </div>
-                <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="w-[200px] justify-between text-xs h-8 border-border-base bg-bg-secondary/50"
-                        >
-                            {selectedProduct
-                                ? initialProducts.find((p) => p.id === selectedProduct)?.name
-                                : "Seleccionar..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[200px] p-0">
-                        <Command>
-                            <CommandInput placeholder="Buscar producto..." className="h-9" />
-                            <CommandList>
-                                <CommandEmpty>No encontrado.</CommandEmpty>
-                                <CommandGroup>
-                                    {initialProducts.map((product) => (
-                                        <CommandItem
-                                            key={product.id}
-                                            value={product.id}
-                                            keywords={[product.name]}
-                                            onSelect={() => {
-                                                setSelectedProduct(product.id);
-                                                setOpen(false);
-                                            }}
-                                            className="cursor-pointer"
-                                        >
-                                            {product.name}
-                                            <Check
-                                                className={cn(
-                                                    "ml-auto h-4 w-4",
-                                                    selectedProduct === product.id ? "opacity-100" : "opacity-0"
-                                                )}
-                                            />
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                    <SelectTrigger className="w-[200px] text-xs h-8 border-border-base bg-bg-secondary/50">
+                        <SelectValue placeholder="Seleccionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {initialProducts.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                                {product.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="flex-1 w-full min-h-[200px]">
@@ -148,11 +108,17 @@ export function PriceHistoryCard({ initialProducts }: PriceHistoryCardProps) {
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
-            <div className="pt-6 mt-2 border-t border-border-base flex justify-between items-center">
-                <div className="text-center w-full">
+            <div className="pt-6 mt-2 border-t border-border-base grid grid-cols-2 gap-4">
+                <div className="text-center">
                     <p className="text-xs text-text-tertiary -mb-1">Promedio</p>
                     <p className="text-lg font-bold text-text-primary">
                         ${(data.reduce((a, b) => a + b.price, 0) / (data.length || 1)).toFixed(2)}
+                    </p>
+                </div>
+                <div className="text-center border-l border-border-base">
+                    <p className="text-xs text-text-tertiary -mb-1">Actual</p>
+                    <p className="text-lg font-bold text-accent-primary">
+                        ${data.length > 0 ? data[data.length - 1].price.toFixed(2) : "0.00"}
                     </p>
                 </div>
             </div>

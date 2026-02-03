@@ -14,8 +14,18 @@ import Link from "next/link";
 
 export default async function DashboardPage() {
     await initializeContainer();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value;
+
+    let userId: string | undefined;
+
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+    }
 
     if (!userId) {
         redirect("/auth/login");
@@ -41,6 +51,19 @@ export default async function DashboardPage() {
     const totalPast = pastMonths.reduce((sum, h) => sum + h.total, 0);
     const averageSpending = pastMonths.length > 0 ? totalPast / pastMonths.length : 0;
 
+    // Metric 1: Average vs Previous Month (Trend)
+    const previousMonthEntry = pastMonths.length > 0 ? pastMonths[pastMonths.length - 1] : null;
+    const previousMonthTotal = previousMonthEntry ? previousMonthEntry.total : 0;
+    const avgTrendValue = averageSpending > 0 ? ((averageSpending - previousMonthTotal) / previousMonthTotal) * 100 : 0; // Growth of average? Or diff?
+    // Let's do: (Last Month - Average) / Average -> "Last month was X% above average"
+    const lastMonthVsAvg = averageSpending > 0 && previousMonthEntry ? ((previousMonthEntry.total - averageSpending) / averageSpending) * 100 : 0;
+
+    // Metric 2: Current Month vs Average
+    // If current > average, it's "red" usually (spending more), but user might see "green" as "active".
+    // Let's standard: Higher spending = Red/Warning? Or just Neutral?
+    // Let's use standard: +% is "vs Promedio".
+    const currentVsAvg = averageSpending > 0 ? ((currentMonthSpending - averageSpending) / averageSpending) * 100 : 0;
+
     return (
         <div className="space-y-6 pb-8">
             {/* Header */}
@@ -58,23 +81,24 @@ export default async function DashboardPage() {
             </div>
 
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-                {/* Left Column Group */}
-                <div className="lg:col-span-2 flex flex-col gap-6">
-                    {/* Top Row: Metrics (Carousel on mobile, Grid on desktop) */}
+                {/* 1. Metrics (Mobile: Top, Desktop: Top-Left) */}
+                <div className="lg:col-span-2">
                     <MetricsCarousel
                         averageSpending={averageSpending}
                         currentMonthSpending={currentMonthSpending}
+                        avgTrend={lastMonthVsAvg}
+                        currentTrend={currentVsAvg}
                     />
-
-                    {/* Middle Row: Sales Bar Chart */}
-                    <div className="h-[320px]">
-                        <SalesBarChart data={monthlyData.history} />
-                    </div>
                 </div>
 
-                {/* Right Column: Top Products */}
-                <div className="lg:col-span-1 h-full min-h-[464px]">
+                {/* 2. Top Products (Mobile: Middle, Desktop: Right Side spanning 2 rows) */}
+                <div className="lg:col-span-1 lg:row-span-2 h-full min-h-[464px]">
                     <TopProductsChart data={frequentProducts.generics} />
+                </div>
+
+                {/* 3. Sales Bar Chart (Mobile: Bottom, Desktop: Bottom-Left) */}
+                <div className="lg:col-span-2 h-[320px]">
+                    <SalesBarChart data={monthlyData.history} />
                 </div>
             </div>
 

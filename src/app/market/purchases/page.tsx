@@ -10,8 +10,17 @@ import { Card } from "@/components/ui/card";
 
 export default async function PurchasesListPage() {
     await initializeContainer();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value;
+    let userId: string | undefined;
+
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+    }
 
     if (!userId) {
         redirect("/auth/login");

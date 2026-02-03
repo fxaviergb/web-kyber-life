@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingBasket, Tag, Trash2 } from "lucide-react";
 import { GenericItem, Category } from "@/domain/entities";
+
 import Link from "next/link";
 import { DeleteGenericItemIconButton } from "./delete-generic-item-icon-button";
 

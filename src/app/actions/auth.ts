@@ -29,7 +29,27 @@ export async function loginAction(prevState: any, formData: FormData) {
     const { email, password } = result.data;
 
     // Strict Login: User must exist (in Mock or DB)
-    // Lazy seeding removed as per user request to ensure mock integrity
+    const dataSource = process.env.DATA_SOURCE;
+
+    if (dataSource === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+
+        console.log("Attempting Supabase Login for:", email);
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            console.error("Supabase Login Error:", error.message);
+            return { error: error.message };
+        }
+
+        console.log("Supabase Login Success. Session should be set.");
+        // Session is handled by Supabase middleware/cookie
+        return { success: true };
+    }
 
     try {
         const user = await authService.login({ email, password });
@@ -66,6 +86,32 @@ export async function registerAction(prevState: any, formData: FormData) {
 
     const { email, password } = result.data;
 
+    const dataSource = process.env.DATA_SOURCE;
+
+    if (dataSource === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+
+        // Sign up
+        // Note: Profile creation is handled by Postgres Trigger (handle_new_user)
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                // Pass metadata if needed for profile
+                data: {
+                    // first_name, last_name if available in form
+                }
+            }
+        });
+
+        if (error) {
+            return { error: error.message };
+        }
+
+        return { success: true };
+    }
+
     try {
         const user = await authService.register({ email, password });
 
@@ -94,6 +140,24 @@ export async function forgotPasswordAction(prevState: any, formData: FormData) {
 
     const { email } = result.data;
 
+    const dataSource = process.env.DATA_SOURCE;
+
+    if (dataSource === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+
+        // Standard Supabase Reset Flow
+        // This will send an email. For localhost, use InBucket if configured, or check console if using local Supabase.
+        // KyberLife redirect path: /auth/reset-password (need to build this page logic to handle hash fragment if pure client, or code exchange)
+        // For simplicity:
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/auth/reset-password/callback`,
+        });
+
+        if (error) return { error: error.message };
+        return { success: true, message: "If registered, you will receive an email." };
+    }
+
     try {
         const message = await authService.requestPasswordReset(email);
         return { success: true, message };
@@ -121,6 +185,16 @@ export async function resetPasswordAction(prevState: any, formData: FormData) {
 }
 
 export async function logoutAction() {
+    const dataSource = process.env.DATA_SOURCE;
+
+    if (dataSource === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        await supabase.auth.signOut();
+        redirect("/auth/login");
+        return; // Unreachable
+    }
+
     const cookieStore = await cookies();
     cookieStore.delete("kyber_session");
     redirect("/auth/login");

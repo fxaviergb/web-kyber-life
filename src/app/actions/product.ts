@@ -16,6 +16,14 @@ import {
 initializeContainer();
 
 async function getUserId() {
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) throw new Error("Unauthorized");
+        return user.id;
+    }
+
     const cookieStore = await cookies();
     const session = cookieStore.get("kyber_session");
     if (!session || !session.value) throw new Error("Unauthorized");

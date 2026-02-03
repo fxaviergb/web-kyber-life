@@ -201,7 +201,7 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
                                             placeholder="Buscar..."
                                             value={supermarketSearch}
                                             onChange={(e) => setSupermarketSearch(e.target.value)}
-                                            className="h-9 pl-8 bg-bg-1 border-border focus-visible:ring-accent-violet"
+                                            className="h-9 w-full pl-8 bg-bg-1 border-border focus-visible:ring-accent-violet"
                                             autoFocus
                                         />
                                     </div>

@@ -18,8 +18,18 @@ import { Badge } from "@/components/ui/badge";
 initializeContainer();
 
 export default async function CategoriesPage() {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get("kyber_session")?.value;
+    await initializeContainer();
+    let sessionId: string | undefined;
+
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        sessionId = user?.id;
+    } else {
+        const cookieStore = await cookies();
+        sessionId = cookieStore.get("kyber_session")?.value;
+    }
 
     if (!sessionId) return null;
 
@@ -102,7 +112,7 @@ export default async function CategoriesPage() {
                                     </div>
                                     <span className="font-medium text-text-2">{c.name}</span>
                                 </div>
-                                <Badge variant="secondary" className="bg-bg-2 text-text-3 hover:bg-bg-2">
+                                <Badge variant="default" className="bg-bg-2 text-text-3 hover:bg-bg-2">
                                     Sistema
                                 </Badge>
                             </CardContent>

@@ -5,17 +5,52 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Plus, Package } from "lucide-react";
 import { GenericItemCard } from "./generic-item-card";
 import { CreateProductButton } from "./create-product-button";
+import { ProductCategoryGroup } from "./product-category-group";
 
 initializeContainer();
 
 export default async function ItemsPage() {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get("kyber_session")?.value;
+    let userId: string | undefined;
 
-    if (!sessionId) return null;
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+    }
 
-    const items = await productService.searchGenericItems(sessionId, "");
-    const categories = await masterDataService.getCategories(sessionId);
+    if (!userId) return null;
+
+    const items = await productService.searchGenericItems(userId, "");
+    const categories = await masterDataService.getCategories(userId);
+
+    // Create a map for quick category lookup and grouping
+    const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+    const groupedItems = new Map<string, typeof items>();
+
+    // Initial grouping
+    items.forEach(item => {
+        const catName = item.primaryCategoryId ? categoryMap.get(item.primaryCategoryId) || "Sin categoría" : "Sin categoría";
+        if (!groupedItems.has(catName)) {
+            groupedItems.set(catName, []);
+        }
+        groupedItems.get(catName)!.push(item);
+    });
+
+    // Sort categories alphabetically
+    const sortedCategories = Array.from(groupedItems.keys()).sort((a, b) => {
+        if (a === "Sin categoría") return -1;
+        if (b === "Sin categoría") return 1;
+        return a.localeCompare(b);
+    });
+
+    // Sort items within groups alphabetically
+    sortedCategories.forEach(cat => {
+        groupedItems.get(cat)!.sort((a, b) => a.canonicalName.localeCompare(b.canonicalName));
+    });
 
     return (
         <div className="space-y-8">
@@ -37,11 +72,12 @@ export default async function ItemsPage() {
                     action={<CreateProductButton categories={categories} />}
                 />
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {items.map((item) => (
-                        <GenericItemCard
-                            key={item.id}
-                            item={item}
+                <div className="space-y-8">
+                    {sortedCategories.map(categoryName => (
+                        <ProductCategoryGroup
+                            key={categoryName}
+                            categoryName={categoryName}
+                            items={groupedItems.get(categoryName)!}
                             categories={categories}
                         />
                     ))}
@@ -49,4 +85,5 @@ export default async function ItemsPage() {
             )}
         </div>
     );
+
 }

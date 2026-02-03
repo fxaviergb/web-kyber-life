@@ -40,12 +40,14 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
     // Search State
     const [search, setSearch] = useState("");
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
     // Create State
     const [newName, setNewName] = useState("");
     const [newPrice, setNewPrice] = useState("");
     const [newCategoryId, setNewCategoryId] = useState("");
     const [isCreating, setIsCreating] = useState(false);
+    const [isAddingMultiple, setIsAddingMultiple] = useState(false);
 
     // Filter Items
     const filteredItems = genericItems
@@ -65,6 +67,7 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
                 setStep("search");
                 setSearch("");
                 setSelectedItemId(null);
+                setSelectedItemIds([]);
                 setNewName("");
                 setNewPrice("");
                 setNewCategoryId("");
@@ -78,6 +81,32 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
             setOpen(false);
         }
     }, [state]);
+
+    const toggleSelection = (id: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        setSelectedItemIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const handleAddMultiple = async () => {
+        if (selectedItemIds.length === 0) return;
+        setIsAddingMultiple(true);
+        try {
+            const { addMultipleTemplateItemsAction } = await import("@/app/actions/template");
+            const result = await addMultipleTemplateItemsAction(templateId, selectedItemIds);
+            if (result?.success) {
+                setOpen(false);
+            } else {
+                alert("Error añadiendo productos");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Error desconocido");
+        } finally {
+            setIsAddingMultiple(false);
+        }
+    };
 
     async function handleCreateItem() {
         if (!newName.trim()) return;
@@ -139,7 +168,7 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
                         {step === "configure" && "Configurar Producto"}
                     </DialogTitle>
                     <DialogDescription className="text-text-2">
-                        {step === "search" && "Busca un producto y configura sus valores por defecto."}
+                        {step === "search" && "Selecciona uno o varios productos para añadir."}
                         {step === "create" && "Agrega un nuevo producto a tu catálogo."}
                         {step === "configure" && "Define la cantidad y unidad por defecto para este producto."}
                     </DialogDescription>
@@ -159,21 +188,35 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
                                 />
                             </div>
                             <div className="space-y-1 max-h-60 overflow-y-auto pr-1">
-                                {filteredItems.map(item => (
-                                    <Button
-                                        key={item.id}
-                                        variant="ghost"
-                                        className="w-full justify-start text-text-1 hover:bg-bg-2"
-                                        onClick={() => {
-                                            setSelectedItemId(item.id);
-                                            setStep("configure");
-                                        }}
-                                    >
-                                        {item.canonicalName}
-                                    </Button>
-                                ))}
+                                {filteredItems.map(item => {
+                                    const isSelected = selectedItemIds.includes(item.id);
+                                    return (
+                                        <div key={item.id} className="flex gap-2 group">
+                                            <Button
+                                                variant={isSelected ? "secondary" : "ghost"}
+                                                className={`flex-1 justify-between text-text-1 hover:bg-bg-2 ${isSelected ? "bg-accent-violet/10 text-accent-violet hover:bg-accent-violet/20" : ""}`}
+                                                onClick={(e) => toggleSelection(item.id, e)}
+                                            >
+                                                <span>{item.canonicalName}</span>
+                                                {isSelected && <div className="h-2 w-2 rounded-full bg-accent-violet" />}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                                title="Configurar individualmente"
+                                                onClick={() => {
+                                                    setSelectedItemId(item.id);
+                                                    setStep("configure");
+                                                }}
+                                            >
+                                                <Plus className="w-4 h-4 text-text-3" />
+                                            </Button>
+                                        </div>
+                                    );
+                                })}
 
-                                {search && (
+                                {filteredItems.length === 0 && search && (
                                     <Button
                                         variant="ghost"
                                         className="w-full justify-start text-accent-violet hover:bg-accent-violet/10 hover:text-accent-violet"
@@ -189,22 +232,39 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
                                     </Button>
                                 )}
 
-                                {!search && (
-                                    <Button
-                                        variant="ghost"
-                                        className="w-full justify-start text-text-2 hover:bg-bg-2"
-                                        onClick={() => {
-                                            setNewName("");
-                                            setStep("create");
-                                            setNewPrice("");
-                                            setNewCategoryId("");
-                                        }}
-                                    >
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Crear nuevo producto
-                                    </Button>
+                                {filteredItems.length === 0 && !search && (
+                                    <p className="text-sm text-text-3 text-center py-4">Empieza a buscar para ver resultados</p>
                                 )}
                             </div>
+
+                            {selectedItemIds.length > 0 && (
+                                <div className="pt-2 border-t border-border">
+                                    <Button
+                                        className="w-full bg-accent-violet hover:bg-accent-violet/90 text-white"
+                                        onClick={handleAddMultiple}
+                                        disabled={isAddingMultiple}
+                                    >
+                                        {isAddingMultiple ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                                        Añadir {selectedItemIds.length} productos
+                                    </Button>
+                                </div>
+                            )}
+
+                            {!search && selectedItemIds.length === 0 && (
+                                <Button
+                                    variant="ghost"
+                                    className="w-full justify-start text-text-2 hover:bg-bg-2"
+                                    onClick={() => {
+                                        setNewName("");
+                                        setStep("create");
+                                        setNewPrice("");
+                                        setNewCategoryId("");
+                                    }}
+                                >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Crear nuevo producto
+                                </Button>
+                            )}
                         </div>
                     )}
 
