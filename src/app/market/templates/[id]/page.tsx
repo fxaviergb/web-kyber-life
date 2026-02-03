@@ -6,14 +6,23 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, ShoppingBasket, LayoutList, Edit } from "lucide-react";
 import Link from "next/link";
 import { AddItemDialog } from "./add-item-dialog";
-import { TemplateItemCard } from "./template-item-card";
+import { TemplateCategoryGroup } from "./template-category-group";
 import { Badge } from "@/components/ui/badge";
 import { EditTemplateDialog } from "../edit-template-dialog";
 
 export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await initializeContainer();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value;
+    let userId: string | undefined;
+
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+    }
 
     if (!userId) {
         redirect("/auth/login");
@@ -102,29 +111,64 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
                     <p className="text-xs not-italic">Empieza añadiendo productos con el botón de arriba.</p>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {itemsWithDetails.map(item => (
-                        <TemplateItemCard
-                            key={item.id}
-                            templateId={id}
-                            item={{
-                                id: item.id,
-                                genericName: item.generic?.canonicalName || "Producto",
-                                defaultQty: item.defaultQty,
-                                defaultUnitId: item.defaultUnitId,
-                                genericItemId: item.genericItemId,
-                                globalPrice: item.generic?.globalPrice || null,
-                                currencyCode: item.generic?.currencyCode || "USD",
-                                categoryId: item.generic?.primaryCategoryId,
-                                imageUrl: item.generic?.imageUrl
-                            }}
-                            unit={item.unit}
-                            units={units}
-                            categories={categories}
-                        />
-                    ))}
+                <div className="space-y-8">
+                    {(() => {
+                        // Prepare data for grouping
+                        const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+
+                        const itemsForDisplay = itemsWithDetails.map(item => ({
+                            id: item.id,
+                            genericName: item.generic?.canonicalName || "Producto",
+                            defaultQty: item.defaultQty,
+                            defaultUnitId: item.defaultUnitId,
+                            genericItemId: item.genericItemId,
+                            globalPrice: item.generic?.globalPrice || null,
+                            currencyCode: item.generic?.currencyCode || "USD",
+                            categoryId: item.generic?.primaryCategoryId || null,
+                            imageUrl: item.generic?.imageUrl || null,
+                            unit: item.unit
+                        }));
+
+                        const groupedItems = new Map<string, typeof itemsForDisplay>();
+
+                        // Grouping
+                        itemsForDisplay.forEach(item => {
+                            const catName = item.categoryId ? categoryMap.get(item.categoryId) || "Sin categoría" : "Sin categoría";
+                            if (!groupedItems.has(catName)) {
+                                groupedItems.set(catName, []);
+                            }
+                            groupedItems.get(catName)!.push(item);
+                        });
+
+                        // Sort Categories
+                        const sortedCategories = Array.from(groupedItems.keys()).sort((a, b) => {
+                            if (a === "Sin categoría") return -1;
+                            if (b === "Sin categoría") return 1;
+                            return a.localeCompare(b);
+                        });
+
+                        // Sort Items within categories
+                        sortedCategories.forEach(cat => {
+                            groupedItems.get(cat)!.sort((a, b) => a.genericName.localeCompare(b.genericName));
+                        });
+
+                        return sortedCategories.map(categoryName => (
+                            <TemplateCategoryGroup
+                                key={categoryName}
+                                categoryName={categoryName}
+                                items={groupedItems.get(categoryName)!}
+                                templateId={id}
+                                units={units}
+                                categories={categories}
+                            />
+                        ));
+                    })()}
                 </div>
             )}
+            {/* Legacy Grid removed in favor of Groups */}
+            <div className="hidden">
+                {/* Keeping this just in case anything breaks momentarily, but practically removed */}
+            </div>
         </div>
     );
 }

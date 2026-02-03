@@ -36,7 +36,7 @@ export class PurchaseService {
             isDeleted: false
         };
 
-        await this.purchaseRepo.create(purchase);
+        const createdPurchase = await this.purchaseRepo.create(purchase);
 
         // 1. Consolidate Items
         const allItems: TemplateItem[] = [];
@@ -155,7 +155,7 @@ export class PurchaseService {
 
             const line: PurchaseLine = {
                 id: uuidv4(),
-                purchaseId: purchase.id,
+                purchaseId: createdPurchase.id,
                 genericItemId: tItem.genericItemId,
                 brandProductId: recommendedBrandProductId,
                 qty: tItem.defaultQty,
@@ -172,7 +172,7 @@ export class PurchaseService {
         }
 
         await this.lineRepo.createMany(lines);
-        return purchase;
+        return createdPurchase;
     }
 
     async getPurchase(userId: UUID, id: UUID): Promise<{ purchase: Purchase, lines: PurchaseLine[] } | null> {

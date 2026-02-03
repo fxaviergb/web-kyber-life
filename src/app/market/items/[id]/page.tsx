@@ -12,6 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 async function getUserId() {
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        return user?.id || null;
+    }
+
     const cookieStore = await cookies();
     const session = cookieStore.get("kyber_session");
     if (!session || !session.value) return null;

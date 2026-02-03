@@ -15,6 +15,7 @@ import { PurchaseItemDetailSheet } from "./PurchaseItemDetailSheet";
 import { ProductDetailModal } from "./ProductDetailModal";
 import { Template } from "@/domain/entities";
 import { CheckCircle, Tag, Plus, Trash2 } from "lucide-react";
+import { PurchaseCategoryGroup } from "./PurchaseCategoryGroup";
 
 export function PurchaseChecklist({
     purchase,
@@ -274,19 +275,19 @@ export function PurchaseChecklist({
                         ? "Sin Categoría"
                         : categories.find(c => c.id === catId)?.name || "Desconocido";
 
-                    const catLines = groupedPending[catId];
+                    const catLines = groupedPending[catId].sort((a, b) => {
+                        const nameA = genericItemsMap[a.genericItemId]?.canonicalName || "";
+                        const nameB = genericItemsMap[b.genericItemId]?.canonicalName || "";
+                        return nameA.localeCompare(nameB);
+                    });
 
                     return (
-                        <div key={catId} className="space-y-3">
-                            <div className="flex items-center gap-2 text-text-tertiary px-1">
-                                <Tag className="w-4 h-4" />
-                                <h3 className="font-semibold text-sm uppercase tracking-wide">{catName}</h3>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                {catLines.map(line => renderLine(line))}
-                            </div>
-                        </div>
+                        <PurchaseCategoryGroup
+                            key={catId}
+                            categoryName={catName}
+                            lines={catLines}
+                            renderLine={renderLine}
+                        />
                     );
                 })}
             </div>

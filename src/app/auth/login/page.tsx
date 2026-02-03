@@ -17,8 +17,11 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
+        console.log("Login State Update:", state);
         if (state?.success) {
+            console.log("Login Success. Redirecting to dashboard...");
             router.push("/dashboard");
+            router.refresh(); // Force refresh to update server components with new cookie
         }
     }, [state, router]);
 

@@ -43,7 +43,15 @@ El proyecto sigue estrictamente los principios de **Clean Architecture** para as
 - **`src/presentation`**: Capa de interfaz de usuario (Componentes, Páginas, Validadores).
 
 ### Persistencia de Datos
-> ⚠️ **Nota Importante (V1)**: Actualmente, el sistema utiliza repositorios **In-Memory**. Esto significa que **todos los datos creados se restablecerán** cada vez que se reinicie el servidor de la aplicación. Esta decisión facilita el despliegue rápido y pruebas de concepto.
+El sistema soporta múltiples estrategias de persistencia configurables vía `.env`:
+
+1.  **Supabase (Producción)**: Base de datos Postgres en la nube con autenticación y reglas de seguridad (RLS). Recomendado para despliegue real.
+2.  **In-Memory / Mock (Desarrollo)**: Datos volátiles o cargados desde JSON para desarrollo rápido sin dependencias externas.
+
+Para usar Supabase:
+1.  Renombra `.env.example` a `.env`.
+2.  Configura `DATA_SOURCE=SUPABASE`.
+3.  Agrega tus credenciales en `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 ## 🧪 Preparación y Pruebas
 

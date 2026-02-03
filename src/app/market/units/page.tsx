@@ -17,7 +17,16 @@ initializeContainer();
 
 export default async function UnitsPage() {
     const cookieStore = await cookies();
-    const sessionId = cookieStore.get("kyber_session")?.value;
+    let sessionId: string | undefined;
+
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        sessionId = user?.id;
+    } else {
+        sessionId = cookieStore.get("kyber_session")?.value;
+    }
 
     if (!sessionId) return null;
 
@@ -102,7 +111,7 @@ export default async function UnitsPage() {
                                         {u.symbol && <span className="text-xs text-text-3">({u.symbol})</span>}
                                     </div>
                                 </div>
-                                <Badge variant="secondary" className="bg-bg-2 text-text-3 hover:bg-bg-2">
+                                <Badge variant="default" className="bg-bg-2 text-text-3 hover:bg-bg-2">
                                     Sistema
                                 </Badge>
                             </CardContent>

@@ -46,14 +46,23 @@ export async function updateProfileAction(prevState: any, formData: FormData) {
         postalCode,
         socials
     } = result.data;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value;
+    let userId: string | undefined;
 
-    if (!userId) return { error: "Unauthorized" };
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) return { error: "Unauthorized" };
+        userId = user.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+        if (!userId) return { error: "Unauthorized" };
+    }
 
     try {
         await userService.updateProfile({
-            userId,
+            userId: userId!,
             defaultCurrencyCode,
             image,
             firstName,
@@ -87,10 +96,19 @@ export async function changePasswordAction(prevState: any, formData: FormData) {
     }
 
     const { currentPassword, newPassword } = result.data;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value;
+    let userId: string | undefined;
 
-    if (!userId) return { error: "Unauthorized" };
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) return { error: "Unauthorized" };
+        userId = user.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+        if (!userId) return { error: "Unauthorized" };
+    }
 
     try {
         await authService.changePassword({ userId, currentPassword, newPassword });

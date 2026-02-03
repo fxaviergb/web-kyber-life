@@ -88,19 +88,26 @@ export function GenericItemDialog({ mode, item, trigger, open: controlledOpen, o
                         <Label htmlFor="primaryCategoryId" className="text-text-secondary">
                             Categoría Principal
                         </Label>
-                        <Select name="primaryCategoryId" defaultValue={item?.primaryCategoryId || "null"}>
-                            <SelectTrigger className="w-full bg-bg-secondary border-border-base text-text-primary focus:ring-accent-primary">
-                                <SelectValue placeholder="Seleccionar categoría" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-bg-primary border-border-base">
-                                <SelectItem value="null">Sin Categoría</SelectItem>
-                                {categories.map(c => (
-                                    <SelectItem key={c.id} value={c.id}>
-                                        {c.name} {c.ownerUserId ? "(Personal)" : ""}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        {(() => {
+                            const defaultId = categories.find(c => c.name === "Sin categoría")?.id || "null";
+                            const value = item?.primaryCategoryId || defaultId;
+                            return (
+                                <Select name="primaryCategoryId" defaultValue={value}>
+
+                                    <SelectTrigger className="w-full bg-bg-secondary border-border-base text-text-primary focus:ring-accent-primary">
+                                        <SelectValue placeholder="Seleccionar categoría" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-bg-primary border-border-base">
+
+                                        {categories.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>
+                                                {c.name} {c.ownerUserId ? "(Personal)" : ""}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            );
+                        })()}
                     </div>
 
                     <div className="grid gap-2">

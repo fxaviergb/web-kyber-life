@@ -17,11 +17,20 @@ import { EditSupermarketButton } from "./edit-supermarket-button";
 initializeContainer();
 
 export default async function SupermarketsPage() {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get("kyber_session")?.value;
+    await initializeContainer();
+    let sessionId: string | undefined;
 
-    // Auth check usually in layout, but double check or just use session Ids
-    if (!sessionId) return null; // Or redirect
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        sessionId = user?.id; // Using sessionId variable name to match existing code
+    } else {
+        const cookieStore = await cookies();
+        sessionId = cookieStore.get("kyber_session")?.value;
+    }
+
+    if (!sessionId) return null;
 
     const supermarkets = await masterDataService.getSupermarkets(sessionId);
 

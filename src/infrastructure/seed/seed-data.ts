@@ -23,6 +23,8 @@ export const BASE_CATEGORIES = [
     "Bebidas Alcohólicas",
     "Farmacia",
     "Bebé",
+    "Embutidos",
+    "Tecnología",
     "Sin categoría"
 ];
 
@@ -39,11 +41,15 @@ export async function seedRepositories(
     categoryRepo: ICategoryRepository,
     unitRepo: IUnitRepository
 ): Promise<void> {
+    // For SUPABASE, we handle system data via SQL Migrations, not runtime seeding.
+    // Runtime seeding with RLS would require Service Role, which we want to avoid in client container.
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        return;
+    }
+
     // Check if already seeded to avoid duplication (though in-memory is fresh on restart)
-    const existingCategories = await categoryRepo.findAllBaseAndUser("system"); // "system" or null check. 
-    // Actually findAllBaseAndUser takes a userId. If we pass a dummy UUID, we get base + that dummy's. 
-    // Base items have ownerUserId = null.
-    // We can just rely on the fact that if it's in-memory, it's empty at start.
+    // Note: findAllBaseAndUser('system') caused invalid UUID error. Removed.
+
 
     // Seed Categories
     const categories = await categoryRepo.findAll();

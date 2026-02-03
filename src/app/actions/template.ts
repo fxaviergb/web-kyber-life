@@ -8,6 +8,14 @@ import { createTemplateSchema, addTemplateItemSchema, updateTemplateItemSchema }
 initializeContainer();
 
 async function getUserId() {
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) throw new Error("Unauthorized");
+        return user.id;
+    }
+
     const cookieStore = await cookies();
     const session = cookieStore.get("kyber_session");
     if (!session || !session.value) throw new Error("Unauthorized");
@@ -95,6 +103,21 @@ export async function addTemplateItemAction(templateId: string, prevState: any, 
         }
 
         await templateService.addTemplateItem(userId, templateId, genericItemId, defaultQty, defaultUnitId);
+        revalidatePath(`/market/templates/${templateId}`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+export async function addMultipleTemplateItemsAction(templateId: string, genericItemIds: string[]) {
+    try {
+        const userId = await getUserId();
+
+        await Promise.all(genericItemIds.map(id =>
+            templateService.addTemplateItem(userId, templateId, id, 1, null)
+        ));
+
         revalidatePath(`/market/templates/${templateId}`);
         return { success: true };
     } catch (e: any) {

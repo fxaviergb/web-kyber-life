@@ -7,8 +7,17 @@ import { PurchaseLine, BrandProduct, GenericItem } from "@/domain/entities";
 
 export default async function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await initializeContainer();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("kyber_session")?.value;
+    let userId: string | undefined;
+
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+    }
 
     if (!userId) {
         redirect("/auth/login");
@@ -49,7 +58,8 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
                 <div>
                     <h1 className="text-2xl font-bold text-text-primary">Lista de Compras</h1>
                     <p className="text-text-3">
-                        {supermarket ? `${supermarket.name} - ${purchase.date}` : purchase.date}
+                        {supermarket ? `${supermarket.name} - ` : ''}
+                        {new Date(purchase.date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
                     </p>
                 </div>
 

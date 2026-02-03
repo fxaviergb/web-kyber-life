@@ -65,6 +65,9 @@ export class AnalyticsService {
     /**
      * Flow 20: Category Spending
      */
+    /**
+     * Flow 20: Category Spending
+     */
     async getCategorySpending(userId: UUID) {
         const purchases = (await this.purchaseRepo.findByOwnerId(userId))
             .filter(p => p.status === 'completed');
@@ -78,19 +81,18 @@ export class AnalyticsService {
         const categories = await this.categoryRepo.findAllBaseAndUser(userId);
         categories.forEach(c => categoryNames.set(c.id, c.name));
 
-        // Pre-fetch generics to map Line -> Category
-        // Optimization: In real DB, join. Here, N+1 or fetch all.
-        // Let's fetch all generic items for user
-        const genericItems = await this.genericItemRepo.findByOwnerId(userId); // Does this include base? 
-        // Logic check: Generic items might rely on base repo method.
-        // Assuming we can resolve generic item -> category.
+        // Bulk fetch generic items
+        const genericItems = await this.genericItemRepo.findByOwnerId(userId);
         const itemCategoryMap = new Map<UUID, UUID | null>();
         genericItems.forEach(g => itemCategoryMap.set(g.id, g.primaryCategoryId));
 
-        for (const p of purchases) {
-            const lines = await this.lineRepo.findByPurchaseId(p.id);
-            for (const line of lines) {
-                // Determine amount: override > (unitPrice * qty)
+        // Bulk Fetch Lines
+        if (purchases.length > 0) {
+            const purchaseIds = purchases.map(p => p.id);
+            const allLines = await this.lineRepo.findByPurchaseIds(purchaseIds);
+
+            for (const line of allLines) {
+                // Determine amount
                 let amount = 0;
                 if (line.lineAmountOverride !== null) {
                     amount = line.lineAmountOverride;
@@ -143,9 +145,12 @@ export class AnalyticsService {
         // Brand Frequency
         const brandFreq = new Map<UUID, number>();
 
-        for (const p of purchases) {
-            const lines = await this.lineRepo.findByPurchaseId(p.id);
-            for (const line of lines) {
+        // Bulk Fetch Lines
+        if (purchases.length > 0) {
+            const purchaseIds = purchases.map(p => p.id);
+            const allLines = await this.lineRepo.findByPurchaseIds(purchaseIds);
+
+            for (const line of allLines) {
                 const amount = mode === 'units' ? (line.qty || 0) : 1;
 
                 // Generic
@@ -188,9 +193,12 @@ export class AnalyticsService {
 
         const genericSpending = new Map<UUID, number>();
 
-        for (const p of purchases) {
-            const lines = await this.lineRepo.findByPurchaseId(p.id);
-            for (const line of lines) {
+        // Bulk Fetch Lines
+        if (purchases.length > 0) {
+            const purchaseIds = purchases.map(p => p.id);
+            const allLines = await this.lineRepo.findByPurchaseIds(purchaseIds);
+
+            for (const line of allLines) {
                 if (line.genericItemId) {
                     // Calculate amount: override > unit * qty
                     let amount = 0;
@@ -255,27 +263,69 @@ export class AnalyticsService {
     }
 
     async getGenericPriceHistory(userId: UUID, genericItemId: UUID) {
-        // Find all brand products for this generic item
+        // 1. Fetch from Price Observations (Manual/System inputs)
         const products = (await this.brandProductRepo.findByGenericItemId(genericItemId))
             .filter(p => p.ownerUserId === userId);
         const productIds = new Set(products.map(p => p.id));
 
-        // Find all observations for these products
         const obs = (await this.observationRepo.findByOwnerId(userId))
-            .filter(o => productIds.has(o.brandProductId))
-            .sort((a, b) => a.observedAt.localeCompare(b.observedAt));
+            .filter(o => productIds.has(o.brandProductId));
 
-        // Return all points? Or aggregate?
-        // Let's return all points but labeled with brand? 
-        // Or simplified: just price and date.
-        // For "Generic" context, usually user wants to see the trend of the commodity.
-        // Returning all points is fine for now.
-        return obs.map(o => ({
+        const historyPoints: { date: string, price: number, supermarketId: string | null }[] = obs.map(o => ({
             date: o.observedAt,
-            price: o.unitPrice,
+            price: o.unitPrice || 0,
             supermarketId: o.supermarketId
-            // Maybe add brand name logic in UI or service? Service doesn't map IDs to names effectively in this return shape.
         }));
+
+        // 2. Fetch from Actual Purchases
+        const purchases = (await this.purchaseRepo.findByOwnerId(userId))
+            .filter(p => p.status === 'completed');
+
+        console.log(`[Diagnostic] User: ${userId}`);
+        console.log(`[Diagnostic] Item: ${genericItemId}`);
+        console.log(`[Diagnostic] Completed Purchases: ${purchases.length}`);
+
+        if (purchases.length > 0) {
+            const purchaseIds = purchases.map(p => p.id);
+            // Optimization: We could filter by genericItem in DB if repo supported it, 
+            // but for now bulk fetch lines and filter in memory (standard pattern here).
+            const lines = await this.lineRepo.findByPurchaseIds(purchaseIds);
+
+            console.log(`[Diagnostic] Total Lines: ${lines.length}`);
+            const matchingLines = lines.filter(l => l.genericItemId === genericItemId);
+            console.log(`[Diagnostic] Matching Lines: ${matchingLines.length}`);
+
+            // Map Purchase ID -> Date/Supermarket
+            const purchaseMap = new Map<UUID, { date: string, supermarketId: string | null }>();
+            purchases.forEach(p => purchaseMap.set(p.id, { date: p.date, supermarketId: p.supermarketId }));
+
+            for (const line of lines) {
+                // Check if this line matches the generic item
+                if (line.genericItemId === genericItemId) {
+
+                    let effectivePrice: number | null = null;
+                    if (line.unitPrice !== null && line.unitPrice > 0) {
+                        effectivePrice = line.unitPrice;
+                    } else if (line.lineAmountOverride !== null && line.qty !== null && line.qty > 0) {
+                        effectivePrice = line.lineAmountOverride / line.qty;
+                    }
+
+                    if (effectivePrice !== null && effectivePrice > 0) {
+                        const pInfo = purchaseMap.get(line.purchaseId);
+                        if (pInfo) {
+                            historyPoints.push({
+                                date: pInfo.date,
+                                price: effectivePrice,
+                                supermarketId: pInfo.supermarketId
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Sort Combined History
+        return historyPoints.sort((a, b) => a.date.localeCompare(b.date));
     }
 
     async getGenericLatestPrices(userId: UUID, genericItemId: UUID) {

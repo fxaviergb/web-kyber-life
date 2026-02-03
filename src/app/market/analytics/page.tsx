@@ -9,14 +9,22 @@ import { PriceAnalytics } from "@/presentation/components/analytics/PriceAnalyti
 
 export default async function AnalyticsPage() {
     await initializeContainer();
-    const cookieStore = await cookies();
-    const session = cookieStore.get("kyber_session");
 
-    // Redirect or show error if no session (middleware usually handles this, but for safety)
-    if (!session || !session.value) {
+    let userId: string | undefined;
+
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+    }
+
+    if (!userId) {
         return <div className="p-8 text-white">Inicia sesión para ver analíticas.</div>;
     }
-    const userId = session.value;
 
     const [
         monthlyData,
