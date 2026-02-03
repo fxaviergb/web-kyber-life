@@ -111,7 +111,7 @@ export function Topbar({ onMenuClick, isSidebarOpen, onSidebarToggle, user }: To
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
                     <Input
-                        placeholder="Search or type command..."
+                        placeholder="Busca o escribe un comando..."
                         className="pl-9 h-10 bg-bg-primary border-border-base text-text-primary placeholder:text-text-tertiary focus:ring-accent-primary focus:border-accent-primary"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
