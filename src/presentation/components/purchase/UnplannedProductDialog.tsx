@@ -25,6 +25,7 @@ interface UnplannedProductDialogProps {
     categories: Category[];
     templates: Template[];
     existingItemIds: string[];
+    initialSearch?: string;
     onSuccess: () => void;
 }
 
@@ -35,12 +36,13 @@ export function UnplannedProductDialog({
     categories,
     templates,
     existingItemIds,
+    initialSearch,
     onSuccess
 }: UnplannedProductDialogProps) {
     const [step, setStep] = useState<"search" | "create" | "confirm_existing" | "template">("search");
 
     // Search State
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useState(initialSearch || "");
     const [searchResults, setSearchResults] = useState<GenericItem[]>([]);
     const [searching, setSearching] = useState(false);
     const [selectedExistingItem, setSelectedExistingItem] = useState<GenericItem | null>(null);
@@ -76,6 +78,13 @@ export function UnplannedProductDialog({
 
         return () => clearTimeout(timer);
     }, [searchQuery]);
+
+    // Update internal search state if initialSearch prop changes and dialog is open
+    useEffect(() => {
+        if (open && initialSearch) {
+            setSearchQuery(initialSearch);
+        }
+    }, [initialSearch, open]);
 
     async function handleLoadAll() {
         setSearching(true);
@@ -182,7 +191,7 @@ export function UnplannedProductDialog({
     if (!open && step !== "search") {
         setTimeout(() => {
             setStep("search");
-            setSearchQuery("");
+            setSearchQuery(initialSearch || "");
             setSearchResults([]);
             setName("");
             setPrice("");

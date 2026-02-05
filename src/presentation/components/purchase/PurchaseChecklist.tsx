@@ -14,7 +14,7 @@ import { PurchaseItemCard } from "./PurchaseItemCard";
 import { PurchaseItemDetailSheet } from "./PurchaseItemDetailSheet";
 import { ProductDetailModal } from "./ProductDetailModal";
 import { Template } from "@/domain/entities";
-import { CheckCircle, Tag, Plus, Trash2 } from "lucide-react";
+import { CheckCircle, Tag, Plus, Trash2, Search } from "lucide-react";
 import { PurchaseCategoryGroup } from "./PurchaseCategoryGroup";
 
 export function PurchaseChecklist({
@@ -24,7 +24,8 @@ export function PurchaseChecklist({
     units,
     genericItemsMap,
     categories,
-    userTemplates
+    userTemplates,
+    searchQuery
 }: {
     purchase: Purchase,
     initialLines: PurchaseLine[],
@@ -32,7 +33,8 @@ export function PurchaseChecklist({
     units: Unit[],
     genericItemsMap: Record<string, GenericItem>,
     categories: Category[],
-    userTemplates: Template[]
+    userTemplates: Template[],
+    searchQuery?: string
 }) {
     const [lines, setLines] = useState(initialLines);
 
@@ -40,6 +42,16 @@ export function PurchaseChecklist({
     useEffect(() => {
         setLines(initialLines);
     }, [initialLines]);
+
+    const filteredLines = searchQuery
+        ? lines.filter(l => {
+            const generic = genericItemsMap[l.genericItemId];
+            const name = generic?.canonicalName.toLowerCase() || "";
+            const aliases = generic?.aliases?.map(a => a.toLowerCase()) || [];
+            const q = searchQuery.toLowerCase();
+            return name.includes(q) || aliases.some(a => a.includes(q));
+        })
+        : lines;
 
     const [finishing, setFinishing] = useState(false);
     const [showErrorAlert, setShowErrorAlert] = useState(false);
@@ -165,9 +177,9 @@ export function PurchaseChecklist({
 
     const isReadOnly = purchase.status === 'completed';
 
-    // Split into Pending and Completed
-    const pendingLines = lines.filter(l => !l.checked);
-    const completedLines = lines.filter(l => l.checked);
+    // Split into Pending and Completed - USING FILTERED LINES for display
+    const pendingLines = filteredLines.filter(l => !l.checked);
+    const completedLines = filteredLines.filter(l => l.checked);
 
     // Grouping Helper
     function groupByCategory(items: PurchaseLine[]) {
@@ -270,26 +282,43 @@ export function PurchaseChecklist({
 
             {/* PENDING ITEMS */}
             <div className="space-y-6">
-                {sortedPendingCategoryIds.map(catId => {
-                    const catName = catId === "uncategorized"
-                        ? "Sin Categoría"
-                        : categories.find(c => c.id === catId)?.name || "Desconocido";
+                {filteredLines.length === 0 && searchQuery ? (
+                    <div className="bg-bg-1 border border-border p-12 rounded-xl text-center text-text-3">
+                        <Search className="w-12 h-12 mx-auto opacity-10 mb-2" />
+                        <p>No encontramos "{searchQuery}" en tu lista.</p>
+                        <div className="mt-4">
+                            <Button
+                                variant="outline"
+                                className="text-accent-violet border-accent-violet/20 hover:bg-accent-violet/5"
+                                onClick={() => setUnplannedModalOpen(true)}
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Buscar y agregar "{searchQuery}"
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    sortedPendingCategoryIds.map(catId => {
+                        const catName = catId === "uncategorized"
+                            ? "Sin Categoría"
+                            : categories.find(c => c.id === catId)?.name || "Desconocido";
 
-                    const catLines = groupedPending[catId].sort((a, b) => {
-                        const nameA = genericItemsMap[a.genericItemId]?.canonicalName || "";
-                        const nameB = genericItemsMap[b.genericItemId]?.canonicalName || "";
-                        return nameA.localeCompare(nameB);
-                    });
+                        const catLines = groupedPending[catId].sort((a, b) => {
+                            const nameA = genericItemsMap[a.genericItemId]?.canonicalName || "";
+                            const nameB = genericItemsMap[b.genericItemId]?.canonicalName || "";
+                            return nameA.localeCompare(nameB);
+                        });
 
-                    return (
-                        <PurchaseCategoryGroup
-                            key={catId}
-                            categoryName={catName}
-                            lines={catLines}
-                            renderLine={renderLine}
-                        />
-                    );
-                })}
+                        return (
+                            <PurchaseCategoryGroup
+                                key={catId}
+                                categoryName={catName}
+                                lines={catLines}
+                                renderLine={renderLine}
+                            />
+                        );
+                    })
+                )}
             </div>
 
             {/* COMPLETED ITEMS */}
@@ -354,6 +383,7 @@ export function PurchaseChecklist({
                 categories={categories}
                 templates={userTemplates}
                 existingItemIds={lines.map(l => l.genericItemId)}
+                initialSearch={searchQuery}
                 onSuccess={() => {
                     window.location.reload();
                 }}

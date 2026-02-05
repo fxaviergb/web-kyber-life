@@ -31,10 +31,11 @@ interface GenericItemDialogProps {
     trigger?: React.ReactNode;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
+    initialName?: string;
     categories: Category[];
 }
 
-export function GenericItemDialog({ mode, item, trigger, open: controlledOpen, onOpenChange, categories }: GenericItemDialogProps) {
+export function GenericItemDialog({ mode, item, trigger, open: controlledOpen, onOpenChange, categories, initialName }: GenericItemDialogProps) {
     const [open, setOpen] = useState(false);
     const [showDetails, setShowDetails] = useState(false);
     const isControlled = controlledOpen !== undefined;
@@ -77,7 +78,7 @@ export function GenericItemDialog({ mode, item, trigger, open: controlledOpen, o
                         <Input
                             id="name"
                             name="name"
-                            defaultValue={item?.canonicalName}
+                            defaultValue={item?.canonicalName || initialName || ""}
                             className="bg-bg-secondary border-border-base text-text-primary focus-visible:ring-accent-primary"
                             placeholder="Ej. Pan lactal, Leche..."
                             required

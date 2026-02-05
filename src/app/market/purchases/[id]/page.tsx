@@ -5,7 +5,14 @@ import { PurchaseChecklist } from "@/presentation/components/purchase/PurchaseCh
 import { PurchaseCompletedView } from "@/presentation/components/purchase/PurchaseCompletedView";
 import { PurchaseLine, BrandProduct, GenericItem } from "@/domain/entities";
 
-export default async function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+import { ProductSearch } from "../../items/product-search";
+
+interface PurchaseDetailPageProps {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function PurchaseDetailPage({ params, searchParams }: PurchaseDetailPageProps) {
     await initializeContainer();
     let userId: string | undefined;
 
@@ -23,6 +30,8 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
         redirect("/auth/login");
     }
     const { id } = await params;
+    const resolvedParams = await searchParams;
+    const query = typeof resolvedParams.q === 'string' ? resolvedParams.q : undefined;
 
     const result = await purchaseService.getPurchase(userId, id);
     if (!result) notFound();
@@ -64,7 +73,7 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
                 </div>
 
                 <div className="flex gap-2">
-                    {/* Controls */}
+                    <ProductSearch />
                 </div>
             </div>
 
@@ -85,6 +94,7 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
                     genericItemsMap={genericItemsMap}
                     categories={categories}
                     userTemplates={userTemplates}
+                    searchQuery={query}
                 />
             )}
         </div>

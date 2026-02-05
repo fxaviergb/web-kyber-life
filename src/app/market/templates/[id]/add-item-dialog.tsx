@@ -31,14 +31,16 @@ interface AddItemDialogProps {
     units: Unit[];
     categories: Category[];
     existingItemIds: string[];
+    initialSearch?: string;
+    trigger?: React.ReactNode;
 }
 
-export function AddItemDialog({ templateId, genericItems, units, categories, existingItemIds }: AddItemDialogProps) {
+export function AddItemDialog({ templateId, genericItems, units, categories, existingItemIds, initialSearch, trigger }: AddItemDialogProps) {
     const [open, setOpen] = useState(false);
     const [step, setStep] = useState<"search" | "create" | "configure">("search");
 
     // Search State
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = useState(initialSearch || "");
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
@@ -155,11 +157,15 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button className="bg-accent-violet hover:bg-accent-violet/90 text-white">
-                    <Plus className="w-4 h-4 mr-2" /> Añadir Producto
-                </Button>
-            </DialogTrigger>
+            {trigger ? (
+                <DialogTrigger asChild>{trigger}</DialogTrigger>
+            ) : (
+                <DialogTrigger asChild>
+                    <Button className="bg-accent-violet hover:bg-accent-violet/90 text-white">
+                        <Plus className="w-4 h-4 mr-2" /> Añadir Producto
+                    </Button>
+                </DialogTrigger>
+            )}
             <DialogContent className="bg-bg-1 border-border sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="text-text-1">

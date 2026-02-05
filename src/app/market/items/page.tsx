@@ -2,14 +2,20 @@ import { productService, masterDataService, initializeContainer } from "@/infras
 import { cookies } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, Package } from "lucide-react";
+import { Plus, Package, Search } from "lucide-react";
 import { GenericItemCard } from "./generic-item-card";
 import { CreateProductButton } from "./create-product-button";
 import { ProductCategoryGroup } from "./product-category-group";
 
+import { ProductSearch } from "./product-search";
+
 initializeContainer();
 
-export default async function ItemsPage() {
+interface ItemsPageProps {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function ItemsPage({ searchParams }: ItemsPageProps) {
     let userId: string | undefined;
 
     if (process.env.DATA_SOURCE === 'SUPABASE') {
@@ -24,7 +30,13 @@ export default async function ItemsPage() {
 
     if (!userId) return null;
 
-    const items = await productService.searchGenericItems(userId, "");
+    const resolvedParams = await searchParams;
+    const query = typeof resolvedParams.q === 'string' ? resolvedParams.q : undefined;
+
+    const items = query
+        ? await productService.searchGenericItems(userId, query)
+        : await productService.getGenericItems(userId);
+
     const categories = await masterDataService.getCategories(userId);
 
     // Create a map for quick category lookup and grouping
@@ -60,17 +72,29 @@ export default async function ItemsPage() {
                     <h1 className="text-3xl font-bold tracking-tight text-text-primary">Productos</h1>
                     <p className="text-text-tertiary mt-1">Tu catálogo personal de productos</p>
                 </div>
-                <CreateProductButton categories={categories} />
+                <div className="flex w-full sm:w-auto gap-3 items-center">
+                    <ProductSearch />
+                    <CreateProductButton categories={categories} />
+                </div>
             </div>
 
             {/* Product List */}
             {items.length === 0 ? (
-                <EmptyState
-                    icon={Package}
-                    title="No tienes productos aún"
-                    description="Empieza agregando items genéricos para tus compras"
-                    action={<CreateProductButton categories={categories} />}
-                />
+                query ? (
+                    <EmptyState
+                        icon={Search}
+                        title={`No encontramos "${query}"`}
+                        description="Intenta con otro término o crea un nuevo producto."
+                        action={<CreateProductButton categories={categories} initialName={query} />}
+                    />
+                ) : (
+                    <EmptyState
+                        icon={Package}
+                        title="No tienes productos aún"
+                        description="Empieza agregando items genéricos para tus compras"
+                        action={<CreateProductButton categories={categories} />}
+                    />
+                )
             ) : (
                 <div className="space-y-8">
                     {sortedCategories.map(categoryName => (
