@@ -67,7 +67,7 @@ export class SupabaseGenericItemRepository implements IGenericItemRepository {
             .eq('owner_user_id', userId)
             .eq('is_deleted', false)
             .ilike('canonical_name', `%${query}%`)
-            .limit(20);
+
 
         if (error) throw new Error(error.message);
         return (data || []).map(this.mapToEntity);

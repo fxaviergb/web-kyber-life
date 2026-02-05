@@ -8,9 +8,10 @@ import { useState } from "react";
 
 interface CreateProductButtonProps {
     categories: Category[];
+    initialName?: string;
 }
 
-export function CreateProductButton({ categories }: CreateProductButtonProps) {
+export function CreateProductButton({ categories, initialName }: CreateProductButtonProps) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -22,6 +23,7 @@ export function CreateProductButton({ categories }: CreateProductButtonProps) {
             <GenericItemDialog
                 mode="create"
                 categories={categories}
+                initialName={initialName}
                 open={open}
                 onOpenChange={setOpen}
             />

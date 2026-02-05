@@ -100,7 +100,7 @@ export function EditTemplateItemDialog({ templateId, item, units }: EditTemplate
                         {/* Global Price Input */}
                         <div className="space-y-2 col-span-2 border-t border-border pt-4 mt-2">
                             <Label className="text-text-2 flex justify-between">
-                                <span>Precio Referencial Global</span>
+                                <span>Precio Referencial</span>
                                 <span className="text-xs text-text-3">Actualiza producto en todo el sistema</span>
                             </Label>
                             <div className="relative">

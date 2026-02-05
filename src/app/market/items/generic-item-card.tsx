@@ -21,9 +21,9 @@ export function GenericItemCard({ item, categories }: GenericItemCardProps) {
     return (
         <Link href={`/market/items/${item.id}`}>
             <Card className="relative bg-bg-1 border-border hover:bg-bg-2/30 transition-all duration-300 hover:border-accent-violet/30 hover:shadow-lg hover:shadow-accent-violet/5 overflow-hidden group">
-                <div className="flex items-start gap-4 p-5">
+                <div className="flex items-center sm:items-start gap-3 sm:gap-4 p-3 sm:p-5">
                     {/* Image/Icon */}
-                    <div className="w-20 h-20 shrink-0 bg-bg-2 rounded-xl overflow-hidden flex items-center justify-center border border-border/50 shadow-sm">
+                    <div className="w-12 h-12 sm:w-20 sm:h-20 shrink-0 bg-bg-2 rounded-xl overflow-hidden flex items-center justify-center border border-border/50 shadow-sm transition-all">
                         {item.imageUrl ? (
                             <img
                                 src={item.imageUrl}
@@ -31,25 +31,25 @@ export function GenericItemCard({ item, categories }: GenericItemCardProps) {
                                 className="w-full h-full object-cover"
                             />
                         ) : (
-                            <ShoppingBasket className="w-8 h-8 text-text-3/30" />
+                            <ShoppingBasket className="w-5 h-5 sm:w-8 sm:h-8 text-text-3/30" />
                         )}
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0 flex items-start justify-between gap-4">
-                        <div className="space-y-1.5 flex-1 min-w-0">
-                            <h3 className="font-bold text-lg text-text-1 group-hover:text-accent-violet transition-colors leading-snug line-clamp-2 break-words">
+                    <div className="flex-1 min-w-0 flex items-center sm:items-start justify-between gap-2 sm:gap-4">
+                        <div className="space-y-1 flex-1 min-w-0">
+                            <h3 className="font-bold text-base sm:text-lg text-text-1 group-hover:text-accent-violet transition-colors leading-tight sm:leading-snug line-clamp-2 break-words">
                                 {item.canonicalName}
                             </h3>
                             <div className="flex flex-wrap items-center gap-2">
                                 {categoryName && (
-                                    <Badge variant="outline" className="text-[10px] sm:text-xs font-normal border-border/50 text-text-3 px-2 py-0.5 bg-bg-2/50">
+                                    <Badge variant="outline" className="text-[10px] sm:text-xs font-normal border-border/50 text-text-3 px-1.5 py-0 sm:px-2 sm:py-0.5 bg-bg-2/50 h-5 sm:h-auto">
                                         <Tag className="w-3 h-3 mr-1 opacity-70" />
                                         {categoryName}
                                     </Badge>
                                 )}
                                 {item.aliases.length > 0 && (
-                                    <span className="text-[10px] sm:text-xs text-text-3">
+                                    <span className="text-[10px] sm:text-xs text-text-3 hidden xs:inline">
                                         +{item.aliases.length} alias
                                     </span>
                                 )}
@@ -57,18 +57,18 @@ export function GenericItemCard({ item, categories }: GenericItemCardProps) {
                         </div>
 
                         {/* Right: Price & Actions */}
-                        <div className="shrink-0 flex flex-col items-end gap-2">
+                        <div className="shrink-0 flex flex-col items-end gap-1 sm:gap-2">
                             {item.globalPrice ? (
                                 <div className="text-right">
-                                    <div className="font-bold text-accent-mint text-xl sm:text-2xl leading-none">
+                                    <div className="font-bold text-accent-mint text-base sm:text-2xl leading-none">
                                         ${item.globalPrice.toFixed(2)}
                                     </div>
-                                    <div className="text-[10px] text-text-3 uppercase tracking-wider mt-0.5">
+                                    <div className="text-[10px] text-text-3 uppercase tracking-wider mt-0.5 hidden sm:block">
                                         {item.currencyCode}
                                     </div>
                                 </div>
                             ) : (
-                                <span className="text-xs text-text-3 italic opacity-60 py-1">Sin precio</span>
+                                <span className="text-[10px] sm:text-xs text-text-3 italic opacity-60 sm:py-1">Sin precio</span>
                             )}
 
                             <div

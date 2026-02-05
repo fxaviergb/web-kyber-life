@@ -3,14 +3,21 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ShoppingBasket, LayoutList, Edit } from "lucide-react";
+import { ArrowLeft, ShoppingBasket, LayoutList, Edit, Search, Plus } from "lucide-react";
 import Link from "next/link";
 import { AddItemDialog } from "./add-item-dialog";
 import { TemplateCategoryGroup } from "./template-category-group";
 import { Badge } from "@/components/ui/badge";
 import { EditTemplateDialog } from "../edit-template-dialog";
+// Import shared search component, adjusting path since we are in [id]
+import { ProductSearch } from "../../items/product-search";
 
-export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
+interface TemplateDetailPageProps {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function TemplateDetailPage({ params, searchParams }: TemplateDetailPageProps) {
     await initializeContainer();
     let userId: string | undefined;
 
@@ -29,6 +36,10 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
     }
     const { id } = await params;
 
+    // Parse Search Params
+    const resolvedParams = await searchParams;
+    const query = typeof resolvedParams.q === 'string' ? resolvedParams.q : undefined;
+
     const template = await templateService.getTemplate(userId, id);
     if (!template) notFound();
 
@@ -38,11 +49,20 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
     const genericItems = await productService.getGenericItems(userId);
 
     // Fetch details for template items
-    const itemsWithDetails = await Promise.all(templateItems.map(async (ti) => {
+    let itemsWithDetails = await Promise.all(templateItems.map(async (ti) => {
         const generic = await productService.getGenericItem(userId, ti.genericItemId);
         const unit = ti.defaultUnitId ? units.find(u => u.id === ti.defaultUnitId) : null;
         return { ...ti, generic, unit };
     }));
+
+    // Filter in memory
+    if (query) {
+        const lowerQuery = query.toLowerCase();
+        itemsWithDetails = itemsWithDetails.filter(i =>
+            i.generic?.canonicalName.toLowerCase().includes(lowerQuery) ||
+            (i.generic?.aliases || []).some(a => a.toLowerCase().includes(lowerQuery))
+        );
+    }
 
     const totalEstimated = itemsWithDetails.reduce((sum, item) => {
         if (item.generic?.globalPrice && item.defaultQty) {
@@ -84,32 +104,59 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
                     </div>
                 </div>
 
-                <div className="flex gap-2">
-                    <EditTemplateDialog
-                        template={{ id: template.id, name: template.name, tags: template.tags }}
-                        trigger={
-                            <Button variant="outline" className="border-border text-text-1 hover:bg-bg-2">
-                                <Edit className="w-4 h-4 mr-2" />
-                                Editar Plantilla
-                            </Button>
-                        }
-                    />
-                    <AddItemDialog
-                        templateId={id}
-                        genericItems={genericItems}
-                        units={units}
-                        categories={categories}
-                        existingItemIds={templateItems.map(ti => ti.genericItemId)}
-                    />
+                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                    <ProductSearch />
+
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <EditTemplateDialog
+                            template={{ id: template.id, name: template.name, tags: template.tags }}
+                            trigger={
+                                <Button variant="outline" className="flex-1 sm:flex-none border-border text-text-1 hover:bg-bg-2">
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Editar
+                                </Button>
+                            }
+                        />
+                        <AddItemDialog
+                            templateId={id}
+                            genericItems={genericItems}
+                            units={units}
+                            categories={categories}
+                            existingItemIds={templateItems.map(ti => ti.genericItemId)}
+                        />
+                    </div>
                 </div>
             </div>
 
             {itemsWithDetails.length === 0 ? (
-                <Card className="bg-bg-1 border-border p-12 text-center text-text-3 italic">
-                    <ShoppingBasket className="w-12 h-12 mx-auto opacity-10 mb-2" />
-                    <p>No hay productos en esta plantilla.</p>
-                    <p className="text-xs not-italic">Empieza añadiendo productos con el botón de arriba.</p>
-                </Card>
+                query ? (
+                    <Card className="bg-bg-1 border-border p-12 text-center text-text-3">
+                        <Search className="w-12 h-12 mx-auto opacity-10 mb-2" />
+                        <p>No encontramos "{query}" en esta plantilla.</p>
+                        <div className="mt-4">
+                            <AddItemDialog
+                                templateId={id}
+                                genericItems={genericItems}
+                                units={units}
+                                categories={categories}
+                                existingItemIds={templateItems.map(ti => ti.genericItemId)}
+                                initialSearch={query}
+                                trigger={
+                                    <Button variant="outline" className="text-accent-violet border-accent-violet/20 hover:bg-accent-violet/5">
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Agregar "{query}" a la plantilla
+                                    </Button>
+                                }
+                            />
+                        </div>
+                    </Card>
+                ) : (
+                    <Card className="bg-bg-1 border-border p-12 text-center text-text-3 italic">
+                        <ShoppingBasket className="w-12 h-12 mx-auto opacity-10 mb-2" />
+                        <p>No hay productos en esta plantilla.</p>
+                        <p className="text-xs not-italic">Empieza añadiendo productos con el botón de arriba.</p>
+                    </Card>
+                )
             ) : (
                 <div className="space-y-8">
                     {(() => {

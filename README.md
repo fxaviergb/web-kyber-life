@@ -3,7 +3,7 @@
 ![KyberLife Dashboard](./public/cover.png)
 
 
-Plataforma de control de procesos cotidianos de vida. Gestiona tus gastos, supermercados y compras de manera eficiente para tomar mejores decisiones financieras.
+Plataforma de control de procesos personales cotidianos. Gestiona tus gastos, supermercados y compras de manera eficiente para tomar mejores decisiones financieras.
 
 ## 🚀 Funcionalidades del Sistema
 
