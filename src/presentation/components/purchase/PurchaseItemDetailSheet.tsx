@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { PurchaseLine, BrandProduct, Unit, GenericItem } from "@/domain/entities";
+import { CheckCircle } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -22,6 +23,7 @@ interface PurchaseItemDetailSheetProps {
     brandOptions: BrandProduct[];
     units: Unit[];
     onUpdate: (updates: Partial<PurchaseLine>) => void;
+    onSaveAndCheck?: (updates: Partial<PurchaseLine>) => void;
     onCreateBrand: () => void;
 }
 
@@ -33,6 +35,7 @@ export function PurchaseItemDetailSheet({
     brandOptions,
     units,
     onUpdate,
+    onSaveAndCheck,
     onCreateBrand
 }: PurchaseItemDetailSheetProps) {
     const [tempBrand, setTempBrand] = useState(line.brandProductId || "");
@@ -74,6 +77,37 @@ export function PurchaseItemDetailSheet({
             onUpdate(updates);
         }
 
+        onOpenChange(false);
+    };
+
+    const handleSaveAndCheck = () => {
+        const updates: Partial<PurchaseLine> = {};
+
+        if ((tempBrand || "") !== (line.brandProductId || "")) {
+            updates.brandProductId = tempBrand || null;
+        }
+
+        const qty = parseFloat(tempQty);
+        if (!isNaN(qty) && qty !== line.qty) {
+            updates.qty = qty;
+        }
+
+        if ((tempUnit || "") !== (line.unitId || "")) {
+            updates.unitId = tempUnit || null;
+        }
+
+        const price = parseFloat(tempPrice);
+        if (!isNaN(price) && price !== line.unitPrice) {
+            updates.unitPrice = price;
+        }
+
+        // Always include checked and the current price
+        updates.checked = true;
+        if (updates.unitPrice === undefined) {
+            updates.unitPrice = line.unitPrice;
+        }
+
+        onSaveAndCheck?.(updates);
         onOpenChange(false);
     };
 
@@ -189,15 +223,23 @@ export function PurchaseItemDetailSheet({
                     </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="flex flex-col gap-2 sm:flex-col">
+                    <Button
+                        onClick={handleSaveAndCheck}
+                        className="w-full bg-accent-success hover:bg-accent-success/90 text-white"
+                    >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Guardar y Marcar Comprado
+                    </Button>
+                    <Button onClick={handleSave} className="w-full">
+                        Guardar Cambios
+                    </Button>
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
+                        className="w-full"
                     >
                         Cancelar
-                    </Button>
-                    <Button onClick={handleSave}>
-                        Guardar Cambios
                     </Button>
                 </DialogFooter>
             </DialogContent>

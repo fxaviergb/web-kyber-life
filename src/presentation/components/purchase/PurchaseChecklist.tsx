@@ -43,6 +43,9 @@ export function PurchaseChecklist({
         setLines(initialLines);
     }, [initialLines]);
 
+    // Track which line is currently swiped open
+    const [swipedLineId, setSwipedLineId] = useState<string | null>(null);
+
     const filteredLines = searchQuery
         ? lines.filter(l => {
             const generic = genericItemsMap[l.genericItemId];
@@ -235,6 +238,13 @@ export function PurchaseChecklist({
                     setDetailSheetOpen(true);
                 }}
                 onDelete={() => handleDeleteLine(line.id)}
+                isSwiped={swipedLineId === line.id}
+                onSwipeOpen={() => setSwipedLineId(line.id)}
+                onSwipeClose={() => {
+                    if (swipedLineId === line.id) {
+                        setSwipedLineId(null);
+                    }
+                }}
             />
         );
     };
@@ -420,6 +430,7 @@ export function PurchaseChecklist({
                     ]}
                     units={units}
                     onUpdate={(updates) => handleLineUpdate(editingLineId, updates)}
+                    onSaveAndCheck={(updates) => handleLineUpdate(editingLineId, updates)}
                     onCreateBrand={() => {
                         const line = lines.find(l => l.id === editingLineId);
                         if (line) {

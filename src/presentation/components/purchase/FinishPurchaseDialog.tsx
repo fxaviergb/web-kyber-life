@@ -291,9 +291,9 @@ export function FinishPurchaseDialog({
 
         if (step === "prices") {
             return (
-                <div className="space-y-4 py-4 px-1">
-                    <p className="text-sm text-text-2">Se detectaron cambios de precio en estos productos. Selecciona cuáles deseas actualizar en el catálogo global.</p>
-                    <div className="max-h-[50vh] overflow-y-auto space-y-2 border rounded-md p-2">
+                <div className="flex flex-col gap-3 py-4 px-1 flex-1 min-h-0">
+                    <p className="text-sm text-text-2 shrink-0">Se detectaron cambios de precio en estos productos. Selecciona cuáles deseas actualizar en el catálogo global.</p>
+                    <div className="flex-1 min-h-0 overflow-y-auto space-y-2 border rounded-md p-2">
                         {priceCandidates.map(c => (
                             <div key={c.lineId} className="flex items-start gap-3 p-2 hover:bg-secondary/10 rounded">
                                 <Checkbox
@@ -314,7 +314,7 @@ export function FinishPurchaseDialog({
                             </div>
                         ))}
                     </div>
-                    <div className="flex gap-2 text-sm">
+                    <div className="flex gap-2 text-sm shrink-0">
                         <Button variant="outline" size="sm" onClick={() => setSelectedPriceUpdates(priceCandidates.map(c => c.lineId))}>Todos</Button>
                         <Button variant="outline" size="sm" onClick={() => setSelectedPriceUpdates([])}>Ninguno</Button>
                     </div>
@@ -380,15 +380,17 @@ export function FinishPurchaseDialog({
 
     return (
         <ResponsiveDialog open={open} onOpenChange={step === "processing" ? () => { } : onOpenChange}>
-            <ResponsiveDialogContent className="max-w-md sm:max-w-lg bg-bg-1 text-text-1 border-border">
-                <ResponsiveDialogHeader>
+            <ResponsiveDialogContent className="max-w-md sm:max-w-lg bg-bg-1 text-text-1 border-border flex flex-col">
+                <ResponsiveDialogHeader className="shrink-0">
                     <ResponsiveDialogTitle>{getTitle()}</ResponsiveDialogTitle>
                 </ResponsiveDialogHeader>
 
-                {renderStepContent()}
+                <div className="flex-1 overflow-y-auto min-h-0">
+                    {renderStepContent()}
+                </div>
 
                 {step !== "processing" && (
-                    <ResponsiveDialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                    <ResponsiveDialogFooter className="shrink-0 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between border-t border-border pt-3">
                         {step !== "totals" ? (
                             <Button variant="ghost" onClick={handleBack} disabled={loading} className="flex-1 sm:flex-none">
                                 <ArrowLeft className="w-4 h-4 mr-2" /> Atrás
