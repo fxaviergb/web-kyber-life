@@ -47,7 +47,7 @@ function singleton<T>(name: string, value: () => T): T {
 
 const isSupabase = process.env.DATA_SOURCE === 'SUPABASE';
 
-// Singleton instances (Persisted across Hot Reloads in Dev)
+// Singleton instances (Persisted across Hot Reloads in Dev via global)
 export const userRepository = singleton("userRepo", () => isSupabase ? new SupabaseUserRepository() : new InMemoryUserRepository());
 // For PasswordResetToken, Supabase handles it, but AuthService needs an instance. 
 // If Supabase, we can use InMemory as a placeholder since it won't be used by our modified actions, 
@@ -96,15 +96,24 @@ export const analyticsService = new AnalyticsService(
 let initializationPromise: Promise<void> | null = null;
 
 export async function initializeContainer() {
-    // If already initialized (global check for dev hot reload), return immediately
+    // Global check for dev hot reload
     // @ts-ignore
-    if (global.__kyber_initialized) return;
+    if (global.__kyber_initialized) {
+        // Even if initialized, check if repositories are empty (rare case of partial reset)? 
+        // No, with singleton repos, they should be fine.
+        // Uncomment logging if debugging needed
+        // console.log("Container already initialized (Global Check). Skipping seed.");
+        return;
+    }
+    // @ts-ignore
+    global.__kyber_initialized = true;
 
     // If a promise is already running, return it to wait for the same result
     if (initializationPromise) return initializationPromise;
 
     // Create the cleanup/initialization promise
     initializationPromise = (async () => {
+        console.log(`Initializing container... Source: ${process.env.DATA_SOURCE || 'MEMORY'}`);
         try {
             // ALWAYS seed basic master data (Category, Unit)
             await seedRepositories(categoryRepository, unitRepository);
@@ -122,7 +131,8 @@ export async function initializeContainer() {
                     purchaseRepository,
                     categoryRepository,
                     templateRepository,
-                    templateItemRepository
+                    templateItemRepository,
+                    "00000000-0000-0000-0000-000000000000"
                 );
             } else {
                 // MEMORY MODE (Default)
@@ -132,11 +142,20 @@ export async function initializeContainer() {
                 // SKIP for Supabase to avoid "cookies() outside request" error during container init
                 if (dataSource !== 'SUPABASE') {
                     const defaultUserEmail = "test@test.com";
-                    const existingUser = await userRepository.findByEmail(defaultUserEmail);
+                    const constantUserId = "00000000-0000-0000-0000-000000000000";
+                    let existingUser = await userRepository.findByEmail(defaultUserEmail);
+
+                    // If user exists but has wrong ID (from earlier random seeding), delete it
+                    if (existingUser && existingUser.id !== constantUserId) {
+                        console.log(`[SEED] User ${defaultUserEmail} exists with wrong ID ${existingUser.id}. Deleting to enforce constant ID.`);
+                        await userRepository.delete(existingUser.id);
+                        existingUser = null; // Force recreation
+                    }
+
                     if (!existingUser) {
                         const hash = "test"; // PLAIN TEXT for V1
                         await userRepository.create({
-                            id: randomUUID(),
+                            id: constantUserId, // CONSTANT ID for dev persistence across resets
                             email: defaultUserEmail,
                             passwordHash: hash,
                             defaultCurrencyCode: "USD",
@@ -144,6 +163,7 @@ export async function initializeContainer() {
                             firstName: null,
                             lastName: null,
                             phone: null,
+                            isDeleted: false,
                             bio: null,
                             country: null,
                             province: null,
@@ -156,11 +176,26 @@ export async function initializeContainer() {
                             postalCode: null,
                             socials: null,
                             createdAt: new Date().toISOString(),
-                            updatedAt: new Date().toISOString(),
-                            isDeleted: false
+                            updatedAt: new Date().toISOString()
                         });
-                        console.log(`Default test user seeded: ${defaultUserEmail} / test`);
+                        console.log(`Default test user seeded: ${defaultUserEmail} / test with ID ${constantUserId}`);
                     }
+
+                    // Seed Mock Data consistently for MEMORY mode
+                    // Since mock items have static IDs ("s1", "i1"), this is safe/idempotent to run
+                    // even if the user already exists (e.g. persisted or restarted)
+                    console.log("Seeding comprehensive mock data for MEMORY mode...");
+                    const { loadMockData } = await import("./seed/mock-loader");
+                    await loadMockData(
+                        userRepository,
+                        supermarketRepository,
+                        genericItemRepository,
+                        purchaseRepository,
+                        categoryRepository,
+                        templateRepository,
+                        templateItemRepository,
+                        "00000000-0000-0000-0000-000000000000" // Persistent Test User ID
+                    );
                 }
             }
 

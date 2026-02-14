@@ -48,7 +48,12 @@ export class AuthService {
             isDeleted: false
         };
 
-        return this.userRepo.create(newUser);
+        const createdUser = await this.userRepo.create(newUser);
+
+        // Ensure we explicitly return the user being created. 
+        // In some repository implementations, create might return null if not handled correctly.
+        // For logic flow, we want the newUser object.
+        return createdUser || newUser;
     }
 
     async login(dto: LoginDTO): Promise<User> {

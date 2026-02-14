@@ -53,6 +53,7 @@ export async function loginAction(prevState: any, formData: FormData) {
 
     try {
         const user = await authService.login({ email, password });
+        console.log("Login successful for:", email, "User ID:", user.id);
 
         // Set session cookie
         const cookieStore = await cookies();
@@ -62,6 +63,7 @@ export async function loginAction(prevState: any, formData: FormData) {
             maxAge: 60 * 60 * 24 * 7, // 1 week
             path: "/",
         });
+        console.log("Session cookie set for:", user.id);
 
         return { success: true };
     } catch (error: any) {

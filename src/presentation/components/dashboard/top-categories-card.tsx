@@ -1,8 +1,8 @@
 import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface TopExpensesCardProps {
-    products: { id: string; name: string; value: number }[];
+interface TopCategoriesCardProps {
+    categories: { id: string; name: string; value: number; percentage: number }[];
 }
 
 const COLORS = [
@@ -16,15 +16,15 @@ const COLORS = [
     'bg-[#45B7D1]',       // Light Blue
 ];
 
-export function TopExpensesCard({ products }: TopExpensesCardProps) {
-    const maxVal = Math.max(...products.map(p => p.value), 1);
+export function TopCategoriesCard({ categories }: TopCategoriesCardProps) {
+    const maxVal = Math.max(...categories.map(c => c.value), 1);
 
     return (
         <div className="bg-bg-primary rounded-3xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-border-base flex flex-col">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h3 className="text-lg font-bold text-text-primary">Mayor Gasto</h3>
-                    <p className="text-xs text-text-tertiary">Productos con más inversión</p>
+                    <h3 className="text-lg font-bold text-text-primary">Categorías Top</h3>
+                    <p className="text-xs text-text-tertiary">Mayor gasto por categoría</p>
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-text-tertiary">
                     <MoreVertical size={16} />
@@ -32,21 +32,22 @@ export function TopExpensesCard({ products }: TopExpensesCardProps) {
             </div>
 
             <div className="flex-1 space-y-5">
-                {products.length === 0 ? (
+                {categories.length === 0 ? (
                     <p className="text-sm text-text-tertiary text-center py-8">Sin datos</p>
                 ) : (
-                    products.map((p, index) => {
+                    categories.map((c, index) => {
                         const colorClass = COLORS[index % COLORS.length];
+
                         return (
-                            <div key={p.id} className="space-y-2">
+                            <div key={c.id} className="space-y-2">
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="font-medium text-text-primary truncate max-w-[150px]">{p.name}</span>
-                                    <span className="font-bold text-text-primary">${p.value.toFixed(2)}</span>
+                                    <span className="font-medium text-text-primary truncate max-w-[150px]">{c.name}</span>
+                                    <span className="font-bold text-text-primary">${c.value.toFixed(2)}</span>
                                 </div>
                                 <div className="h-2 w-full bg-bg-secondary rounded-full overflow-hidden">
                                     <div
                                         className={`h-full rounded-full ${colorClass}`}
-                                        style={{ width: `${(p.value / maxVal) * 100}%` }}
+                                        style={{ width: `${(c.value / maxVal) * 100}%` }}
                                     />
                                 </div>
                             </div>
@@ -54,8 +55,6 @@ export function TopExpensesCard({ products }: TopExpensesCardProps) {
                     })
                 )}
             </div>
-
-
         </div>
     );
 }

@@ -17,6 +17,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { MENU_ITEMS, MenuItem } from "@/config/menu-items";
 import { cn } from "@/lib/utils";
+import { logoutAction } from "@/app/actions/auth";
 
 interface TopbarProps {
     onMenuClick?: () => void;
@@ -217,7 +218,7 @@ export function Topbar({ onMenuClick, isSidebarOpen, onSidebarToggle, user }: To
                             <span>Perfil</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => router.push('/auth/login')} className="text-accent-danger focus:text-accent-danger cursor-pointer">
+                        <DropdownMenuItem onClick={() => logoutAction()} className="text-accent-danger focus:text-accent-danger cursor-pointer">
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Cerrar sesión</span>
                         </DropdownMenuItem>

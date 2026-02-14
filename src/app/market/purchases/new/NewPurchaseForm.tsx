@@ -349,7 +349,7 @@ export function NewPurchaseForm({ initialSupermarkets, initialTemplates, generic
 
                     <div className="flex flex-col gap-3 mt-6">
                         <Button type="submit" className="w-full h-12 bg-accent-violet hover:bg-accent-violet/90 text-white font-bold text-lg shadow-lg hover:shadow-accent-violet/20 transition-all" disabled={isPending}>
-                            {isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : "Comenzar Lista"}
+                            {isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : "Comenzar"}
                         </Button>
                         <Button variant="ghost" type="button" asChild className="w-full text-text-3 hover:text-text-1 hover:bg-white/5">
                             <Link href="/dashboard">Cancelar</Link>

@@ -25,6 +25,7 @@ export const BASE_CATEGORIES = [
     "Bebé",
     "Embutidos",
     "Tecnología",
+    "Enlatados",
     "Sin categoría"
 ];
 

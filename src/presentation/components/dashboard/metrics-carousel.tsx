@@ -47,14 +47,14 @@ export function MetricsCarousel({ averageSpending, currentMonthSpending, avgTren
     return (
         <div
             ref={scrollContainerRef}
-            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-2 -mx-4 px-4 sm:grid sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:pb-0 lg:mx-0 lg:px-0 no-scrollbar"
         >
-            <div className="min-w-full snap-center sm:min-w-0 sm:w-auto h-full">
+            <div className="min-w-[85vw] sm:min-w-0 snap-center h-full">
                 <MetricCard
                     title="Promedio (6 meses)"
-                    value={`$${averageSpending.toFixed(2)} `}
+                    value={`$${averageSpending.toFixed(2)}`}
                     icon={TrendingUp}
-                    iconClassName="text-accent-info"
+                    iconClassName="bg-accent-info/10 text-accent-info"
                     trend={{
                         value: Number(avgTrend.toFixed(1)),
                         label: "vs Mes Anterior",
@@ -62,12 +62,12 @@ export function MetricsCarousel({ averageSpending, currentMonthSpending, avgTren
                     }}
                 />
             </div>
-            <div className="min-w-full snap-center sm:min-w-0 sm:w-auto h-full">
+            <div className="min-w-[85vw] sm:min-w-0 snap-center h-full">
                 <MetricCard
                     title="Gasto Mes Actual"
-                    value={`$${currentMonthSpending.toFixed(2)} `}
+                    value={`$${currentMonthSpending.toFixed(2)}`}
                     icon={CreditCard}
-                    iconClassName="text-accent-primary"
+                    iconClassName="bg-accent-primary/10 text-accent-primary"
                     trend={{
                         value: Number(currentTrend.toFixed(1)),
                         label: "vs Promedio",
