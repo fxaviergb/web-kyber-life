@@ -26,20 +26,20 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
                 </Button>
             </div>
 
-            <div className="flex-1 w-full min-h-[220px]">
+            <div className="flex-1 w-full min-h-[400px]">
                 {chartData.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-text-tertiary text-sm">
                         Sin datos suficientes
                     </div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
+                        <PieChart margin={{ top: 10, right: 0, bottom: 10, left: 0 }}>
                             <Pie
                                 data={chartData}
                                 cx="50%"
-                                cy="45%"
-                                innerRadius={90}
-                                outerRadius={130}
+                                cy="50%"
+                                innerRadius={100}
+                                outerRadius={140}
                                 paddingAngle={4}
                                 dataKey="value"
                             >
@@ -58,9 +58,10 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
                             />
                             <Legend
                                 verticalAlign="bottom"
-                                height={36}
+                                layout="horizontal"
                                 iconType="circle"
-                                formatter={(value) => <span className="text-xs text-text-secondary font-medium ml-1">{value}</span>}
+                                wrapperStyle={{ paddingTop: "20px" }}
+                                formatter={(value) => <span className="text-sm text-text-secondary font-medium ml-1">{value}</span>}
                             />
                         </PieChart>
                     </ResponsiveContainer>

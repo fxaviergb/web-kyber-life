@@ -1,5 +1,5 @@
 
-import { analyticsService, initializeContainer, purchaseRepository, genericItemRepository } from "@/infrastructure/container";
+import { analyticsService, initializeContainer, purchaseRepository, genericItemRepository, userRepository } from "@/infrastructure/container";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { TrendingUp, CreditCard, Plus } from "lucide-react";
@@ -8,6 +8,7 @@ import { SalesBarChart } from "@/presentation/components/dashboard/sales-bar-cha
 import { TopProductsChart } from "@/presentation/components/dashboard/top-products-chart";
 import { RecentPurchasesCard } from "@/presentation/components/dashboard/recent-purchases-card";
 import { TopExpensesCard } from "@/presentation/components/dashboard/top-expenses-card";
+import { TopCategoriesCard } from "@/presentation/components/dashboard/top-categories-card";
 import { PriceHistoryCard } from "@/presentation/components/dashboard/price-history-card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
     // Bottom Row Data
     const recentPurchases = await purchaseRepository.findRecent(userId, 5);
     const topSpending = await analyticsService.getTopSpendingProducts(userId, 5);
+    const topCategories = await analyticsService.getTopCategories(userId, 5); // Added fetch call for topCategories
     const allProducts = (await genericItemRepository.findByOwnerId(userId))
         .sort((a, b) => a.canonicalName.localeCompare(b.canonicalName))
         .map(p => ({ id: p.id, name: p.canonicalName }));
@@ -58,9 +60,26 @@ export default async function DashboardPage() {
     // Let's do: (Last Month - Average) / Average -> "Last month was X% above average"
     const lastMonthVsAvg = averageSpending > 0 && previousMonthEntry ? ((previousMonthEntry.total - averageSpending) / averageSpending) * 100 : 0;
 
+    // Check for Empty State
+    if (recentPurchases.length === 0) {
+        // Fetch user details for personalization
+        let userFirstName: string | undefined;
+        if (process.env.DATA_SOURCE === 'SUPABASE') {
+            const { createClient } = await import("@/infrastructure/supabase/server");
+            const supabase = await createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            userFirstName = user?.user_metadata?.first_name;
+        } else {
+            const user = await userRepository.findById(userId);
+            userFirstName = user?.firstName || undefined;
+        }
+
+        const { DashboardEmptyState } = await import("@/presentation/components/dashboard/empty-state");
+        return <DashboardEmptyState userFirstName={userFirstName} />;
+    }
+
     // Metric 2: Current Month vs Average
     // If current > average, it's "red" usually (spending more), but user might see "green" as "active".
-    // Let's standard: Higher spending = Red/Warning? Or just Neutral?
     // Let's use standard: +% is "vs Promedio".
     const currentVsAvg = averageSpending > 0 ? ((currentMonthSpending - averageSpending) / averageSpending) * 100 : 0;
 
@@ -80,9 +99,12 @@ export default async function DashboardPage() {
                 </Button>
             </div>
 
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-                {/* 1. Metrics (Mobile: Top, Desktop: Top-Left) */}
-                <div className="lg:col-span-2">
+            {/* Main Grid Layout */}
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {/* --- ROW 1 --- */}
+
+                {/* Metrics Carousel (Auto-scrolls on mobile, Grid on desktop) */}
+                <div className="col-span-1 md:col-span-2 lg:col-span-2">
                     <MetricsCarousel
                         averageSpending={averageSpending}
                         currentMonthSpending={currentMonthSpending}
@@ -91,24 +113,52 @@ export default async function DashboardPage() {
                     />
                 </div>
 
-                {/* 2. Top Products (Mobile: Middle, Desktop: Right Side spanning 2 rows) */}
-                <div className="lg:col-span-1 lg:row-span-2 h-full min-h-[464px]">
+                {/* Col 3: Top Products Donut (Row Span 2 to cover Row 1 & 2 heights?) */}
+                {/* The user image shows "Productos Top" in C1:C2 merged. */}
+                {/* Row 1 cards are approx 160px?  Row 2 cards are 320px? */}
+                {/* Let's make Top Products span 2 rows if grid-row-start/end aligns. */}
+                {/* Actually, CSS Grid row-span works best if items are auto-placed or order is correct. */}
+                {/* Order: M1, M2, TopProd, C1, C2. */}
+                {/* TopProd needs class `lg:col-start-3 lg:row-start-1 lg:row-span-2` */}
+
+                <div className="lg:col-start-3 lg:row-start-1 lg:row-span-2 h-full min-h-[300px]">
                     <TopProductsChart data={frequentProducts.generics} />
                 </div>
 
-                {/* 3. Sales Bar Chart (Mobile: Bottom, Desktop: Bottom-Left) */}
-                <div className="lg:col-span-2 h-[320px]">
+
+                {/* --- ROW 2 --- */}
+
+                {/* Col 1: Top Categories */}
+                <div className="col-span-1 min-h-[320px]">
+                    <TopCategoriesCard categories={topCategories} />
+                </div>
+
+                {/* Col 2: Top Expenses (Mayor Gasto) - Wait, user asked Mayor Gasto in Col 2 Row 2 */}
+                <div className="col-span-1 min-h-[320px]">
+                    <TopExpensesCard products={topSpending} />
+                </div>
+
+
+                {/* --- ROW 3 --- */}
+
+                {/* Col 1: Recent Purchases */}
+                <div className="col-span-1 h-[400px]">
+                    <RecentPurchasesCard purchases={recentPurchases} />
+                </div>
+
+                {/* Col 2: Monthly Expenses */}
+                <div className="col-span-1 h-[400px]">
                     <SalesBarChart data={monthlyData.history} />
                 </div>
-            </div>
 
-            {/* Bottom Row: 3 Column Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-[400px]">
-                <RecentPurchasesCard purchases={recentPurchases} />
-                <TopExpensesCard products={topSpending} />
-                <PriceHistoryCard initialProducts={allProducts} />
+                {/* Col 3: Price History */}
+                <div className="col-span-1 h-[400px]">
+                    <PriceHistoryCard initialProducts={allProducts} />
+                </div>
+
             </div>
         </div>
+
     );
 }
 

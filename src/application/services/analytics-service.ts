@@ -128,6 +128,11 @@ export class AnalyticsService {
             .map(r => ({ ...r, percentage: total > 0 ? (r.value / total) * 100 : 0 }));
     }
 
+    async getTopCategories(userId: UUID, limit: number = 5) {
+        const allCategories = await this.getCategorySpending(userId);
+        return allCategories.slice(0, limit);
+    }
+
     /**
      * Flow 21: Frequent Products
      * mode: 'count' (frequency of purchase events) | 'units' (total quantity)
