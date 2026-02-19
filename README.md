@@ -10,6 +10,7 @@ Plataforma de control de procesos personales cotidianos. Gestiona tus gastos, su
 ### 🔐 Autenticación y Seguridad
 - **Login y Registro**: Sistema completo de acceso para usuarios con diseño optimizado.
 - **Recuperación de Contraseña**: Flujo funcional para restablecer credenciales (`/auth/recover`).
+- **Control de Sesión Inteligente**: Guardian de inactividad con 15 minutos de límite, modal de advertencia con countdown de 30 segundos y sincronización de cierre de sesión entre pestañas (`storage` event). Refresco proactivo del JWT de Supabase cuando queda menos de 5 minutos de vida.
 
 ### 🛒 Gestión de Mercado
 - **Dashboard Interactivo**: Métricas de consumo, gráficos de tendencias y acceso rápido a operaciones frecuentes.
@@ -48,13 +49,38 @@ El proyecto sigue estrictamente los principios de **Clean Architecture** para as
 ### Persistencia de Datos
 El sistema soporta múltiples estrategias de persistencia configurables vía `.env`:
 
-1.  **Supabase (Producción)**: Base de datos Postgres en la nube con autenticación y reglas de seguridad (RLS). Recomendado para despliegue real.
-2.  **In-Memory / Mock (Desarrollo)**: Datos volátiles o cargados desde JSON para desarrollo rápido sin dependencias externas.
+1. **`SUPABASE`** *(Producción)*: Base de datos Postgres en la nube con autenticación y RLS.
+2. **`MEMORY`** *(Desarrollo)*: Datos volátiles en memoria, sin dependencias externas.
+3. **`MOCK`** *(Desarrollo)*: Datos cargados desde JSON con usuarios y compras de prueba.
 
-Para usar Supabase:
-1.  Renombra `.env.example` a `.env`.
-2.  Configura `DATA_SOURCE=SUPABASE`.
-3.  Agrega tus credenciales en `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+#### Variables de Entorno
+
+Renombra `.env.example` a `.env` y configura las variables:
+
+| Variable | Requerida | Descripción |
+|---|---|---|
+| `DATA_SOURCE` | ✅ | Estrategia del servidor: `SUPABASE` \| `MEMORY` \| `MOCK` |
+| `NEXT_PUBLIC_AUTH_STRATEGY` | ✅ | Debe coincidir con `DATA_SOURCE` (accesible en el cliente) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Solo Supabase | URL del proyecto en Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Solo Supabase | Clave anónima pública de Supabase |
+| `NEXT_PUBLIC_SESSION_TIMEOUT_MS` | ❌ Opcional | Tiempo de inactividad en ms antes de cerrar sesión. Default: `1800000` (30 min) |
+
+> **Nota:** `DATA_SOURCE` y `NEXT_PUBLIC_AUTH_STRATEGY` deben tener **el mismo valor**. Next.js no expone variables sin prefijo `NEXT_PUBLIC_` al navegador; por eso existen las dos.
+
+#### Configuración para Supabase
+```bash
+DATA_SOURCE=SUPABASE
+NEXT_PUBLIC_AUTH_STRATEGY=SUPABASE
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
+```
+
+#### Configuración para desarrollo (sin Supabase)
+```bash
+DATA_SOURCE=MOCK
+NEXT_PUBLIC_AUTH_STRATEGY=MOCK
+# Usuario de prueba: test@test.com / test
+```
 
 ## 🧪 Preparación y Pruebas
 
