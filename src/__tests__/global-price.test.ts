@@ -37,7 +37,8 @@ describe("Global Price Feature (Manual Instantiation)", () => {
             templateRepo,
             templateItemRepo,
             genericItemRepo,
-            priceObservationRepo
+            priceObservationRepo,
+            brandProductRepo
         );
     });
 

@@ -147,3 +147,14 @@ export async function deletePurchaseAction(purchaseId: string) {
         return { error: e.message };
     }
 }
+
+export async function updatePurchaseAction(purchaseId: string, updates: any) {
+    try {
+        const userId = await getUserId();
+        await purchaseService.updatePurchase(userId, purchaseId, updates);
+        revalidatePath(`/market/purchases/${purchaseId}`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}

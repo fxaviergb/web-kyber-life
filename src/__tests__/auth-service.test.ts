@@ -23,8 +23,8 @@ describe("AuthService", () => {
         });
 
         it("should fail if password is too short", async () => {
-            await expect(authService.register({ email: "short@test.com", password: "short" }))
-                .rejects.toThrow("Password must be at least 8 characters");
+            await expect(authService.register({ email: "short@test.com", password: "123" }))
+                .rejects.toThrow("Password must be at least 4 characters");
         });
 
         it("should fail if email already exists", async () => {

@@ -100,8 +100,10 @@ describe("Create Purchase Flow", () => {
         // T2 processed second -> Milk skipped (already in map).
         // Let's verify this behavior.
         expect(milkLine?.qty).toBe(2);
-        it("should apply recommendation from history", async () => {
-            // 1. Setup Data
+    });
+
+    it("should apply recommendation from history", async () => {
+        // 1. Setup Data
             const item = await productService.createGenericItem(userId, "Coffee", undefined, undefined);
             const brandA = await productService.createBrandProduct(userId, item.id, "Brand A", "500g", undefined, undefined, "USD");
             const supermarketId = uuidv4();
@@ -136,6 +138,5 @@ describe("Create Purchase Flow", () => {
             expect(coffeeLine).toBeDefined();
             // Should recommend Brand A
             expect(coffeeLine?.brandProductId).toBe(brandA.id);
-        });
     });
 });

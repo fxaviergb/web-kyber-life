@@ -7,6 +7,8 @@ import { PurchaseLine, BrandProduct, GenericItem } from "@/domain/entities";
 
 import { ProductSearch } from "../../items/product-search";
 
+import { PurchaseHeader } from "@/presentation/components/purchase/PurchaseHeader";
+
 interface PurchaseDetailPageProps {
     params: Promise<{ id: string }>;
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -39,7 +41,7 @@ export default async function PurchaseDetailPage({ params, searchParams }: Purch
     const { purchase, lines } = result;
 
     // Fetch missing data for UI
-    const supermarket = (await masterDataService.getSupermarkets(userId)).find(s => s.id === purchase.supermarketId);
+    const supermarkets = await masterDataService.getSupermarkets(userId);
     const units = await masterDataService.getUnits(userId);
 
     const categories = await masterDataService.getCategories(userId);
@@ -64,13 +66,12 @@ export default async function PurchaseDetailPage({ params, searchParams }: Purch
     return (
         <div className="p-4 md:p-8 space-y-6 pb-24">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-text-primary">Lista de Compras</h1>
-                    <p className="text-text-3">
-                        {supermarket ? `${supermarket.name} - ` : ''}
-                        {new Date(purchase.date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
-                    </p>
-                </div>
+                <PurchaseHeader 
+                    purchaseId={purchase.id}
+                    currentSupermarketId={purchase.supermarketId || null}
+                    currentDate={purchase.date}
+                    supermarkets={supermarkets}
+                />
 
                 <div className="flex gap-2">
                     <ProductSearch />

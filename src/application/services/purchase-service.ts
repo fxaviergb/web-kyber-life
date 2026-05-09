@@ -183,6 +183,38 @@ export class PurchaseService {
         return { purchase: p, lines };
     }
 
+    async updatePurchase(userId: UUID, purchaseId: UUID, updates: Partial<Purchase>): Promise<void> {
+        const p = await this.purchaseRepo.findById(purchaseId);
+        if (!p || p.ownerUserId !== userId) throw new Error("Purchase not found");
+
+        const prevSupermarketId = p.supermarketId;
+        const prevDate = p.date;
+
+        if (updates.supermarketId !== undefined) p.supermarketId = updates.supermarketId;
+        if (updates.date !== undefined) p.date = updates.date;
+        if (updates.totalPaid !== undefined) p.totalPaid = updates.totalPaid;
+        if (updates.subtotal !== undefined) p.subtotal = updates.subtotal;
+        if (updates.discount !== undefined) p.discount = updates.discount;
+        if (updates.tax !== undefined) p.tax = updates.tax;
+
+        p.updatedAt = new Date().toISOString();
+        await this.purchaseRepo.update(p);
+
+        // Retroactively update PriceObservations if purchase is completed
+        if (p.status === 'completed' && (updates.supermarketId !== undefined || updates.date !== undefined)) {
+            if (p.supermarketId) {
+                const allObservations = await this.observationRepo.findByOwnerId(userId);
+                const purchaseObservations = allObservations.filter(o => o.sourcePurchaseId === p.id);
+                for (const obs of purchaseObservations) {
+                    obs.supermarketId = p.supermarketId;
+                    obs.observedAt = p.date;
+                    obs.updatedAt = new Date().toISOString();
+                    await this.observationRepo.update(obs);
+                }
+            }
+        }
+    }
+
     // Update line...
     async updateLine(userId: UUID, lineId: UUID, updates: Partial<PurchaseLine>): Promise<void> {
         const line = await this.lineRepo.findById(lineId);
@@ -191,7 +223,9 @@ export class PurchaseService {
         const purchase = await this.purchaseRepo.findById(line.purchaseId);
         if (!purchase || purchase.ownerUserId !== userId) throw new Error("Access denied");
 
-        if (purchase.status === 'completed') throw new Error("Cannot edit completed purchase");
+        const prevChecked = line.checked;
+        const prevBrandProductId = line.brandProductId;
+        const prevUnitPrice = line.unitPrice;
 
         // Merge updates
         if (updates.checked !== undefined) line.checked = updates.checked;
@@ -202,7 +236,56 @@ export class PurchaseService {
         if (updates.note !== undefined) line.note = updates.note;
         if (updates.lineAmountOverride !== undefined) line.lineAmountOverride = updates.lineAmountOverride;
 
+        line.updatedAt = new Date().toISOString();
         await this.lineRepo.update(line);
+
+        // Retroactive PriceObservation sync for completed purchases
+        if (purchase.status === 'completed' && purchase.supermarketId) {
+            const priceChanged = updates.unitPrice !== undefined && updates.unitPrice !== prevUnitPrice;
+            const brandChanged = updates.brandProductId !== undefined && updates.brandProductId !== prevBrandProductId;
+            const becameChecked = updates.checked === true && !prevChecked;
+            const becameUnchecked = updates.checked === false && prevChecked;
+
+            const allObservations = await this.observationRepo.findByOwnerId(userId);
+            
+            if (becameUnchecked && prevBrandProductId) {
+                // Line unchecked, delete its observation
+                const existingObservation = allObservations.find(o => o.sourcePurchaseId === purchase.id && o.brandProductId === prevBrandProductId);
+                if (existingObservation) {
+                    await this.observationRepo.delete(existingObservation.id);
+                }
+            } else if ((priceChanged || brandChanged || becameChecked) && line.checked && line.brandProductId && line.unitPrice !== null) {
+                // Line is checked and has a price and brand, and something relevant changed.
+                let existingObservation;
+                if (prevBrandProductId) {
+                     existingObservation = allObservations.find(o => o.sourcePurchaseId === purchase.id && o.brandProductId === prevBrandProductId);
+                }
+
+                if (existingObservation) {
+                    // Update it
+                    existingObservation.brandProductId = line.brandProductId;
+                    existingObservation.unitPrice = line.unitPrice;
+                    existingObservation.updatedAt = new Date().toISOString();
+                    await this.observationRepo.update(existingObservation);
+                } else {
+                    // Create it
+                    const observation: PriceObservation = {
+                        id: uuidv4(),
+                        ownerUserId: userId,
+                        brandProductId: line.brandProductId,
+                        supermarketId: purchase.supermarketId,
+                        currencyCode: purchase.currencyCode,
+                        unitPrice: line.unitPrice,
+                        observedAt: purchase.date,
+                        sourcePurchaseId: purchase.id,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        isDeleted: false
+                    };
+                    await this.observationRepo.create(observation);
+                }
+            }
+        }
     }
 
     async finishPurchase(
@@ -273,7 +356,6 @@ export class PurchaseService {
     async addPurchaseLine(userId: UUID, purchaseId: UUID, genericItemId: UUID, unitPrice?: number): Promise<PurchaseLine> {
         const purchase = await this.purchaseRepo.findById(purchaseId);
         if (!purchase || purchase.ownerUserId !== userId) throw new Error("Purchase not found");
-        if (purchase.status === 'completed') throw new Error("Cannot edit completed purchase");
 
         // Check if already exists? PRD says nothing. Duplicate allows buying 2 packs separately? 
         // Logic: Usually we merge or add new line. Let's add new line.
@@ -316,7 +398,14 @@ export class PurchaseService {
         const purchase = await this.purchaseRepo.findById(line.purchaseId);
         if (!purchase || purchase.ownerUserId !== userId) throw new Error("Access denied");
 
-        if (purchase.status === 'completed') throw new Error("Cannot edit completed purchase");
+        if (purchase.status === 'completed' && line.brandProductId && line.checked) {
+            // Retroactively delete price observation
+            const allObservations = await this.observationRepo.findByOwnerId(userId);
+            const existingObservation = allObservations.find(o => o.sourcePurchaseId === purchase.id && o.brandProductId === line.brandProductId);
+            if (existingObservation) {
+                await this.observationRepo.delete(existingObservation.id);
+            }
+        }
 
         await this.lineRepo.delete(lineId);
     }
