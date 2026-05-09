@@ -9,11 +9,36 @@ jest.mock("@/app/actions/purchase", () => ({
     finishPurchaseAction: jest.fn().mockResolvedValue({ success: true }),
 }));
 
+jest.mock("next/navigation", () => ({
+    useRouter: () => ({
+        push: jest.fn(),
+        replace: jest.fn(),
+        prefetch: jest.fn(),
+        back: jest.fn(),
+        refresh: jest.fn(),
+    })
+}));
+
 jest.mock("@/presentation/components/purchase/PurchaseItemCard", () => ({
     PurchaseItemCard: ({ genericItem }: { genericItem: any }) => <div data-testid="purchase-item-card">{genericItem?.canonicalName}</div>
 }));
 jest.mock("@/presentation/components/purchase/ProductDetailModal", () => ({
     ProductDetailModal: () => <div data-testid="product-detail-modal">Detail Modal</div>
+}));
+jest.mock("@/presentation/components/purchase/UnplannedProductDialog", () => ({
+    UnplannedProductDialog: () => <div data-testid="unplanned-product-dialog">Unplanned Modal</div>
+}));
+jest.mock("@/presentation/components/purchase/FinishPurchaseDialog", () => ({
+    FinishPurchaseDialog: () => <div data-testid="finish-purchase-dialog">Finish Modal</div>
+}));
+jest.mock("@/presentation/components/purchase/PurchaseItemDetailSheet", () => ({
+    PurchaseItemDetailSheet: () => <div data-testid="purchase-item-detail-sheet">Detail Sheet</div>
+}));
+jest.mock("@/presentation/components/products/CreateBrandProductModal", () => ({
+    CreateBrandProductModal: () => <div data-testid="create-brand-product-modal">Brand Product Modal</div>
+}));
+jest.mock("@/components/ui/confirmation-modal", () => ({
+    ConfirmationModal: () => <div data-testid="confirmation-modal">Confirmation Modal</div>
 }));
 jest.mock("lucide-react", () => ({
     CheckCircle: () => null,
@@ -24,7 +49,9 @@ jest.mock("lucide-react", () => ({
     ShoppingBasket: () => null,
     Edit: () => null,
     Eye: () => null,
-    Package: () => null
+    Package: () => null,
+    ChevronDown: () => null,
+    ChevronRight: () => null
 }));
 
 describe("PurchaseChecklist", () => {

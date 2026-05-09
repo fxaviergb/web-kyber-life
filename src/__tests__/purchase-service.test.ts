@@ -73,7 +73,10 @@ describe("PurchaseService", () => {
             unitPrice: 10.50,
             checked: true,
             lineAmountOverride: null,
-            note: null
+            note: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isDeleted: false
         });
 
         // Finish
@@ -103,10 +106,70 @@ describe("PurchaseService", () => {
             unitPrice: null, // No Price
             checked: true,   // Checked!
             lineAmountOverride: null,
-            note: null
+            note: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isDeleted: false
         });
 
         await expect(purchaseService.finishPurchase(userId, purchase.id, 10))
             .rejects.toThrow(/missing price/);
+    });
+
+    it("should retroactively update price observations when editing a line in a completed purchase", async () => {
+        const purchase = await purchaseService.createPurchase(userId, supermarketId, "2024-01-01", []);
+        const brandProductId = uuidv4();
+        const lineId = uuidv4();
+        
+        await lineRepo.create({
+            id: lineId,
+            purchaseId: purchase.id,
+            genericItemId: uuidv4(),
+            brandProductId: brandProductId,
+            qty: 1,
+            unitId: null,
+            unitPrice: 10.50,
+            checked: true,
+            lineAmountOverride: null,
+            note: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isDeleted: false
+        });
+
+        await purchaseService.finishPurchase(userId, purchase.id, 10.50);
+
+        let obs = await obsRepo.findAll();
+        expect(obs).toHaveLength(1);
+        expect(obs[0].unitPrice).toBe(10.50);
+
+        // Edit price
+        await purchaseService.updateLine(userId, lineId, { unitPrice: 12.50 });
+        
+        obs = await obsRepo.findAll();
+        expect(obs).toHaveLength(1);
+        expect(obs[0].unitPrice).toBe(12.50);
+
+        // Edit brand
+        const newBrandId = uuidv4();
+        await purchaseService.updateLine(userId, lineId, { brandProductId: newBrandId });
+        
+        obs = await obsRepo.findAll();
+        expect(obs).toHaveLength(1);
+        expect(obs[0].brandProductId).toBe(newBrandId);
+
+        // Uncheck the line (should delete observation)
+        await purchaseService.updateLine(userId, lineId, { checked: false });
+        
+        obs = await obsRepo.findAll();
+        expect(obs).toHaveLength(0);
+
+        // Check the line back (should create observation)
+        await purchaseService.updateLine(userId, lineId, { checked: true });
+        
+        obs = await obsRepo.findAll();
+        expect(obs).toHaveLength(1);
+        expect(obs[0].brandProductId).toBe(newBrandId);
+        expect(obs[0].unitPrice).toBe(12.50);
     });
 });

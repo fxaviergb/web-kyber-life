@@ -2,6 +2,7 @@
 import { AnalyticsService } from "../analytics-service";
 import { Purchase, PurchaseLine, PriceObservation, GenericItem, BrandProduct, Category, Unit, Supermarket } from "@/domain/entities";
 import { InMemoryRepository } from "@/infrastructure/repositories/in-memory-repository";
+import { InMemoryGenericItemRepository, InMemoryBrandProductRepository } from "@/infrastructure/repositories/implementations";
 
 // Mock Repos with specific mock data
 class MockPurchaseRepo extends InMemoryRepository<Purchase> {
@@ -12,6 +13,15 @@ class MockPurchaseRepo extends InMemoryRepository<Purchase> {
 class MockLineRepo extends InMemoryRepository<PurchaseLine> {
     async findByPurchaseId(purchaseId: string): Promise<PurchaseLine[]> {
         return (await this.findAll()).filter(l => l.purchaseId === purchaseId);
+    }
+    async findByPurchaseIds(purchaseIds: string[]): Promise<PurchaseLine[]> {
+        return (await this.findAll()).filter(l => purchaseIds.includes(l.purchaseId));
+    }
+}
+
+class MockCategoryRepo extends InMemoryRepository<Category> {
+    async findAllBaseAndUser(userId: string): Promise<Category[]> {
+        return (await this.findAll()).filter(c => c.ownerUserId === userId || c.ownerUserId === 'system');
     }
 }
 class MockObservationRepo extends InMemoryRepository<PriceObservation> {
@@ -25,9 +35,9 @@ describe("AnalyticsService", () => {
     let purchaseRepo: MockPurchaseRepo;
     let lineRepo: MockLineRepo;
     let observationRepo: MockObservationRepo;
-    let genericItemRepo: InMemoryRepository<GenericItem>;
-    let brandProductRepo: InMemoryRepository<BrandProduct>;
-    let categoryRepo: InMemoryRepository<Category>;
+    let genericItemRepo: InMemoryGenericItemRepository;
+    let brandProductRepo: InMemoryBrandProductRepository;
+    let categoryRepo: MockCategoryRepo;
 
     // Mock System Time to 2024-07-01
     beforeAll(() => {
@@ -43,9 +53,9 @@ describe("AnalyticsService", () => {
         purchaseRepo = new MockPurchaseRepo();
         lineRepo = new MockLineRepo();
         observationRepo = new MockObservationRepo();
-        genericItemRepo = new InMemoryRepository<GenericItem>();
-        brandProductRepo = new InMemoryRepository<BrandProduct>();
-        categoryRepo = new InMemoryRepository<Category>();
+        genericItemRepo = new InMemoryGenericItemRepository();
+        brandProductRepo = new InMemoryBrandProductRepository();
+        categoryRepo = new MockCategoryRepo();
 
         service = new AnalyticsService(
             purchaseRepo as any,

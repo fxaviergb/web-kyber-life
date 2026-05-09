@@ -6,7 +6,7 @@ const mockPurchaseRepo = {
     create: jest.fn().mockImplementation(p => Promise.resolve(p)),
     findById: jest.fn(),
     update: jest.fn(),
-    findByOwnerId: jest.fn(),
+    findByOwnerId: jest.fn().mockResolvedValue([]),
     findRecent: jest.fn(),
     delete: jest.fn(),
     findAll: jest.fn()
@@ -31,11 +31,12 @@ const mockGenericItemRepo = {
     findById: jest.fn()
 };
 const mockObservationRepo = {
-    create: jest.fn()
+    create: jest.fn(),
+    findByOwnerId: jest.fn().mockResolvedValue([])
 };
 
 const mockBrandProductRepo = {
-    findByOwnerId: jest.fn()
+    findByOwnerId: jest.fn().mockResolvedValue([])
 };
 
 describe("Create Purchase Flow (Mocked)", () => {

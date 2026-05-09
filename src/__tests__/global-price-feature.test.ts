@@ -37,7 +37,8 @@ describe("Global Price Feature (Fresh File)", () => {
             templateRepo,
             templateItemRepo,
             genericItemRepo,
-            priceObservationRepo
+            priceObservationRepo,
+            brandProductRepo
         );
     });
 
