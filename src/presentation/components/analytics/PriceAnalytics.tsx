@@ -29,7 +29,7 @@ export function PriceAnalytics({ searchableProducts, searchableGenericItems }: P
         mode === "specific"
             ? searchableProducts.filter(p =>
                 p.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.presentation.toLowerCase().includes(searchTerm.toLowerCase())
+                (p.presentation && p.presentation.toLowerCase().includes(searchTerm.toLowerCase()))
             ).slice(0, 10).map(p => ({
                 id: p.id,
                 name: p.brand,

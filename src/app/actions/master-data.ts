@@ -49,7 +49,7 @@ export async function deleteSupermarketAction(id: string) {
     }
 }
 
-export async function updateSupermarketAction(id: string, formData: FormData) {
+export async function updateSupermarketAction(id: string, prevState: any, formData: FormData) {
     try {
         const userId = await getUserId();
         const name = formData.get("name") as string;

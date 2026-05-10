@@ -31,7 +31,7 @@ export function CategoryAnalytics({ data }: CategoryAnalyticsProps) {
                             <Tooltip
                                 contentStyle={{ backgroundColor: '#1E1E2E', borderColor: '#333', color: '#FFF' }}
                                 cursor={{ fill: 'transparent' }}
-                                formatter={(value: number) => [`$${value.toFixed(2)}`, "Gasto"]}
+                                formatter={(value: number | undefined) => [`$${(value || 0).toFixed(2)}`, "Gasto"]}
                             />
                             <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
                                 {data.map((entry, index) => (

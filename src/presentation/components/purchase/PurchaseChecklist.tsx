@@ -14,7 +14,8 @@ import { PurchaseItemCard } from "./PurchaseItemCard";
 import { PurchaseItemDetailSheet } from "./PurchaseItemDetailSheet";
 import { ProductDetailModal } from "./ProductDetailModal";
 import { Template } from "@/domain/entities";
-import { CheckCircle, Tag, Plus, Trash2, Search } from "lucide-react";
+import { CheckCircle, Tag, Plus, Trash2, Search, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { PurchaseCategoryGroup } from "./PurchaseCategoryGroup";
 
 export function PurchaseChecklist({
@@ -98,6 +99,17 @@ export function PurchaseChecklist({
                 setShowErrorAlert(true);
                 return; // Block update
             }
+            
+            const itemName = genericItemsMap[line!.genericItemId]?.canonicalName || "Item";
+            toast.success(`${itemName} comprado`, {
+                icon: <CheckCircle className="w-5 h-5 text-accent-success" />
+            });
+        } else if (updates.checked === false) {
+            const line = lines.find(l => l.id === lineId);
+            const itemName = genericItemsMap[line!.genericItemId]?.canonicalName || "Item";
+            toast(`${itemName} devuelto`, {
+                icon: <RotateCcw className="w-5 h-5 text-text-tertiary" />
+            });
         }
 
         setLines(prev => prev.map(l => l.id === lineId ? { ...l, ...updates } : l));
@@ -394,8 +406,10 @@ export function PurchaseChecklist({
                 templates={userTemplates}
                 existingItemIds={lines.map(l => l.genericItemId)}
                 initialSearch={searchQuery}
+                brandOptionsMap={brandOptionsMap}
+                units={units}
                 onSuccess={() => {
-                    window.location.reload();
+                    router.refresh();
                 }}
             />
 

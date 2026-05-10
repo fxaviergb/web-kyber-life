@@ -121,7 +121,10 @@ describe("Create Purchase Flow", () => {
                 unitPrice: 10,
                 checked: true,
                 lineAmountOverride: null,
-                note: null
+                note: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                isDeleted: false
             });
             await purchaseService.finishPurchase(userId, pastPurchase.id, 10);
 

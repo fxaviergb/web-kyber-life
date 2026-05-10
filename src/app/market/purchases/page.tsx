@@ -65,7 +65,7 @@ export default async function PurchasesListPage() {
                                                     <ShoppingCart className="w-5 h-5" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-semibold text-text-primary">{smMap.get(p.supermarketId) || "Supermercado"}</h3>
+                                                    <h3 className="font-semibold text-text-primary">{p.supermarketId ? smMap.get(p.supermarketId) : "Supermercado"}</h3>
                                                     <p className="text-sm text-text-tertiary flex items-center mt-1">
                                                         <Calendar className="w-3 h-3 mr-1" />
                                                         {new Date(p.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -106,7 +106,7 @@ export default async function PurchasesListPage() {
                                                     <ShoppingCart className="w-5 h-5" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-semibold text-text-primary">{smMap.get(p.supermarketId) || "Supermercado"}</h3>
+                                                    <h3 className="font-semibold text-text-primary">{p.supermarketId ? smMap.get(p.supermarketId) : "Supermercado"}</h3>
                                                     <p className="text-sm text-text-tertiary flex items-center mt-1">
                                                         <Calendar className="w-3 h-3 mr-1" />
                                                         {new Date(p.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}

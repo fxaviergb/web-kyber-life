@@ -54,6 +54,7 @@ export class SupabaseUserRepository implements IUserRepository {
         const updateData: any = {
             first_name: entity.firstName,
             last_name: entity.lastName,
+            phone: entity.phone,
             default_currency_code: entity.defaultCurrencyCode,
             image: entity.image,
             bio: entity.bio,
@@ -96,7 +97,7 @@ export class SupabaseUserRepository implements IUserRepository {
             image: row.image,
             firstName: row.first_name,
             lastName: row.last_name,
-            phone: null, // Schema didn't have phone, fix if needed
+            phone: row.phone,
             bio: row.bio,
             country: row.country,
             province: row.province,
