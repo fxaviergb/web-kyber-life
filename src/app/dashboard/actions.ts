@@ -6,9 +6,8 @@ import { cookies } from "next/headers";
 export async function getProductPriceHistory(genericId: string) {
     await initializeContainer();
 
-    // Debug: Force Supabase
     let userId: string | undefined;
-    if (true /* process.env.DATA_SOURCE === 'SUPABASE' */) {
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
         const { createClient } = await import("@/infrastructure/supabase/server");
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();

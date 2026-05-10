@@ -2,6 +2,7 @@
 
 import { authService, initializeContainer } from "@/infrastructure/container";
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 // Ensure container is initialized (seeding)
@@ -9,6 +10,22 @@ initializeContainer();
 
 // Schemas
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "@/lib/validators/auth-schemas";
+
+async function resolveBaseUrl() {
+    if (process.env.NEXT_PUBLIC_BASE_URL) {
+        return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, "");
+    }
+
+    const headerStore = await headers();
+    const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
+    const proto = headerStore.get("x-forwarded-proto") || (process.env.NODE_ENV === "production" ? "https" : "http");
+
+    if (host) {
+        return `${proto}://${host}`;
+    }
+
+    return "http://localhost:3000";
+}
 
 export async function loginAction(prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
@@ -149,11 +166,9 @@ export async function forgotPasswordAction(prevState: any, formData: FormData) {
         const supabase = await createClient();
 
         // Standard Supabase Reset Flow
-        // This will send an email. For localhost, use InBucket if configured, or check console if using local Supabase.
-        // KyberLife redirect path: /auth/reset-password (need to build this page logic to handle hash fragment if pure client, or code exchange)
-        // For simplicity:
+        const baseUrl = await resolveBaseUrl();
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/auth/reset-password/callback`,
+            redirectTo: `${baseUrl}/api/auth/restore/callback`,
         });
 
         if (error) return { error: error.message };
@@ -177,6 +192,22 @@ export async function resetPasswordAction(prevState: any, formData: FormData) {
     }
 
     const { token, password } = result.data;
+
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { error } = await supabase.auth.updateUser({ password });
+
+        if (error) {
+            return { error: error.message };
+        }
+
+        return { success: true };
+    }
+
+    if (!token) {
+        return { error: "Token requerido" };
+    }
 
     try {
         await authService.resetPassword(token, password);

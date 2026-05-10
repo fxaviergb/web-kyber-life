@@ -134,6 +134,8 @@ export async function initializeContainer() {
                     templateItemRepository,
                     "00000000-0000-0000-0000-000000000000"
                 );
+            } else if (dataSource === 'SUPABASE') {
+                console.log("Initializing in SUPABASE mode...");
             } else {
                 // MEMORY MODE (Default)
                 console.log("Initializing in MEMORY mode...");
@@ -181,9 +183,6 @@ export async function initializeContainer() {
                         console.log(`Default test user seeded: ${defaultUserEmail} / test with ID ${constantUserId}`);
                     }
 
-                    // Seed Mock Data consistently for MEMORY mode
-                    // Since mock items have static IDs ("s1", "i1"), this is safe/idempotent to run
-                    // even if the user already exists (e.g. persisted or restarted)
                     console.log("Seeding comprehensive mock data for MEMORY mode...");
                     const { loadMockData } = await import("./seed/mock-loader");
                     await loadMockData(
