@@ -42,3 +42,8 @@ yarn-error.log*
 next-env.d.ts
 
 .agent
+debug.ts
+test-update-phone.ts
+lint-results.txt
+ts_errors.txt
+supabase/.temp/

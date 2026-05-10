@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { Suspense, useActionState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { forgotPasswordAction } from "@/app/actions/auth";
 import { Loader2, ArrowLeft, Mail, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
 
 const initialState: any = {
     error: undefined,
@@ -15,9 +16,11 @@ const initialState: any = {
     message: ""
 };
 
-export default function RecoverPasswordPage() {
+function RecoverPasswordPageContent() {
     const [state, action, pending] = useActionState(forgotPasswordAction, initialState);
     const { toast } = useToast();
+    const searchParams = useSearchParams();
+    const callbackError = searchParams.get("error");
 
     useEffect(() => {
         if (state?.error) {
@@ -34,6 +37,16 @@ export default function RecoverPasswordPage() {
             });
         }
     }, [state, toast]);
+
+    useEffect(() => {
+        if (callbackError) {
+            toast({
+                variant: "destructive",
+                title: "No se pudo validar el enlace",
+                description: callbackError,
+            });
+        }
+    }, [callbackError, toast]);
 
     return (
         <div className="w-full">
@@ -101,5 +114,13 @@ export default function RecoverPasswordPage() {
                 </form>
             )}
         </div>
+    );
+}
+
+export default function RecoverPasswordPage() {
+    return (
+        <Suspense fallback={<div className="w-full" />}>
+            <RecoverPasswordPageContent />
+        </Suspense>
     );
 }
