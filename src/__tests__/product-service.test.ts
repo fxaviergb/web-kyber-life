@@ -1,17 +1,19 @@
 import { ProductService } from "@/application/services/product-service";
-import { InMemoryGenericItemRepository, InMemoryBrandProductRepository } from "@/infrastructure/repositories/implementations";
+import { InMemoryGenericItemRepository, InMemoryBrandProductRepository, InMemoryPriceObservationRepository } from "@/infrastructure/repositories/implementations";
 import { v4 as uuidv4 } from "uuid";
 
 describe("ProductService", () => {
     let service: ProductService;
     let genericRepo: InMemoryGenericItemRepository;
     let brandRepo: InMemoryBrandProductRepository;
+    let priceRepo: InMemoryPriceObservationRepository;
     const userId = uuidv4();
 
     beforeEach(() => {
         genericRepo = new InMemoryGenericItemRepository();
         brandRepo = new InMemoryBrandProductRepository();
-        service = new ProductService(genericRepo, brandRepo);
+        priceRepo = new InMemoryPriceObservationRepository();
+        service = new ProductService(genericRepo, brandRepo, priceRepo);
     });
 
     it("should create and find generic items", async () => {

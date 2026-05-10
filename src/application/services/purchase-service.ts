@@ -353,7 +353,7 @@ export class PurchaseService {
 
         return p;
     }
-    async addPurchaseLine(userId: UUID, purchaseId: UUID, genericItemId: UUID, unitPrice?: number): Promise<PurchaseLine> {
+    async addPurchaseLine(userId: UUID, purchaseId: UUID, genericItemId: UUID, unitPrice?: number, checked: boolean = false, qty?: number, unitId?: string, brandProductId?: string): Promise<PurchaseLine> {
         const purchase = await this.purchaseRepo.findById(purchaseId);
         if (!purchase || purchase.ownerUserId !== userId) throw new Error("Purchase not found");
 
@@ -370,11 +370,11 @@ export class PurchaseService {
             id: uuidv4(),
             purchaseId: purchase.id,
             genericItemId: genericItemId,
-            brandProductId: null,
-            qty: 1, // Default 1
-            unitId: null,
+            brandProductId: brandProductId ?? null,
+            qty: qty ?? 1, // Default 1
+            unitId: unitId ?? null,
             unitPrice: unitPrice ?? null,
-            checked: false,
+            checked: checked,
             lineAmountOverride: null,
             note: null,
             createdAt: new Date().toISOString(),

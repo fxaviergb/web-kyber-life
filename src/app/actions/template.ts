@@ -92,12 +92,12 @@ export async function addTemplateItemAction(templateId: string, prevState: any, 
                     userId,
                     item.id,
                     item.canonicalName,
-                    item.primaryCategoryId,
+                    item.primaryCategoryId || undefined,
                     item.secondaryCategoryIds,
-                    item.imageUrl,
+                    item.imageUrl || undefined,
                     item.aliases,
                     globalPrice,
-                    item.currencyCode
+                    item.currencyCode || undefined
                 );
             }
         }
@@ -176,9 +176,9 @@ export async function updateTemplateItemAction(templateId: string, itemId: strin
                     userId,
                     item.id,
                     result.data.name || item.canonicalName,
-                    result.data.categoryId,
+                    result.data.categoryId || item.primaryCategoryId || undefined,
                     item.secondaryCategoryIds,
-                    result.data.imageUrl,
+                    result.data.imageUrl || item.imageUrl || undefined,
                     item.aliases,
                     result.data.globalPrice,
                     result.data.currencyCode

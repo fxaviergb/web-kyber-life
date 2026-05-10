@@ -32,7 +32,7 @@ export function SupermarketDialog({ mode, supermarket, trigger, open: controlled
     const effectiveOpen = isControlled ? controlledOpen : open;
     const effectiveSetOpen = isControlled ? onOpenChange! : setOpen;
 
-    const action = mode === 'create' ? createSupermarketAction : updateSupermarketAction;
+    const action = mode === 'create' ? createSupermarketAction : updateSupermarketAction.bind(null, supermarket?.id || "");
     const [state, formAction, isPending] = useActionState(action, null);
 
     useEffect(() => {

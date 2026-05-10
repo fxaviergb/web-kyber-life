@@ -1,5 +1,5 @@
 import { ProductService } from "./product-service";
-import { IGenericItemRepository, IBrandProductRepository } from "@/domain/repositories";
+import { IGenericItemRepository, IBrandProductRepository, IPriceObservationRepository } from "@/domain/repositories";
 import { GenericItem, BrandProduct } from "@/domain/entities";
 
 jest.mock("uuid", () => ({
@@ -20,12 +20,14 @@ const mockBrandProductRepo = {
     create: jest.fn(),
 } as unknown as IBrandProductRepository;
 
+const mockPriceRepo = {} as unknown as IPriceObservationRepository;
+
 describe("ProductService", () => {
     let service: ProductService;
     const userId = "user-123";
 
     beforeEach(() => {
-        service = new ProductService(mockGenericItemRepo, mockBrandProductRepo);
+        service = new ProductService(mockGenericItemRepo, mockBrandProductRepo, mockPriceRepo);
         jest.clearAllMocks();
     });
 

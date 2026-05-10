@@ -61,9 +61,8 @@ export async function updateProfileAction(prevState: any, formData: FormData) {
     }
 
     try {
-        await userService.updateProfile({
+        const updatePayload: any = {
             userId: userId!,
-            defaultCurrencyCode,
             image,
             firstName,
             lastName,
@@ -79,8 +78,14 @@ export async function updateProfileAction(prevState: any, formData: FormData) {
             addressReference,
             postalCode,
             socials
-        });
-        revalidatePath("/", "layout");
+        };
+        if (defaultCurrencyCode !== undefined) {
+            updatePayload.defaultCurrencyCode = defaultCurrencyCode;
+        }
+
+        await userService.updateProfile(updatePayload);
+        revalidatePath("/profile");
+        revalidatePath("/");
         return { success: true, message: "Perfil actualizado" };
     } catch (error: any) {
         return { error: error.message };

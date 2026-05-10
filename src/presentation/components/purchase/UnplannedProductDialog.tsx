@@ -12,11 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Category, Template, GenericItem } from "@/domain/entities";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Category, Template, GenericItem, Unit, BrandProduct } from "@/domain/entities";
 import { createGenericItemAction, searchGenericItemsAction, getGenericItemsAction } from "@/app/actions/product";
 import { addPurchaseLineAction } from "@/app/actions/purchase";
 import { addTemplateItemAction } from "@/app/actions/template";
-import { Loader2, Plus, Search, Tag, Eye } from "lucide-react";
+import { Loader2, Plus, Search, Tag, Eye, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface UnplannedProductDialogProps {
     open: boolean;
@@ -26,6 +29,8 @@ interface UnplannedProductDialogProps {
     templates: Template[];
     existingItemIds: string[];
     initialSearch?: string;
+    brandOptionsMap: Record<string, BrandProduct[]>;
+    units: Unit[];
     onSuccess: () => void;
 }
 
@@ -37,8 +42,11 @@ export function UnplannedProductDialog({
     templates,
     existingItemIds,
     initialSearch,
+    brandOptionsMap,
+    units,
     onSuccess
 }: UnplannedProductDialogProps) {
+    const router = useRouter();
     const [step, setStep] = useState<"search" | "create" | "confirm_existing" | "template">("search");
 
     // Search State
@@ -56,6 +64,22 @@ export function UnplannedProductDialog({
     // Shared State
     const [loading, setLoading] = useState(false);
     const [createdGenericId, setCreatedGenericId] = useState<string | null>(null);
+    const [markAsBought, setMarkAsBought] = useState(true);
+    
+    // Additional Details State
+    const [qty, setQty] = useState("1");
+    const [unitId, setUnitId] = useState("");
+    const [brandId, setBrandId] = useState(""); // empty string means Generic
+    const [prices, setPrices] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (!unitId && units.length > 0) {
+            const undUnit = units.find(u => u.symbol?.toLowerCase() === 'und' || u.name.toLowerCase() === 'unidad' || u.name.toLowerCase() === 'unidades');
+            if (undUnit) {
+                setUnitId(undUnit.id);
+            }
+        }
+    }, [units, unitId]);
 
     // Search Effect with Debounce
     useEffect(() => {
@@ -98,16 +122,40 @@ export function UnplannedProductDialog({
 
     async function handleSelectExisting(item: GenericItem) {
         setLoading(true);
+
+        const itemPriceStr = prices[item.id];
+        let parsedPrice: number | undefined;
+        if (itemPriceStr !== undefined && itemPriceStr !== "") {
+            parsedPrice = parseFloat(itemPriceStr);
+        } else {
+            parsedPrice = item.globalPrice || undefined;
+        }
+
+        if (markAsBought && (!parsedPrice || parsedPrice <= 0)) {
+            toast.error("Ingresa el precio antes de marcar como comprado.");
+            setLoading(false);
+            return;
+        }
+
         const newItemId = item.id;
         setCreatedGenericId(newItemId);
 
-        const parsedPrice = item.globalPrice || undefined;
+        const parsedQty = parseFloat(qty);
+        const finalQty = !isNaN(parsedQty) ? parsedQty : 1;
+        const finalUnitId = unitId || undefined;
+        const finalBrandId = brandId || undefined;
 
-        const resAdd = await addPurchaseLineAction(purchaseId, newItemId, parsedPrice);
+        const resAdd = await addPurchaseLineAction(purchaseId, newItemId, parsedPrice, markAsBought, finalQty, finalUnitId, finalBrandId);
         if (resAdd?.error) {
             alert(resAdd.error);
             setLoading(false);
             return;
+        }
+
+        if (markAsBought) {
+            toast.success(`${item.canonicalName} comprado`, {
+                icon: <CheckCircle className="w-5 h-5 text-accent-success" />
+            });
         }
 
         setLoading(false);
@@ -154,11 +202,28 @@ export function UnplannedProductDialog({
         setCreatedGenericId(newItemId);
 
         const parsedPrice = price ? parseFloat(price) : undefined;
-        const resAdd = await addPurchaseLineAction(purchaseId, newItemId, parsedPrice);
+        if (markAsBought && (!parsedPrice || parsedPrice <= 0)) {
+            toast.error("Ingresa el precio antes de marcar como comprado.");
+            setLoading(false);
+            return;
+        }
+
+        const parsedQty = parseFloat(qty);
+        const finalQty = !isNaN(parsedQty) ? parsedQty : 1;
+        const finalUnitId = unitId || undefined;
+        const finalBrandId = brandId || undefined;
+
+        const resAdd = await addPurchaseLineAction(purchaseId, newItemId, parsedPrice, markAsBought, finalQty, finalUnitId, finalBrandId);
         if (resAdd?.error) {
             alert(resAdd.error);
             setLoading(false);
             return;
+        }
+
+        if (markAsBought) {
+            toast.success(`${name} comprado`, {
+                icon: <CheckCircle className="w-5 h-5 text-accent-success" />
+            });
         }
 
         setLoading(false);
@@ -199,6 +264,10 @@ export function UnplannedProductDialog({
             setCreatedGenericId(null);
             setSelectedExistingItem(null);
             setDuplicateMatch(null);
+            setMarkAsBought(true);
+            setQty("1");
+            setUnitId("");
+            setBrandId("");
         }, 200);
     }
 
@@ -228,6 +297,15 @@ export function UnplannedProductDialog({
                         {searching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-text-3" />}
                     </div>
 
+                    <div className="flex items-center space-x-2 pb-2">
+                        <Checkbox 
+                            id="markAsBoughtSearch" 
+                            checked={markAsBought} 
+                            onCheckedChange={(c) => setMarkAsBought(c as boolean)} 
+                        />
+                        <Label htmlFor="markAsBoughtSearch" className="text-text-2 cursor-pointer font-medium text-sm">Marcar como comprado</Label>
+                    </div>
+
                     <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">
                         {!searchQuery.trim() && searchResults.length === 0 && (
                             <Button
@@ -240,28 +318,90 @@ export function UnplannedProductDialog({
                             </Button>
                         )}
 
-
                         {searchResults
                             .filter(item => !existingItemIds.includes(item.id))
-                            .map(item => (
-                                <Button
-                                    key={item.id}
-                                    variant="ghost"
-                                    className="w-full justify-between font-normal group hover:bg-glass text-text-1 h-auto py-3"
-                                    onClick={() => handleSelectExisting(item)}
-                                    disabled={loading}
-                                >
-                                    <span className="flex items-center">
-                                        <Tag className="w-4 h-4 mr-2 text-text-3 group-hover:text-accent-violet shrink-0" />
-                                        <span className="truncate">{item.canonicalName}</span>
-                                    </span>
-                                    {item.globalPrice && (
-                                        <span className="text-xs font-mono text-accent-mint bg-accent-mint/10 px-2 py-0.5 rounded ml-2 shrink-0">
-                                            ${item.globalPrice.toFixed(2)}
+                            .map(item => {
+                                const brandsForItem = brandOptionsMap[item.id] || [];
+                                return (
+                                <div key={item.id} className="border border-border-base rounded-xl p-3 bg-bg-secondary hover:border-accent-violet/30 transition-colors mb-2 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center text-text-1 font-medium">
+                                            <Tag className="w-4 h-4 mr-2 text-accent-violet shrink-0" />
+                                            <span className="truncate">{item.canonicalName}</span>
                                         </span>
-                                    )}
-                                </Button>
-                            ))}
+                                        {item.globalPrice && (
+                                            <span className="text-xs font-mono text-accent-mint bg-accent-mint/10 px-2 py-0.5 rounded ml-2 shrink-0">
+                                                ${item.globalPrice.toFixed(2)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid gap-1.5">
+                                            <Label className="text-xs text-text-3">Cantidad</Label>
+                                            <Input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                defaultValue="1"
+                                                className="h-8 text-sm bg-bg-1"
+                                                onChange={(e) => setQty(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="grid gap-1.5">
+                                            <Label className="text-xs text-text-3">Unidad</Label>
+                                            <select
+                                                className="h-8 w-full rounded-md border border-border-base bg-bg-1 px-2 text-sm text-text-1 focus:outline-none focus:ring-1 focus:ring-accent-violet"
+                                                onChange={(e) => setUnitId(e.target.value)}
+                                            >
+                                                <option value="">--</option>
+                                                {units.map(u => (
+                                                    <option key={u.id} value={u.id}>
+                                                        {u.symbol || u.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid gap-1.5">
+                                            <Label className="text-xs text-text-3">Marca / Presentación</Label>
+                                            <select
+                                                className="h-8 w-full rounded-md border border-border-base bg-bg-1 px-2 text-sm text-text-1 focus:outline-none focus:ring-1 focus:ring-accent-violet"
+                                                onChange={(e) => setBrandId(e.target.value)}
+                                            >
+                                                <option value="">Genérico</option>
+                                                {brandsForItem.map(b => (
+                                                    <option key={b.id} value={b.id}>
+                                                        {b.brand} {b.presentation}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="grid gap-1.5">
+                                            <Label className="text-xs text-text-3">Precio {markAsBought ? "*" : "(Opcional)"}</Label>
+                                            <div className="relative">
+                                                <span className="absolute left-2 top-1.5 text-text-3 text-sm">$</span>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    className="h-8 pl-6 text-sm bg-bg-1"
+                                                    value={prices[item.id] !== undefined ? prices[item.id] : (item.globalPrice || "")}
+                                                    onChange={(e) => setPrices(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        className="w-full bg-accent-violet/10 text-accent-violet hover:bg-accent-violet hover:text-white h-8 text-xs mt-1"
+                                        onClick={() => handleSelectExisting(item)}
+                                        disabled={loading}
+                                    >
+                                        <Plus className="w-3 h-3 mr-1" />
+                                        Agregar a la lista
+                                    </Button>
+                                </div>
+                            )})}
 
                         {searchQuery.trim() && (
                             <Button
@@ -324,6 +464,43 @@ export function UnplannedProductDialog({
                             ))}
                         </select>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-text-1">Cantidad</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                value={qty}
+                                onChange={(e) => setQty(e.target.value)}
+                                className="bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-text-1">Unidad</Label>
+                            <select
+                                className="w-full h-10 rounded-md border border-input bg-bg-0 px-3 py-2 text-sm text-text-1 focus:ring-2 focus:ring-accent-violet outline-none"
+                                value={unitId}
+                                onChange={(e) => setUnitId(e.target.value)}
+                            >
+                                <option value="">--</option>
+                                {units.map(u => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.symbol || u.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 pt-2">
+                        <Checkbox 
+                            id="markAsBoughtCreate" 
+                            checked={markAsBought} 
+                            onCheckedChange={(c) => setMarkAsBought(c as boolean)} 
+                        />
+                        <Label htmlFor="markAsBoughtCreate" className="text-text-2 cursor-pointer font-medium text-sm">Marcar como comprado</Label>
+                    </div>
                 </div>
             )}
 
@@ -333,6 +510,69 @@ export function UnplannedProductDialog({
                         <p className="text-text-1 text-sm">
                             Este producto ya existe en tu catálogo. ¿Quieres usar el existente o crear uno nuevo de todos modos?
                         </p>
+                    </div>
+
+                    {/* Show extra fields before confirmation so user can edit qty/brand/unit for the existing item */}
+                    <div className="grid gap-4 bg-bg-secondary p-4 rounded-xl border border-border-base">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label className="text-text-2 text-xs uppercase tracking-wider">Marca / Presentación</Label>
+                                <select
+                                    className="flex h-10 w-full rounded-md border border-border-base bg-bg-1 px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-accent-violet"
+                                    value={brandId}
+                                    onChange={e => setBrandId(e.target.value)}
+                                >
+                                    <option value="">Genérico</option>
+                                    {(brandOptionsMap[duplicateMatch.id] || []).map(b => (
+                                        <option key={b.id} value={b.id}>
+                                            {b.brand} {b.presentation}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label className="text-text-2 text-xs uppercase tracking-wider">Precio {markAsBought ? "*" : "(Opcional)"}</Label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-text-3">$</span>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="pl-7 bg-bg-1 border-border-base"
+                                        value={prices[duplicateMatch.id] !== undefined ? prices[duplicateMatch.id] : (duplicateMatch.globalPrice || "")}
+                                        onChange={(e) => setPrices(prev => ({ ...prev, [duplicateMatch.id]: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label className="text-text-2 text-xs uppercase tracking-wider">Cantidad</Label>
+                                <Input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    value={qty}
+                                    onChange={(e) => setQty(e.target.value)}
+                                    className="bg-bg-1 border-border-base"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label className="text-text-2 text-xs uppercase tracking-wider">Unidad</Label>
+                                <select
+                                    className="flex h-10 w-full rounded-md border border-border-base bg-bg-1 px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-accent-violet"
+                                    value={unitId}
+                                    onChange={(e) => setUnitId(e.target.value)}
+                                >
+                                    <option value="">--</option>
+                                    {units.map(u => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.symbol || u.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid gap-3">

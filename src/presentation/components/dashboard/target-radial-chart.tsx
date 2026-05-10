@@ -45,7 +45,7 @@ export function TargetRadialChart({ current, target }: TargetRadialChartProps) {
                             dataKey="value"
                             stroke="none"
                         >
-                            <Cell key="progress" fill="#5b4dff" cornerRadius={10} />
+                            <Cell key="progress" fill="#5b4dff" />
                             <Cell key="remaining" fill="#F3F4F6" />
                         </Pie>
                     </PieChart>

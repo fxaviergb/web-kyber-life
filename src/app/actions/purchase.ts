@@ -115,10 +115,10 @@ export async function finishPurchaseAction(purchaseId: string, formData: FormDat
     redirect(`/dashboard`);
 }
 
-export async function addPurchaseLineAction(purchaseId: string, genericItemId: string, unitPrice?: number) {
+export async function addPurchaseLineAction(purchaseId: string, genericItemId: string, unitPrice?: number, checked: boolean = false, qty?: number, unitId?: string, brandProductId?: string) {
     try {
         const userId = await getUserId();
-        await purchaseService.addPurchaseLine(userId, purchaseId, genericItemId, unitPrice);
+        await purchaseService.addPurchaseLine(userId, purchaseId, genericItemId, unitPrice, checked, qty, unitId, brandProductId);
         revalidatePath(`/market/purchases/${purchaseId}`);
         return { success: true };
     } catch (e: any) {

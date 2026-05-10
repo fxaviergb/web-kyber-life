@@ -103,7 +103,7 @@ export function PurchaseCompletedView({
 
     const openLineEdit = (line: PurchaseLine) => {
         setLineForm({
-            qty: line.qty.toString(),
+            qty: line.qty?.toString() || "",
             unitPrice: line.unitPrice?.toString() || "",
             checked: line.checked
         });
