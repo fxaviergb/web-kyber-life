@@ -1,0 +1,60 @@
+import { Suspense } from "react";
+import { TransactionTimeline } from "@/presentation/financial/components/TransactionTimeline";
+import { TransactionFilters } from "@/presentation/financial/components/TransactionFilters";
+import { searchTransactionsAction } from "@/app/actions/financial-transactions";
+import { Button } from "@/components/ui/button";
+import { Plus, Inbox as InboxIcon } from "lucide-react";
+import Link from "next/link";
+
+export default async function TransactionsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+    const params = await searchParams;
+    const query = typeof params.query === 'string' ? params.query : undefined;
+    const status = typeof params.status === 'string' ? params.status : undefined;
+    const type = typeof params.type === 'string' ? params.type : undefined;
+
+    const initialResult = await searchTransactionsAction({ query, status, type });
+
+    const initialTransactions = initialResult.success && initialResult.data ? initialResult.data : [];
+
+    return (
+        <div className="flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
+                    <p className="text-muted-foreground mt-2">
+                        Review and manage your financial transactions.
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" asChild>
+                        <Link href="/financial/scans">
+                            <InboxIcon className="mr-2 h-4 w-4" />
+                            Scans Inbox
+                        </Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/financial/transactions/new">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Transaction
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+
+            <Suspense fallback={<div className="h-10 animate-pulse bg-muted rounded-md" />}>
+                <TransactionFilters />
+            </Suspense>
+
+            <Suspense fallback={<div className="h-40 flex items-center justify-center">Loading transactions...</div>}>
+                <TransactionTimeline
+                    key={JSON.stringify(params)}
+                    initialTransactions={initialTransactions}
+                />
+            </Suspense>
+        </div>
+    );
+}

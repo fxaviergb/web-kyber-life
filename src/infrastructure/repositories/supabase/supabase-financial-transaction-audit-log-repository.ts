@@ -74,7 +74,8 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
             previousState: row.previous_state,
             newState: row.new_state,
             createdAt: row.created_at,
-            updatedAt: row.updated_at
+            updatedAt: row.updated_at,
+            isDeleted: false,
         };
     }
 }

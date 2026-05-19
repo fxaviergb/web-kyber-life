@@ -1,11 +1,33 @@
 import { InMemoryRepository } from "./in-memory-repository";
-import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog } from "@/domain/entities";
-import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository } from "@/domain/repositories";
+import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution } from "@/domain/entities";
+import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionRepository } from "@/domain/repositories";
 import { UUID } from "@/domain/core";
 
 export class InMemoryFinancialTransactionAuditLogRepository extends InMemoryRepository<FinancialTransactionAuditLog> implements IFinancialTransactionAuditLogRepository {
     async findByTransactionId(transactionId: UUID): Promise<FinancialTransactionAuditLog[]> {
         return (await this.findAll()).filter(l => l.transactionId === transactionId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }
+}
+
+export class InMemoryFinancialScannerTransactionRepository extends InMemoryRepository<FinancialScannerTransaction> implements IFinancialScannerTransactionRepository {
+    async findUnprocessedByOwnerId(userId: UUID): Promise<FinancialScannerTransaction[]> {
+        return (await this.findAll()).filter(t => t.ownerUserId === userId && !t.isProcessed);
+    }
+}
+
+export class InMemoryFinancialScanExecutionRepository extends InMemoryRepository<FinancialScanExecution> implements IFinancialScanExecutionRepository {
+    async findByOwnerId(userId: UUID): Promise<FinancialScanExecution[]> {
+        return (await this.findAll()).filter(e => e.ownerUserId === userId);
+    }
+    async findLatestBySource(userId: UUID, source: string): Promise<FinancialScanExecution | null> {
+        const results = (await this.findByOwnerId(userId)).filter(e => e.source === source);
+        return results.length > 0 ? results[0] : null;
+    }
+}
+
+export class InMemoryFinancialInstitutionRepository extends InMemoryRepository<FinancialInstitution> implements IFinancialInstitutionRepository {
+    async findByOwnerId(userId: UUID): Promise<FinancialInstitution[]> {
+        return (await this.findAll()).filter(i => i.ownerUserId === userId);
     }
 }
 

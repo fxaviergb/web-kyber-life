@@ -13,12 +13,16 @@ export class FinancialScanService {
     ) {}
 
     async startScan(dto: StartScanDTO): Promise<FinancialScanExecution> {
+        const now = new Date().toISOString();
         const execution: FinancialScanExecution = {
             id: crypto.randomUUID(),
             ownerUserId: dto.ownerUserId,
             status: 'PROCESSING',
             source: dto.source,
-            startedAt: new Date().toISOString(),
+            startedAt: now,
+            createdAt: now,
+            updatedAt: now,
+            isDeleted: false,
         };
 
         return this.scanRepo.create(execution);

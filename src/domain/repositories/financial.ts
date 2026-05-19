@@ -3,6 +3,7 @@ import { IRepository } from "./index";
 import {
     FinancialTransaction,
     FinancialScanExecution,
+    FinancialScannerTransaction,
     FinancialInstitution,
     FinancialAccount,
     FinancialCategory,
@@ -19,6 +20,11 @@ export interface IFinancialScanExecutionRepository extends IRepository<Financial
     findByOwnerId(userId: UUID): Promise<FinancialScanExecution[]>;
     findLatestBySource(userId: UUID, source: string): Promise<FinancialScanExecution | null>;
 }
+
+export interface IFinancialScannerTransactionRepository extends IRepository<FinancialScannerTransaction> {
+    findUnprocessedByOwnerId(userId: UUID): Promise<FinancialScannerTransaction[]>;
+}
+
 
 export interface IFinancialInstitutionRepository extends IRepository<FinancialInstitution> {
     findByOwnerId(userId: UUID): Promise<FinancialInstitution[]>;

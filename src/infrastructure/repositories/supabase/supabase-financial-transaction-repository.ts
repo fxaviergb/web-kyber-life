@@ -7,7 +7,6 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
     async create(entity: FinancialTransaction): Promise<FinancialTransaction> {
         const supabase = await createClient();
         
-        // Convert camelCase to snake_case for DB
         const insertData = {
             id: entity.id,
             owner_user_id: entity.ownerUserId,
@@ -21,10 +20,8 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
             category_id: entity.categoryId,
             tags: entity.tags || [],
             notes: entity.notes,
-            reference_number: entity.referenceNumber,
             possible_duplicate: entity.possibleDuplicate,
-            duplicate_of_id: entity.duplicateOfId,
-            scan_execution_id: entity.scanExecutionId,
+            execution_id: entity.executionId,
             origin_stats: entity.originStats,
             created_at: entity.createdAt,
             updated_at: entity.updatedAt
@@ -71,9 +68,7 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
             category_id: entity.categoryId,
             tags: entity.tags || [],
             notes: entity.notes,
-            reference_number: entity.referenceNumber,
             possible_duplicate: entity.possibleDuplicate,
-            duplicate_of_id: entity.duplicateOfId,
             updated_at: new Date().toISOString()
         };
 
@@ -163,13 +158,12 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
             categoryId: row.category_id,
             tags: row.tags || [],
             notes: row.notes,
-            referenceNumber: row.reference_number,
             possibleDuplicate: row.possible_duplicate,
-            duplicateOfId: row.duplicate_of_id,
-            scanExecutionId: row.scan_execution_id,
+            executionId: row.execution_id,
             originStats: row.origin_stats,
             createdAt: row.created_at,
-            updatedAt: row.updated_at
+            updatedAt: row.updated_at,
+            isDeleted: false,
         };
     }
 }
