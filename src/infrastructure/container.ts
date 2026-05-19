@@ -10,7 +10,9 @@ import {
     InMemoryPurchaseRepository,
     InMemoryPurchaseLineRepository,
     InMemoryPriceObservationRepository,
-    InMemoryPasswordResetTokenRepository
+    InMemoryPasswordResetTokenRepository,
+    InMemoryFinancialTransactionRepository,
+    InMemoryFinancialTransactionAuditLogRepository
 } from "./repositories/implementations";
 import { seedRepositories } from "./seed/seed-data";
 import { randomUUID } from "crypto";
@@ -27,7 +29,9 @@ import {
     SupabaseTemplateItemRepository,
     SupabasePurchaseRepository,
     SupabasePurchaseLineRepository,
-    SupabasePriceObservationRepository
+    SupabasePriceObservationRepository,
+    SupabaseFinancialTransactionRepository,
+    SupabaseFinancialTransactionAuditLogRepository
 } from "./repositories/supabase"; // Need to create this index or import individually
 
 // ... Previous imports ...
@@ -64,6 +68,8 @@ export const templateItemRepository = singleton("templateItemRepo_v2", () => isS
 export const purchaseRepository = singleton("purchaseRepo", () => isSupabase ? new SupabasePurchaseRepository() : new InMemoryPurchaseRepository());
 export const purchaseLineRepository = singleton("purchaseLineRepo_v3", () => isSupabase ? new SupabasePurchaseLineRepository() : new InMemoryPurchaseLineRepository());
 export const priceObservationRepository = singleton("priceObservationRepo", () => isSupabase ? new SupabasePriceObservationRepository() : new InMemoryPriceObservationRepository());
+export const financialTransactionRepository = singleton("financialTransactionRepo", () => isSupabase ? new SupabaseFinancialTransactionRepository() : new InMemoryFinancialTransactionRepository());
+export const financialTransactionAuditLogRepository = singleton("financialTransactionAuditLogRepo", () => isSupabase ? new SupabaseFinancialTransactionAuditLogRepository() : new InMemoryFinancialTransactionAuditLogRepository());
 
 // Services
 import { AuthService } from "@/application/services/auth-service";
@@ -73,9 +79,11 @@ import { TemplateService } from "@/application/services/template-service";
 import { PurchaseService } from "@/application/services/purchase-service";
 import { AnalyticsService } from "@/application/services/analytics-service";
 import { UserService } from "@/application/services/user-service";
+import { FinancialTransactionService } from "@/application/services/financial-transaction-service";
 
 export const authService = new AuthService(userRepository, passwordResetTokenRepository);
 export const userService = new UserService(userRepository);
+export const financialTransactionService = new FinancialTransactionService(financialTransactionRepository, financialTransactionAuditLogRepository);
 export const masterDataService = new MasterDataService(supermarketRepository, categoryRepository, unitRepository);
 export const productService = new ProductService(genericItemRepository, brandProductRepository, priceObservationRepository);
 export const templateService = new TemplateService(templateRepository, templateItemRepository);

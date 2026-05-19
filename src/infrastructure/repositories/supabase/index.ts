@@ -10,3 +10,5 @@ export * from './supabase-template-item-repository';
 export * from './supabase-purchase-repository';
 export * from './supabase-purchase-line-repository';
 export * from './supabase-price-observation-repository';
+export * from './supabase-financial-transaction-repository';
+export * from './supabase-financial-transaction-audit-log-repository';

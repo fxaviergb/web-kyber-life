@@ -1,7 +1,35 @@
 import { InMemoryRepository } from "./in-memory-repository";
-import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken } from "@/domain/entities";
-import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository } from "@/domain/repositories";
+import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog } from "@/domain/entities";
+import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository } from "@/domain/repositories";
 import { UUID } from "@/domain/core";
+
+export class InMemoryFinancialTransactionAuditLogRepository extends InMemoryRepository<FinancialTransactionAuditLog> implements IFinancialTransactionAuditLogRepository {
+    async findByTransactionId(transactionId: UUID): Promise<FinancialTransactionAuditLog[]> {
+        return (await this.findAll()).filter(l => l.transactionId === transactionId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }
+}
+
+export class InMemoryFinancialTransactionRepository extends InMemoryRepository<FinancialTransaction> implements IFinancialTransactionRepository {
+    async findByOwnerId(userId: UUID): Promise<FinancialTransaction[]> {
+        return (await this.findAll()).filter(t => t.ownerUserId === userId).sort((a, b) => b.date.localeCompare(a.date));
+    }
+    async findRecent(userId: UUID, limit: number): Promise<FinancialTransaction[]> {
+        return (await this.findByOwnerId(userId)).slice(0, limit);
+    }
+    async search(userId: UUID, query: string, filters?: any): Promise<FinancialTransaction[]> {
+        let results = await this.findByOwnerId(userId);
+        if (query) {
+            results = results.filter(t => t.merchant?.toLowerCase().includes(query.toLowerCase()));
+        }
+        if (filters?.status) {
+            results = results.filter(t => t.status === filters.status);
+        }
+        if (filters?.type) {
+            results = results.filter(t => t.type === filters.type);
+        }
+        return results;
+    }
+}
 
 export class InMemoryUserRepository extends InMemoryRepository<User> implements IUserRepository {
     async findByEmail(email: string): Promise<User | null> {
