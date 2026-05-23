@@ -1,19 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyChart } from "./MonthlyChart";
 import { TypeBreakdownChart } from "./TypeBreakdownChart";
-import {
-    getFinancialKPIsAction,
-    getMonthlyBreakdownAction,
-    getTypeBreakdownAction,
-    getRecentTransactionsAction,
-} from "@/app/actions/financial-dashboard";
-import { FinancialKPIs, MonthlyBreakdown, TypeBreakdown } from "@/application/services/financial-dashboard-service";
-import { FinancialTransaction } from "@/domain/entities/financial";
-import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight } from "lucide-react";
+import { useFinancialDashboardOffline } from "../hooks/useFinancialDashboardOffline";
+import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -22,33 +14,10 @@ function formatCurrency(value: number): string {
 }
 
 export function FinancialDashboard() {
-    const [kpis, setKpis] = useState<FinancialKPIs | null>(null);
-    const [monthly, setMonthly] = useState<MonthlyBreakdown[]>([]);
-    const [typeBreakdown, setTypeBreakdown] = useState<TypeBreakdown[]>([]);
-    const [recent, setRecent] = useState<FinancialTransaction[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { kpis, monthly, typeBreakdown, recent, loading, isStale, error, refresh } =
+        useFinancialDashboardOffline();
 
-    useEffect(() => {
-        async function loadDashboard() {
-            setLoading(true);
-            const [kpiRes, monthlyRes, typeRes, recentRes] = await Promise.all([
-                getFinancialKPIsAction(),
-                getMonthlyBreakdownAction(6),
-                getTypeBreakdownAction(),
-                getRecentTransactionsAction(5),
-            ]);
-
-            if (kpiRes.success && kpiRes.data) setKpis(kpiRes.data);
-            if (monthlyRes.success && monthlyRes.data) setMonthly(monthlyRes.data);
-            if (typeRes.success && typeRes.data) setTypeBreakdown(typeRes.data);
-            if (recentRes.success && recentRes.data) setRecent(recentRes.data);
-            setLoading(false);
-        }
-
-        loadDashboard();
-    }, []);
-
-    if (loading) {
+    if (loading && !kpis) {
         return (
             <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -66,6 +35,25 @@ export function FinancialDashboard() {
 
     return (
         <div className="space-y-6">
+            {/* Stale/offline banner */}
+            {isStale && (
+                <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2.5 text-sm text-yellow-400">
+                    <WifiOff className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">
+                        {error ?? "Showing cached data. Refreshing in the background…"}
+                    </span>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={refresh}
+                        disabled={loading}
+                        className="text-yellow-400 hover:text-yellow-300"
+                    >
+                        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                    </Button>
+                </div>
+            )}
+
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard

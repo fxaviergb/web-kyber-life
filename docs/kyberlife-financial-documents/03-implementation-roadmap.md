@@ -6,7 +6,7 @@
 ### Objectives
 - Create domain entities
 - Create repositories
-- Create database schema
+- Create database schema (REUSE SUPABASE DATABASES)
 - Create feature flags
 
 ### Deliverables

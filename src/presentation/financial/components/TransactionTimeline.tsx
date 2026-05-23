@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FinancialTransaction } from "@/domain/entities/financial";
 import { TransactionCard } from "./TransactionCard";
+import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
+import { WifiOff } from "lucide-react";
 
 interface TransactionTimelineProps {
     initialTransactions: FinancialTransaction[];
@@ -36,11 +38,47 @@ function groupTransactionsByDate(transactions: FinancialTransaction[]) {
 }
 
 export function TransactionTimeline({ initialTransactions }: TransactionTimelineProps) {
-    const [transactions] = useState<FinancialTransaction[]>(initialTransactions);
+    const [transactions, setTransactions] = useState<FinancialTransaction[]>(initialTransactions);
+    const [isFromCache, setIsFromCache] = useState(false);
+
+    // Persist server data to IndexedDB for future offline access
+    useEffect(() => {
+        if (initialTransactions.length > 0) {
+            financialOfflineStore.transactions.set("current-user", initialTransactions).catch(() => {
+                // Silently ignore IndexedDB errors (e.g. private browsing)
+            });
+        }
+    }, [initialTransactions]);
+
+    // If server returned empty (possibly offline), try loading from cache
+    useEffect(() => {
+        if (initialTransactions.length > 0) return;
+
+        (async () => {
+            try {
+                const cached = await financialOfflineStore.transactions.getAll();
+                const flat = (cached?.[0] ?? []) as FinancialTransaction[];
+                if (flat.length > 0) {
+                    setTransactions(flat);
+                    setIsFromCache(true);
+                }
+            } catch {
+                // IndexedDB unavailable
+            }
+        })();
+    }, [initialTransactions]);
+
     const grouped = groupTransactionsByDate(transactions);
 
     return (
         <div className="flex flex-col gap-8">
+            {isFromCache && (
+                <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2.5 text-sm text-yellow-400">
+                    <WifiOff className="h-4 w-4 shrink-0" />
+                    <span>Showing cached transactions — you appear to be offline.</span>
+                </div>
+            )}
+
             {transactions.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground">
                     No transactions found.
