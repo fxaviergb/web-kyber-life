@@ -19,14 +19,14 @@ const COLORS = [
 ];
 
 function formatCurrency(value: number): string {
-    return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function TypeBreakdownChart({ data }: TypeBreakdownChartProps) {
     if (data.length === 0) {
         return (
             <div className="flex items-center justify-center h-[320px] text-muted-foreground">
-                No transaction data available
+                No hay datos de transacciones disponibles
             </div>
         );
     }

@@ -59,15 +59,18 @@ export interface FinancialTransaction extends BaseEntity {
 export interface FinancialScannerTransaction extends BaseEntity {
     ownerUserId: UUID;
     executionId?: UUID | null;
-    rawText?: string | null;
-    extractedAmount?: number | null;
-    extractedDate?: ISODate | null;
-    extractedMerchant?: string | null;
-    extractedBank?: string | null;
-    extractedAccountLastFour?: string | null;
-    extractedType?: string | null;
-    isProcessed: boolean;
-    errorMessage?: string | null;
+    hash?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+    merchant?: string | null;
+    date?: ISODate | null;
+    type?: string | null;
+    category?: string | null;
+    description?: string | null;
+    relatedTransactionHint?: string | null;
+    originId?: string | null;
+    originStats?: Record<string, any> | null;
+    status: string;
 }
 
 export interface FinancialTransactionAuditLog extends BaseEntity {

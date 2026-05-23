@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { TransactionDetailClient } from "@/presentation/financial/components/TransactionDetailClient";
 
 function formatDate(iso: string): string {
-    return new Date(iso).toLocaleString("en-US", {
+    return new Date(iso).toLocaleString("es-ES", {
         month: "long",
         day: "numeric",
         year: "numeric",
@@ -53,9 +53,9 @@ export default async function TransactionDetailPage({
                     </Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Transaction Details</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Detalle de la transacción</h1>
                     <p className="text-muted-foreground mt-1">
-                        Viewing detailed information for this record.
+                        Visualiza la información detallada de este registro.
                     </p>
                 </div>
             </div>
@@ -66,7 +66,7 @@ export default async function TransactionDetailPage({
                     <CardHeader className="pb-4">
                         <div className="flex justify-between items-start">
                             <div>
-                                <CardTitle className="text-2xl">{transaction.merchant || "Unknown Merchant"}</CardTitle>
+                                <CardTitle className="text-2xl">{transaction.merchant || "Comercio desconocido"}</CardTitle>
                                 <CardDescription className="flex items-center gap-2 mt-2">
                                     <Calendar className="h-4 w-4" />
                                     {formatDate(transaction.date)}
@@ -92,7 +92,7 @@ export default async function TransactionDetailPage({
                             </Badge>
                             {transaction.possibleDuplicate && (
                                 <Badge variant="warning" className="rounded-full px-3">
-                                    Possible Duplicate
+                                    Posible duplicado
                                 </Badge>
                             )}
                         </div>
@@ -100,18 +100,18 @@ export default async function TransactionDetailPage({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
                             <div className="space-y-1">
                                 <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                    <Tag className="h-4 w-4" /> Category
+                                    <Tag className="h-4 w-4" /> Categoria
                                 </div>
                                 <div className="font-medium">
-                                    {transaction.categoryId ? "Mapped Category" : "Uncategorized"}
+                                    {transaction.categoryId ? "Categoría asignada" : "Sin categoría"}
                                 </div>
                             </div>
                             <div className="space-y-1">
                                 <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                    <CreditCard className="h-4 w-4" /> Account
+                                    <CreditCard className="h-4 w-4" /> Cuenta
                                 </div>
                                 <div className="font-medium">
-                                    {transaction.accountId ? "Mapped Account" : "Unassigned"}
+                                    {transaction.accountId ? "Cuenta asignada" : "Sin asignar"}
                                 </div>
                             </div>
                         </div>
@@ -119,7 +119,7 @@ export default async function TransactionDetailPage({
                         {transaction.notes && (
                             <div className="pt-4 border-t border-border/50 space-y-2">
                                 <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                    <FileText className="h-4 w-4" /> Notes
+                                    <FileText className="h-4 w-4" /> Notas
                                 </div>
                                 <p className="text-sm">{transaction.notes}</p>
                             </div>
@@ -128,7 +128,7 @@ export default async function TransactionDetailPage({
                         {transaction.tags && transaction.tags.length > 0 && (
                             <div className="pt-4 border-t border-border/50 space-y-2">
                                 <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                    <Tag className="h-4 w-4" /> Tags
+                                    <Tag className="h-4 w-4" /> Etiquetas
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {transaction.tags.map((tag: string) => (
@@ -155,7 +155,7 @@ export default async function TransactionDetailPage({
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
                                 <Activity className="h-5 w-5 text-primary/70" />
-                                Origin Stats
+                                Datos de origen
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -164,7 +164,7 @@ export default async function TransactionDetailPage({
                                     <pre>{JSON.stringify(transaction.originStats, null, 2)}</pre>
                                 </div>
                             ) : (
-                                <p className="text-sm text-muted-foreground">No raw scanner data available.</p>
+                                <p className="text-sm text-muted-foreground">No hay datos brutos del escaneo disponibles.</p>
                             )}
                         </CardContent>
                     </Card>
@@ -174,7 +174,7 @@ export default async function TransactionDetailPage({
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
                                 <ServerCrash className="h-5 w-5 text-primary/70" />
-                                System Info
+                                Información del sistema
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
@@ -183,12 +183,12 @@ export default async function TransactionDetailPage({
                                 <span className="font-mono text-xs" title={transaction.id}>{transaction.id?.substring(0, 8)}...</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Created:</span>
-                                <span>{transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : 'N/A'}</span>
+                                <span className="text-muted-foreground">Creado:</span>
+                                <span>{transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString("es-ES", { month: "short", day: "numeric", year: "numeric" }) : 'N/D'}</span>
                             </div>
                             {transaction.executionId && (
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Execution:</span>
+                                    <span className="text-muted-foreground">Ejecución:</span>
                                     <span className="font-mono text-xs" title={transaction.executionId}>{transaction.executionId.substring(0, 8)}...</span>
                                 </div>
                             )}

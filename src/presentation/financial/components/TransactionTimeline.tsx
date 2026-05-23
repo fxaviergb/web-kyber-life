@@ -78,10 +78,10 @@ function formatDateLabel(dateStr: string): string {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === today.toDateString()) return "Today";
-    if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+    if (date.toDateString() === today.toDateString()) return "Hoy";
+    if (date.toDateString() === yesterday.toDateString()) return "Ayer";
 
-    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    return date.toLocaleDateString("es-ES", { month: "long", day: "numeric", year: "numeric" });
 }
 
 function groupTransactionsByDate(transactions: FinancialTransaction[]) {
@@ -241,20 +241,20 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
             {isFromCache && (
                 <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2.5 text-sm text-yellow-400">
                     <WifiOff className="h-4 w-4 shrink-0" />
-                    <span>Showing cached transactions — you appear to be offline.</span>
+                    <span>Mostrando transacciones en caché; parece que estás sin conexión.</span>
                 </div>
             )}
 
             {isPollingFallback && !isFromCache && (
                 <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-2 text-xs text-blue-400">
                     <Radio className="h-3.5 w-3.5 shrink-0" />
-                    <span>Live updates unavailable — polling every 30s</span>
+                    <span>Actualizaciones en vivo no disponibles; reintentando cada 30 s</span>
                 </div>
             )}
 
             {transactions.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground">
-                    No transactions found.
+                    No se encontraron transacciones.
                 </div>
             ) : (
                 Object.entries(grouped).map(([dateLabel, items]) => (
@@ -277,13 +277,13 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
             {isLoadingMore && (
                 <div className="flex items-center justify-center py-4 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    <span className="text-sm">Loading more transactions…</span>
+                    <span className="text-sm">Cargando más transacciones...</span>
                 </div>
             )}
 
             {!hasMore && transactions.length > 0 && (
                 <p className="text-center text-xs text-muted-foreground py-4">
-                    All transactions loaded.
+                    Todas las transacciones fueron cargadas.
                 </p>
             )}
         </div>

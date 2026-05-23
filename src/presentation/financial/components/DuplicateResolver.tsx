@@ -21,10 +21,10 @@ export function DuplicateResolver({ transactionId, isPossibleDuplicate, onResolv
         setProcessing(true);
         const result = await markAsDuplicateAction(transactionId, transactionId);
         if (result.success) {
-            toast.success("Transaction marked as duplicate");
+            toast.success("Transacción marcada como duplicada");
             onResolved?.();
         } else {
-            toast.error(result.error ?? "Failed to mark as duplicate");
+            toast.error(result.error ?? "No se pudo marcar como duplicada");
         }
         setProcessing(false);
     };
@@ -33,10 +33,10 @@ export function DuplicateResolver({ transactionId, isPossibleDuplicate, onResolv
         setProcessing(true);
         const result = await resolveDuplicateAction(transactionId);
         if (result.success) {
-            toast.success("Duplicate flag resolved — transaction confirmed");
+            toast.success("Duplicado resuelto; transacción confirmada");
             onResolved?.();
         } else {
-            toast.error(result.error ?? "Failed to resolve duplicate");
+            toast.error(result.error ?? "No se pudo resolver el duplicado");
         }
         setProcessing(false);
     };
@@ -46,11 +46,11 @@ export function DuplicateResolver({ transactionId, isPossibleDuplicate, onResolv
             <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
                 <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                    Possible Duplicate Detected
+                    Posible duplicado detectado
                 </p>
             </div>
             <p className="text-xs text-muted-foreground">
-                This transaction has the same amount, date, merchant, and type as another existing transaction.
+                Esta transacción tiene el mismo monto, fecha, comercio y tipo que otra transacción existente.
             </p>
             <div className="flex gap-2">
                 <Button
@@ -61,7 +61,7 @@ export function DuplicateResolver({ transactionId, isPossibleDuplicate, onResolv
                     className="text-red-500 border-red-500/30 hover:bg-red-500/10"
                 >
                     <XCircle className="h-4 w-4 mr-1.5" />
-                    Yes, it&apos;s a duplicate
+                    Sí, es duplicada
                 </Button>
                 <Button
                     variant="outline"
@@ -71,7 +71,7 @@ export function DuplicateResolver({ transactionId, isPossibleDuplicate, onResolv
                     className="text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
                 >
                     <CheckCircle className="h-4 w-4 mr-1.5" />
-                    Not a duplicate
+                    No es duplicada
                 </Button>
             </div>
         </div>

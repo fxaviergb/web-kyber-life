@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import { Inbox as InboxIcon } from "lucide-react";
 
 export const metadata: Metadata = {
-    title: "Financial Scans Inbox - KyberLife",
-    description: "Review and map scanned financial transactions",
+    title: "Bandeja de escaneos financieros - KyberLife",
+    description: "Revisa y asigna transacciones financieras escaneadas",
 };
 
 export default function ScansInboxPage() {
@@ -15,16 +15,16 @@ export default function ScansInboxPage() {
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <InboxIcon className="h-8 w-8 text-primary" />
-                        Scans Inbox
+                        Bandeja de escaneos
                     </h2>
                     <p className="text-muted-foreground mt-2">
-                        Review transactions extracted by automated scanners and map them to your accounts.
+                        Revisa las transacciones extraídas por escaneos automáticos y asígnalas a tus cuentas.
                     </p>
                 </div>
             </div>
 
             <div className="mt-8">
-                <Suspense fallback={<div className="p-8 text-center animate-pulse">Loading inbox...</div>}>
+                <Suspense fallback={<div className="p-8 text-center animate-pulse">Cargando bandeja...</div>}>
                     <FinancialInbox />
                 </Suspense>
             </div>

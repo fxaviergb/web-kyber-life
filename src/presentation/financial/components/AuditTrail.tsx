@@ -10,17 +10,17 @@ interface AuditTrailProps {
 }
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
-    CREATED: { label: "Created", color: "text-blue-500" },
-    CREATED_WITH_DUPLICATE_FLAG: { label: "Created (Duplicate Detected)", color: "text-amber-500" },
-    MAPPED_FROM_INBOX: { label: "Mapped from Inbox", color: "text-emerald-500" },
-    MARKED_DUPLICATE: { label: "Marked as Duplicate", color: "text-red-500" },
-    DUPLICATE_RESOLVED: { label: "Duplicate Resolved", color: "text-emerald-500" },
-    UPDATED: { label: "Updated", color: "text-blue-500" },
-    DELETED: { label: "Deleted", color: "text-red-500" },
+    CREATED: { label: "Creada", color: "text-blue-500" },
+    CREATED_WITH_DUPLICATE_FLAG: { label: "Creada (duplicado detectado)", color: "text-amber-500" },
+    MAPPED_FROM_INBOX: { label: "Asignada desde la bandeja", color: "text-emerald-500" },
+    MARKED_DUPLICATE: { label: "Marcada como duplicada", color: "text-red-500" },
+    DUPLICATE_RESOLVED: { label: "Duplicado resuelto", color: "text-emerald-500" },
+    UPDATED: { label: "Actualizada", color: "text-blue-500" },
+    DELETED: { label: "Eliminada", color: "text-red-500" },
 };
 
 function formatTimestamp(iso: string): string {
-    return new Date(iso).toLocaleString("en-US", {
+    return new Date(iso).toLocaleString("es-ES", {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -58,7 +58,7 @@ export function AuditTrail({ transactionId }: AuditTrailProps) {
     if (logs.length === 0) {
         return (
             <p className="text-sm text-muted-foreground py-4 text-center">
-                No audit history available.
+                No hay historial de auditoría disponible.
             </p>
         );
     }

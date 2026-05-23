@@ -35,7 +35,7 @@ interface ScannerTransactionPayload extends Record<string, unknown> {
 // ─── Helpers ───────────────────────────────────────────────────
 
 function formatAmount(amount: number | null | undefined, currency = "USD"): string {
-    if (amount == null) return "Unknown amount";
+    if (amount == null) return "Monto desconocido";
     return `$${Math.abs(amount).toFixed(2)} ${currency}`;
 }
 
@@ -67,10 +67,10 @@ export function FinancialNotificationCenter({
             const record = payload.new;
             if (!record || typeof record !== "object" || !("id" in record)) return;
 
-            const merchant = record.merchant ?? "Unknown";
+            const merchant = record.merchant ?? "Desconocido";
             const amount = formatAmount(record.amount, record.currency);
 
-            toast.info("New transaction detected", {
+            toast.info("Nueva transacción detectada", {
                 description: `${merchant} — ${amount}`,
                 duration: 5_000,
             });
@@ -88,8 +88,8 @@ export function FinancialNotificationCenter({
             // Only notify on status transitions
             const oldRecord = payload.old as Partial<TransactionPayload> | undefined;
             if (oldRecord && oldRecord.status !== record.status) {
-                toast.info(`Transaction ${record.status.toLowerCase()}`, {
-                    description: `${record.merchant ?? "Transaction"} — ${formatAmount(record.amount)}`,
+                toast.info(`Transaccion ${record.status.toLowerCase()}`, {
+                    description: `${record.merchant ?? "Transaccion"} — ${formatAmount(record.amount)}`,
                     duration: 4_000,
                 });
             }
@@ -106,14 +106,14 @@ export function FinancialNotificationCenter({
 
             if (record.status === "COMPLETED") {
                 const txCount = record.total_transactions ?? 0;
-                toast.success("Scan completed!", {
-                    description: `${txCount} transaction${txCount !== 1 ? "s" : ""} found.`,
+                toast.success("Escaneo completado", {
+                    description: `${txCount} transacción${txCount !== 1 ? "es" : ""} encontrada${txCount !== 1 ? "s" : ""}.`,
                     duration: 6_000,
                 });
                 onDataChange?.();
             } else if (record.status === "FAILED") {
-                toast.error("Scan failed", {
-                    description: record.error_message ?? "An unknown error occurred during scanning.",
+                toast.error("El escaneo fallo", {
+                    description: record.error_message ?? "Ocurrio un error desconocido durante el escaneo.",
                     duration: 8_000,
                 });
             }
@@ -126,10 +126,10 @@ export function FinancialNotificationCenter({
             const record = payload.new;
             if (!record || typeof record !== "object" || !("id" in record)) return;
 
-            const merchant = record.merchant ?? "New scanned item";
+            const merchant = record.merchant ?? "Nuevo elemento escaneado";
             const amount = formatAmount(record.amount);
 
-            toast("📧 New scanned transaction", {
+            toast("📧 Nueva transacción escaneada", {
                 description: `${merchant} — ${amount}`,
                 duration: 5_000,
             });

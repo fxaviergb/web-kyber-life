@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { FinancialTransaction, FinancialTransactionType, FinancialTransactionStatus } from "@/domain/entities/financial";
+import { FinancialTransaction } from "@/domain/entities/financial";
 import { Badge } from "@/components/ui/badge";
 import { 
     ArrowDownRight, 
@@ -31,14 +30,14 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
     
     // Status visual indicators
     const statusConfig = {
-        DETECTED: { color: "bg-blue-500/10 text-blue-600 dark:text-blue-400", icon: AlertCircle, label: "New" },
-        REVIEWED: { color: "bg-amber-500/10 text-amber-600 dark:text-amber-400", icon: CheckCircle2, label: "Reviewed" },
-        CONFIRMED: { color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", icon: CheckCircle2, label: "Confirmed" },
-        REJECTED: { color: "bg-red-500/10 text-red-600 dark:text-red-400", icon: AlertCircle, label: "Rejected" },
-        DUPLICATE: { color: "bg-orange-500/10 text-orange-600 dark:text-orange-400", icon: AlertCircle, label: "Duplicate" },
-        ARCHIVED: { color: "bg-slate-500/10 text-slate-600 dark:text-slate-400", icon: CheckCircle2, label: "Archived" },
+        DETECTED: { color: "bg-blue-500/10 text-blue-600 dark:text-blue-400", icon: AlertCircle, label: "Nueva" },
+        REVIEWED: { color: "bg-amber-500/10 text-amber-600 dark:text-amber-400", icon: CheckCircle2, label: "Revisada" },
+        CONFIRMED: { color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", icon: CheckCircle2, label: "Confirmada" },
+        REJECTED: { color: "bg-red-500/10 text-red-600 dark:text-red-400", icon: AlertCircle, label: "Rechazada" },
+        DUPLICATE: { color: "bg-orange-500/10 text-orange-600 dark:text-orange-400", icon: AlertCircle, label: "Duplicada" },
+        ARCHIVED: { color: "bg-slate-500/10 text-slate-600 dark:text-slate-400", icon: CheckCircle2, label: "Archivada" },
         MANUAL: { color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400", icon: CheckCircle2, label: "Manual" },
-        DELETED: { color: "bg-red-500/10 text-red-600 dark:text-red-400", icon: AlertCircle, label: "Deleted" }
+        DELETED: { color: "bg-red-500/10 text-red-600 dark:text-red-400", icon: AlertCircle, label: "Eliminada" }
     };
 
     const config = statusConfig[transaction.status] || statusConfig.DETECTED;
@@ -64,7 +63,7 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
                     </span>
                     <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm text-muted-foreground">
-                            {transaction.notes || "No category"}
+                            {transaction.notes || "Sin categoría"}
                         </span>
                         {transaction.status === 'DETECTED' && (
                             <Badge variant="outline" className={cn("text-[10px] uppercase h-5 px-1.5", config.color)}>
@@ -92,13 +91,13 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
                             <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
+                            <span className="sr-only">Acciones</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Review</DropdownMenuItem>
-                        <DropdownMenuItem>Edit Category</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Mark as Duplicate</DropdownMenuItem>
+                        <DropdownMenuItem>Revisar</DropdownMenuItem>
+                        <DropdownMenuItem>Editar categoría</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive">Marcar como duplicada</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

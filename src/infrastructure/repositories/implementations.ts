@@ -12,7 +12,7 @@ export class InMemoryFinancialTransactionAuditLogRepository extends InMemoryRepo
 
 export class InMemoryFinancialScannerTransactionRepository extends InMemoryRepository<FinancialScannerTransaction> implements IFinancialScannerTransactionRepository {
     async findUnprocessedByOwnerId(userId: UUID): Promise<FinancialScannerTransaction[]> {
-        return (await this.findAll()).filter(t => t.ownerUserId === userId && !t.isProcessed);
+        return (await this.findAll()).filter(t => t.ownerUserId === userId && t.status === 'DETECTED');
     }
 }
 

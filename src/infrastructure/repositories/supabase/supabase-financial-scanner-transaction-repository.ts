@@ -11,15 +11,18 @@ export class SupabaseFinancialScannerTransactionRepository implements IFinancial
             id: row.id,
             ownerUserId: row.owner_user_id,
             executionId: row.execution_id,
-            rawText: row.raw_text,
-            extractedAmount: row.extracted_amount ? Number(row.extracted_amount) : null,
-            extractedDate: row.extracted_date,
-            extractedMerchant: row.extracted_merchant,
-            extractedBank: row.extracted_bank,
-            extractedAccountLastFour: row.extracted_account_last_four,
-            extractedType: row.extracted_type,
-            isProcessed: row.is_processed,
-            errorMessage: row.error_message,
+            hash: row.hash,
+            amount: row.amount ? Number(row.amount) : null,
+            currency: row.currency,
+            merchant: row.merchant,
+            date: row.date,
+            type: row.type,
+            category: row.category,
+            description: row.description,
+            relatedTransactionHint: row.related_transaction_hint,
+            originId: row.origin_id,
+            originStats: row.origin_stats,
+            status: row.status,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
             isDeleted: false,
@@ -31,15 +34,18 @@ export class SupabaseFinancialScannerTransactionRepository implements IFinancial
             id: entity.id,
             owner_user_id: entity.ownerUserId,
             execution_id: entity.executionId,
-            raw_text: entity.rawText,
-            extracted_amount: entity.extractedAmount,
-            extracted_date: entity.extractedDate,
-            extracted_merchant: entity.extractedMerchant,
-            extracted_bank: entity.extractedBank,
-            extracted_account_last_four: entity.extractedAccountLastFour,
-            extracted_type: entity.extractedType,
-            is_processed: entity.isProcessed,
-            error_message: entity.errorMessage,
+            hash: entity.hash,
+            amount: entity.amount,
+            currency: entity.currency,
+            merchant: entity.merchant,
+            date: entity.date,
+            type: entity.type,
+            category: entity.category,
+            description: entity.description,
+            related_transaction_hint: entity.relatedTransactionHint,
+            origin_id: entity.originId,
+            origin_stats: entity.originStats,
+            status: entity.status,
         };
     }
 
@@ -86,15 +92,18 @@ export class SupabaseFinancialScannerTransactionRepository implements IFinancial
         const rowData: any = {};
         if (entity.ownerUserId !== undefined) rowData.owner_user_id = entity.ownerUserId;
         if (entity.executionId !== undefined) rowData.execution_id = entity.executionId;
-        if (entity.rawText !== undefined) rowData.raw_text = entity.rawText;
-        if (entity.extractedAmount !== undefined) rowData.extracted_amount = entity.extractedAmount;
-        if (entity.extractedDate !== undefined) rowData.extracted_date = entity.extractedDate;
-        if (entity.extractedMerchant !== undefined) rowData.extracted_merchant = entity.extractedMerchant;
-        if (entity.extractedBank !== undefined) rowData.extracted_bank = entity.extractedBank;
-        if (entity.extractedAccountLastFour !== undefined) rowData.extracted_account_last_four = entity.extractedAccountLastFour;
-        if (entity.extractedType !== undefined) rowData.extracted_type = entity.extractedType;
-        if (entity.isProcessed !== undefined) rowData.is_processed = entity.isProcessed;
-        if (entity.errorMessage !== undefined) rowData.error_message = entity.errorMessage;
+        if (entity.hash !== undefined) rowData.hash = entity.hash;
+        if (entity.amount !== undefined) rowData.amount = entity.amount;
+        if (entity.currency !== undefined) rowData.currency = entity.currency;
+        if (entity.merchant !== undefined) rowData.merchant = entity.merchant;
+        if (entity.date !== undefined) rowData.date = entity.date;
+        if (entity.type !== undefined) rowData.type = entity.type;
+        if (entity.category !== undefined) rowData.category = entity.category;
+        if (entity.description !== undefined) rowData.description = entity.description;
+        if (entity.relatedTransactionHint !== undefined) rowData.related_transaction_hint = entity.relatedTransactionHint;
+        if (entity.originId !== undefined) rowData.origin_id = entity.originId;
+        if (entity.originStats !== undefined) rowData.origin_stats = entity.originStats;
+        if (entity.status !== undefined) rowData.status = entity.status;
 
         const { data, error } = await supabase
             .from(this.tableName)
@@ -123,10 +132,14 @@ export class SupabaseFinancialScannerTransactionRepository implements IFinancial
             .from(this.tableName)
             .select("*")
             .eq("owner_user_id", userId)
-            .eq("is_processed", false)
+            .eq("status", "DETECTED")
             .order("created_at", { ascending: false });
 
-        if (error || !data) return [];
+        if (error) {
+            console.error("Error in findUnprocessedByOwnerId:", error);
+            throw error;
+        }
+        if (!data) return [];
         return data.map(this.mapToEntity);
     }
 }

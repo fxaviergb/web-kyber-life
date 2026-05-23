@@ -8,9 +8,9 @@ interface MonthlyChartProps {
 }
 
 const MONTH_LABELS: Record<string, string> = {
-    "01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr",
-    "05": "May", "06": "Jun", "07": "Jul", "08": "Aug",
-    "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dec",
+    "01": "Ene", "02": "Feb", "03": "Mar", "04": "Abr",
+    "05": "May", "06": "Jun", "07": "Jul", "08": "Ago",
+    "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dic",
 };
 
 function formatMonth(monthKey: string): string {
@@ -19,7 +19,7 @@ function formatMonth(monthKey: string): string {
 }
 
 function formatCurrency(value: number): string {
-    return `$${value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `$${value.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 export function MonthlyChart({ data }: MonthlyChartProps) {
@@ -55,13 +55,13 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
                 <Legend />
                 <Bar
                     dataKey="income"
-                    name="Income"
+                    name="Ingresos"
                     fill="hsl(142, 71%, 45%)"
                     radius={[4, 4, 0, 0]}
                 />
                 <Bar
                     dataKey="expenses"
-                    name="Expenses"
+                    name="Gastos"
                     fill="hsl(0, 84%, 60%)"
                     radius={[4, 4, 0, 0]}
                 />

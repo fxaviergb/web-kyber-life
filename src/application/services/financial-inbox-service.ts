@@ -30,35 +30,34 @@ export class FinancialInboxService {
             throw new Error("Scanner transaction not found or unauthorized");
         }
 
-        if (scannerTx.isProcessed) {
+        if (scannerTx.status !== 'DETECTED' && scannerTx.status !== 'IN_REVIEW') {
             throw new Error("This scanner transaction has already been processed");
         }
 
         // Create the definitive transaction
         const now = new Date().toISOString();
+        
+        // Map types correctly or fallback
+        const transactionType = dto.type ?? (scannerTx.type as FinancialTransaction['type']) ?? 'EXPENSE';
+        
         const transaction: FinancialTransaction = {
             id: crypto.randomUUID(),
             ownerUserId: dto.userId,
-            type: dto.type ?? (scannerTx.extractedType as any) ?? 'EXPENSE',
+            type: transactionType,
             status: 'CONFIRMED',
-            amount: scannerTx.extractedAmount || 0,
-            originalAmount: scannerTx.extractedAmount,
-            currency: 'USD',
-            merchant: dto.merchant ?? scannerTx.extractedMerchant ?? null,
+            amount: scannerTx.amount || 0,
+            originalAmount: scannerTx.amount,
+            currency: scannerTx.currency || 'USD',
+            merchant: dto.merchant ?? scannerTx.merchant ?? null,
             categoryId: dto.categoryId ?? null,
             institutionId: dto.institutionId ?? null,
             accountId: dto.accountId ?? null,
             tags: [],
-            notes: dto.notes ?? null,
+            notes: dto.notes ?? scannerTx.description ?? null,
             possibleDuplicate: false,
             executionId: scannerTx.executionId,
-            originStats: {
-                rawText: scannerTx.rawText,
-                scannerTxId: scannerTx.id,
-                extractedBank: scannerTx.extractedBank,
-                extractedAccountLastFour: scannerTx.extractedAccountLastFour
-            },
-            date: scannerTx.extractedDate || now,
+            originStats: scannerTx.originStats,
+            date: scannerTx.date || now,
             createdAt: now,
             updatedAt: now,
             isDeleted: false,
@@ -79,7 +78,7 @@ export class FinancialInboxService {
         });
 
         // Mark scanner transaction as processed
-        scannerTx.isProcessed = true;
+        scannerTx.status = 'APPROVED';
         scannerTx.updatedAt = new Date().toISOString();
         await this.scannerRepo.update(scannerTx);
 
@@ -92,8 +91,8 @@ export class FinancialInboxService {
             throw new Error("Scanner transaction not found or unauthorized");
         }
 
-        scannerTx.isProcessed = true;
-        scannerTx.errorMessage = "Dismissed by user";
+        scannerTx.status = 'REJECTED';
+        scannerTx.description = (scannerTx.description ? scannerTx.description + " | " : "") + "Dismissed by user";
         scannerTx.updatedAt = new Date().toISOString();
         await this.scannerRepo.update(scannerTx);
     }

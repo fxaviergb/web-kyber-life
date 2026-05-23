@@ -49,7 +49,7 @@ export function TransactionForm() {
         e.preventDefault();
         
         if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-            toast.error("Please enter a valid amount");
+            toast.error("Ingresa un monto válido");
             return;
         }
 
@@ -67,15 +67,15 @@ export function TransactionForm() {
             });
 
             if (result.success) {
-                toast.success("Transaction created successfully");
+                toast.success("Transaccion creada correctamente");
                 localStorage.removeItem("financial_transaction_draft");
                 router.push("/financial/transactions");
                 router.refresh();
             } else {
-                toast.error(result.error || "Failed to create transaction");
+                toast.error(result.error || "No se pudo crear la transacción");
             }
-        } catch (error) {
-            toast.error("An unexpected error occurred");
+        } catch {
+            toast.error("Ocurrio un error inesperado");
         } finally {
             setIsSubmitting(false);
         }
@@ -84,28 +84,28 @@ export function TransactionForm() {
     return (
         <Card className="w-full max-w-lg mx-auto">
             <CardHeader>
-                <CardTitle>New Transaction</CardTitle>
-                <CardDescription>Manually record a new financial transaction.</CardDescription>
+                <CardTitle>Nueva transacción</CardTitle>
+                <CardDescription>Registra manualmente una nueva transacción financiera.</CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="type">Transaction Type</Label>
+                        <Label htmlFor="type">Tipo de transacción</Label>
                         <Select value={type} onValueChange={(value) => setType(value as FinancialTransactionType)}>
                             <SelectTrigger id="type">
-                                <SelectValue placeholder="Select type" />
+                                <SelectValue placeholder="Selecciona un tipo" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="EXPENSE">Expense</SelectItem>
-                                <SelectItem value="INCOME">Income</SelectItem>
-                                <SelectItem value="TRANSFER">Transfer</SelectItem>
-                                <SelectItem value="SUBSCRIPTION">Subscription</SelectItem>
+                                <SelectItem value="EXPENSE">Gasto</SelectItem>
+                                <SelectItem value="INCOME">Ingreso</SelectItem>
+                                <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                                <SelectItem value="SUBSCRIPTION">Suscripción</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="amount">Amount (USD)</Label>
+                        <Label htmlFor="amount">Monto (USD)</Label>
                         <Input 
                             id="amount" 
                             type="number" 
@@ -119,7 +119,7 @@ export function TransactionForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="date">Date</Label>
+                        <Label htmlFor="date">Fecha</Label>
                         <Input 
                             id="date" 
                             type="date" 
@@ -130,22 +130,22 @@ export function TransactionForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="merchant">Merchant / Description</Label>
+                        <Label htmlFor="merchant">Comercio / descripción</Label>
                         <Input 
                             id="merchant" 
                             type="text" 
-                            placeholder="e.g. Amazon, Uber, Salary" 
+                            placeholder="Ej.: Amazon, Uber, Salario" 
                             value={merchant}
                             onChange={(e) => setMerchant(e.target.value)}
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="notes">Notes (Optional)</Label>
+                        <Label htmlFor="notes">Notas (opcional)</Label>
                         <Input 
                             id="notes" 
                             type="text" 
-                            placeholder="Additional details..." 
+                            placeholder="Detalles adicionales..." 
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                         />
@@ -153,10 +153,10 @@ export function TransactionForm() {
                 </CardContent>
                 <CardFooter className="flex justify-between">
                     <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
-                        Cancel
+                        Cancelar
                     </Button>
                     <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? "Saving..." : "Save Transaction"}
+                        {isSubmitting ? "Guardando..." : "Guardar transacción"}
                     </Button>
                 </CardFooter>
             </form>

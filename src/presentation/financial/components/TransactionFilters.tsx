@@ -59,7 +59,7 @@ export function TransactionFilters() {
                     <Search className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <Input 
-                    placeholder="Search transactions, merchants, categories..." 
+                    placeholder="Buscar transacciones, comercios o categorías..." 
                     className="pl-9 bg-background/50 backdrop-blur-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -71,11 +71,11 @@ export function TransactionFilters() {
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="w-full sm:w-auto gap-2 bg-background/50 backdrop-blur-sm">
                             <SlidersHorizontal className="h-4 w-4" />
-                            Filters
+                            Filtros
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                        <DropdownMenuLabel>Filtrar por estado</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {['DETECTED', 'REVIEWED', 'CONFIRMED', 'MANUAL'].map(status => (
                             <DropdownMenuCheckboxItem 

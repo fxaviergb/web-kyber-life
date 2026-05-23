@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 function formatCurrency(value: number): string {
-    return `$${Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `$${Math.abs(value).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function FinancialDashboard() {
@@ -36,7 +36,7 @@ export function FinancialDashboard() {
         [refresh],
     );
 
-    const { status: realtimeStatus, isPollingFallback } = useFinancialRealtime({
+    const { isPollingFallback } = useFinancialRealtime({
         channelName: "dashboard-realtime",
         subscriptions,
         callbacks,
@@ -66,7 +66,7 @@ export function FinancialDashboard() {
                 <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2.5 text-sm text-yellow-400">
                     <WifiOff className="h-4 w-4 shrink-0" />
                     <span className="flex-1">
-                        {error ?? "Showing cached data. Refreshing in the background…"}
+                        {error ?? "Mostrando datos en caché. Actualizando en segundo plano..."}
                     </span>
                     <Button
                         variant="ghost"
@@ -83,42 +83,42 @@ export function FinancialDashboard() {
             {isPollingFallback && !isStale && (
                 <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-2 text-xs text-blue-400">
                     <Radio className="h-3.5 w-3.5 shrink-0" />
-                    <span>Live updates unavailable — polling every 30s</span>
+                    <span>Actualizaciones en vivo no disponibles; reintentando cada 30 s</span>
                 </div>
             )}
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
-                    title="Total Income"
+                    title="Ingresos totales"
                     value={formatCurrency(kpis?.totalIncome ?? 0)}
                     icon={TrendingUp}
                     iconClassName="text-green-500"
-                    description="All confirmed income"
+                    description="Todos los ingresos confirmados"
                 />
                 <StatCard
-                    title="Total Expenses"
+                    title="Gastos totales"
                     value={formatCurrency(kpis?.totalExpenses ?? 0)}
                     icon={TrendingDown}
                     iconClassName="text-red-500"
-                    description="All confirmed expenses"
+                    description="Todos los gastos confirmados"
                 />
                 <StatCard
-                    title="Net Balance"
+                    title="Balance neto"
                     value={`${(kpis?.netBalance ?? 0) >= 0 ? "+" : "-"}${formatCurrency(kpis?.netBalance ?? 0)}`}
                     icon={DollarSign}
                     iconClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
-                    description="Income minus expenses"
+                    description="Ingresos menos gastos"
                     trend={kpis ? {
-                        value: `${kpis.transactionCount} transactions`,
+                        value: `${kpis.transactionCount} transacciones`,
                         positive: kpis.netBalance >= 0,
                     } : undefined}
                 />
                 <StatCard
-                    title="Avg. Transaction"
+                    title="Prom. por transacción"
                     value={formatCurrency(kpis?.avgTransactionAmount ?? 0)}
                     icon={Activity}
-                    description="Average amount per transaction"
+                    description="Monto promedio por transacción"
                 />
             </div>
 
@@ -126,8 +126,8 @@ export function FinancialDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Monthly Overview</CardTitle>
-                        <CardDescription>Income vs Expenses over the last 6 months</CardDescription>
+                        <CardTitle>Resumen mensual</CardTitle>
+                        <CardDescription>Ingresos vs. gastos en los últimos 6 meses</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <MonthlyChart data={monthly} />
@@ -136,8 +136,8 @@ export function FinancialDashboard() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>By Transaction Type</CardTitle>
-                        <CardDescription>Distribution of spending by category</CardDescription>
+                        <CardTitle>Por tipo de transacción</CardTitle>
+                        <CardDescription>Distribución del gasto por categoría</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <TypeBreakdownChart data={typeBreakdown} />
@@ -149,12 +149,12 @@ export function FinancialDashboard() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                        <CardTitle>Recent Transactions</CardTitle>
-                        <CardDescription>Your latest financial activity</CardDescription>
+                        <CardTitle>Transacciones recientes</CardTitle>
+                        <CardDescription>Tu actividad financiera más reciente</CardDescription>
                     </div>
                     <Button variant="outline" size="sm" asChild>
                         <Link href="/financial/transactions">
-                            View All
+                            Ver todas
                             <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                     </Button>
@@ -162,7 +162,7 @@ export function FinancialDashboard() {
                 <CardContent>
                     {recent.length === 0 ? (
                         <p className="text-muted-foreground text-center py-8">
-                            No transactions yet. Start by adding one manually or scanning your emails.
+                            Aún no hay transacciones. Comienza agregando una manualmente o escaneando tus correos.
                         </p>
                     ) : (
                         <div className="space-y-3">
@@ -177,7 +177,7 @@ export function FinancialDashboard() {
                                             {tx.merchant || tx.type}
                                         </span>
                                         <span className="text-xs text-muted-foreground">
-                                            {new Date(tx.date).toLocaleDateString("en-US", {
+                                            {new Date(tx.date).toLocaleDateString("es-ES", {
                                                 month: "short",
                                                 day: "numeric",
                                                 year: "numeric",

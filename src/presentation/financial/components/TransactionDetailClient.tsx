@@ -32,7 +32,7 @@ export function TransactionDetailClient({ transactionId, isPossibleDuplicate }: 
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <History className="h-5 w-5 text-primary/70" />
-                        Audit Trail
+                        Historial de auditoría
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
