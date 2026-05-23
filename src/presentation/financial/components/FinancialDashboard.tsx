@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyChart } from "./MonthlyChart";
 import { TypeBreakdownChart } from "./TypeBreakdownChart";
 import { useFinancialDashboardOffline } from "../hooks/useFinancialDashboardOffline";
-import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw } from "lucide-react";
+import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
+import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -16,6 +18,30 @@ function formatCurrency(value: number): string {
 export function FinancialDashboard() {
     const { kpis, monthly, typeBreakdown, recent, loading, isStale, error, refresh } =
         useFinancialDashboardOffline();
+
+    // ── Realtime: auto-refresh dashboard when transactions change ──
+    const subscriptions = useMemo(
+        () => [
+            { table: "financial_transactions", event: "*" as const },
+        ],
+        [],
+    );
+
+    const callbacks = useMemo(
+        () => ({
+            onChange: () => {
+                refresh();
+            },
+        }),
+        [refresh],
+    );
+
+    const { status: realtimeStatus, isPollingFallback } = useFinancialRealtime({
+        channelName: "dashboard-realtime",
+        subscriptions,
+        callbacks,
+        onPollFallback: refresh,
+    });
 
     if (loading && !kpis) {
         return (
@@ -51,6 +77,13 @@ export function FinancialDashboard() {
                     >
                         <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                     </Button>
+                </div>
+            )}
+
+            {isPollingFallback && !isStale && (
+                <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-2 text-xs text-blue-400">
+                    <Radio className="h-3.5 w-3.5 shrink-0" />
+                    <span>Live updates unavailable — polling every 30s</span>
                 </div>
             )}
 

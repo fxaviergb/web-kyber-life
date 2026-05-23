@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { TransactionTimeline } from "@/presentation/financial/components/TransactionTimeline";
 import { TransactionFilters } from "@/presentation/financial/components/TransactionFilters";
-import { searchTransactionsAction } from "@/app/actions/financial-transactions";
+import { searchPaginatedTransactionsAction } from "@/app/actions/financial-transactions";
 import { Button } from "@/components/ui/button";
 import { Plus, Inbox as InboxIcon } from "lucide-react";
 import Link from "next/link";
@@ -16,9 +16,21 @@ export default async function TransactionsPage({
     const status = typeof params.status === 'string' ? params.status : undefined;
     const type = typeof params.type === 'string' ? params.type : undefined;
 
-    const initialResult = await searchTransactionsAction({ query, status, type });
+    // Server-side paginated first page
+    const initialResult = await searchPaginatedTransactionsAction({
+        query,
+        status,
+        type,
+        page: 1,
+        pageSize: 20,
+    });
 
-    const initialTransactions = initialResult.success && initialResult.data ? initialResult.data : [];
+    const initialTransactions = initialResult.success && initialResult.data
+        ? initialResult.data.data
+        : [];
+
+    // Pass URL filters so the infinite-scroll can re-apply them
+    const searchFilters = { query, status, type };
 
     return (
         <div className="flex flex-col gap-6">
@@ -53,6 +65,7 @@ export default async function TransactionsPage({
                 <TransactionTimeline
                     key={JSON.stringify(params)}
                     initialTransactions={initialTransactions}
+                    searchFilters={searchFilters}
                 />
             </Suspense>
         </div>

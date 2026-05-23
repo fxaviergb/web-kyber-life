@@ -1,5 +1,6 @@
 import { UUID } from "../core";
 import { IRepository } from "./index";
+import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "../pagination";
 import {
     FinancialTransaction,
     FinancialScanExecution,
@@ -13,7 +14,8 @@ import {
 export interface IFinancialTransactionRepository extends IRepository<FinancialTransaction> {
     findByOwnerId(userId: UUID): Promise<FinancialTransaction[]>;
     findRecent(userId: UUID, limit: number): Promise<FinancialTransaction[]>;
-    search(userId: UUID, query: string, filters?: any): Promise<FinancialTransaction[]>;
+    search(userId: UUID, query: string, filters?: TransactionSearchFilters): Promise<FinancialTransaction[]>;
+    findPaginated(userId: UUID, filters: TransactionSearchFilters, pagination: PaginationParams): Promise<PaginatedResult<FinancialTransaction>>;
 }
 
 export interface IFinancialScanExecutionRepository extends IRepository<FinancialScanExecution> {

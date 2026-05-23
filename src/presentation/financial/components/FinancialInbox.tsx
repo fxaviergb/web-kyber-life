@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { getUnprocessedInboxTransactionsAction, mapInboxTransactionAction, dismissInboxTransactionAction } from "@/app/actions/financial-inbox";
 import { FinancialScannerTransaction } from "@/domain/entities/financial";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Check, X, Inbox as InboxIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/infrastructure/supabase/client";
+import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
 
 export function FinancialInbox() {
     const [transactions, setTransactions] = useState<FinancialScannerTransaction[]>([]);
@@ -20,31 +20,7 @@ export function FinancialInbox() {
     // Editing State per transaction
     const [editStates, setEditStates] = useState<Record<string, { type: string, merchant: string }>>({});
 
-    useEffect(() => {
-        loadInbox();
-
-        // Supabase Realtime Subscription
-        const supabase = createClient();
-        const channel = supabase.channel('schema-db-changes')
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'financial_scanner_transactions' },
-                (payload) => {
-                    toast("New transaction scanned via N8N!", {
-                        description: "Refresh or wait for it to appear in your inbox.",
-                    });
-                    // Reload inbox to get the fresh data
-                    loadInbox();
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
-
-    const loadInbox = async () => {
+    const loadInbox = useCallback(async () => {
         setLoading(true);
         const result = await getUnprocessedInboxTransactionsAction();
         if (result.success && result.data) {
@@ -63,7 +39,41 @@ export function FinancialInbox() {
             toast.error("Failed to load inbox");
         }
         setLoading(false);
-    };
+    }, []);
+
+    useEffect(() => {
+        loadInbox();
+    }, [loadInbox]);
+
+    // ── Realtime: auto-reload inbox on new scanner transactions ──
+    const subscriptions = useMemo(
+        () => [
+            { table: "financial_scanner_transactions", event: "INSERT" as const },
+        ],
+        [],
+    );
+
+    const callbacks = useMemo(
+        () => ({
+            onInsert: () => {
+                toast("New transaction scanned via N8N!", {
+                    description: "Refreshing inbox…",
+                });
+                loadInbox();
+            },
+        }),
+        [loadInbox],
+    );
+
+    useFinancialRealtime({
+        channelName: "inbox-realtime",
+        subscriptions,
+        callbacks,
+        onPollFallback: loadInbox,
+    });
+
+
+
 
     const handleConfirm = async (tx: FinancialScannerTransaction) => {
         setProcessingId(tx.id!);

@@ -2,7 +2,14 @@
 
 import { financialTransactionService } from "@/infrastructure/container";
 import { createClient } from "@/infrastructure/supabase/server";
-import { CreateFinancialTransactionDTO } from "@/application/services/financial-transaction-service";
+import {
+    createTransactionSchema,
+    searchTransactionsSchema,
+    paginatedSearchSchema,
+    markDuplicateSchema,
+    transactionIdSchema,
+} from "@/lib/validators/financial-schemas";
+import { z } from "zod";
 
 async function getAuthUserId(): Promise<string> {
     const supabase = await createClient();
@@ -11,38 +18,74 @@ async function getAuthUserId(): Promise<string> {
     return user.id;
 }
 
+function formatZodError(error: z.ZodError): string {
+    return error.issues.map((e: z.ZodIssue) => `${e.path.join(".")}: ${e.message}`).join("; ");
+}
+
+// ─── Search / List ───────────────────────────────────────────
+
 export async function searchTransactionsAction(params: { query?: string; status?: string; type?: string }) {
     try {
+        const validated = searchTransactionsSchema.parse(params);
         const userId = await getAuthUserId();
         const result = await financialTransactionService.getTransactionsByUser(userId);
 
-        // Client-side filtering (lightweight for now; could move to repo for large datasets)
         let filtered = result;
-        if (params.query) {
-            const q = params.query.toLowerCase();
+        if (validated.query) {
+            const q = validated.query.toLowerCase();
             filtered = filtered.filter(t =>
                 (t.merchant ?? "").toLowerCase().includes(q) ||
                 (t.notes ?? "").toLowerCase().includes(q)
             );
         }
-        if (params.status) {
-            filtered = filtered.filter(t => t.status === params.status);
+        if (validated.status) {
+            filtered = filtered.filter(t => t.status === validated.status);
         }
-        if (params.type) {
-            filtered = filtered.filter(t => t.type === params.type);
+        if (validated.type) {
+            filtered = filtered.filter(t => t.type === validated.type);
         }
 
         return { success: true, data: filtered };
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
         console.error("Error fetching transactions:", error);
         return { success: false, error: (error as Error).message };
     }
 }
 
+// ─── Paginated Search ────────────────────────────────────────
+
+export async function searchPaginatedTransactionsAction(params: Record<string, unknown>) {
+    try {
+        const validated = paginatedSearchSchema.parse(params);
+        const userId = await getAuthUserId();
+
+        const { page, pageSize, ...filters } = validated;
+        const result = await financialTransactionService.searchPaginated(
+            userId,
+            filters,
+            { page, pageSize },
+        );
+
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error in paginated search:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+// ─── Get By ID ───────────────────────────────────────────────
+
 export async function getTransactionByIdAction(id: string) {
     try {
+        const validatedId = transactionIdSchema.parse(id);
         const userId = await getAuthUserId();
-        const transaction = await financialTransactionService.getTransactionById(id);
+        const transaction = await financialTransactionService.getTransactionById(validatedId);
 
         if (!transaction) {
             return { success: false, error: "Transaction not found" };
@@ -54,51 +97,72 @@ export async function getTransactionByIdAction(id: string) {
 
         return { success: true, data: transaction };
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
         console.error("Error fetching transaction:", error);
         return { success: false, error: (error as Error).message };
     }
 }
 
-export async function createTransactionAction(data: Omit<CreateFinancialTransactionDTO, 'ownerUserId'>) {
-    try {
-        const userId = await getAuthUserId();
-        const dto: CreateFinancialTransactionDTO = {
-            ...data,
-            ownerUserId: userId,
-        };
+// ─── Create ──────────────────────────────────────────────────
 
-        const result = await financialTransactionService.createTransaction(dto);
+export async function createTransactionAction(data: Record<string, unknown>) {
+    try {
+        const validated = createTransactionSchema.parse(data);
+        const userId = await getAuthUserId();
+
+        const result = await financialTransactionService.createTransaction({
+            ...validated,
+            ownerUserId: userId,
+        });
         return { success: true, data: result };
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
         console.error("Error creating transaction:", error);
         return { success: false, error: (error as Error).message };
     }
 }
 
+// ─── Audit Trail ─────────────────────────────────────────────
+
 export async function getAuditTrailAction(transactionId: string) {
     try {
+        const validatedId = transactionIdSchema.parse(transactionId);
         const userId = await getAuthUserId();
 
-        // Verify ownership first
-        const tx = await financialTransactionService.getTransactionById(transactionId);
+        const tx = await financialTransactionService.getTransactionById(validatedId);
         if (!tx || tx.ownerUserId !== userId) {
             return { success: false, error: "Transaction not found or unauthorized" };
         }
 
-        const auditLogs = await financialTransactionService.getAuditTrail(transactionId);
+        const auditLogs = await financialTransactionService.getAuditTrail(validatedId);
         return { success: true, data: auditLogs };
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
         console.error("Error fetching audit trail:", error);
         return { success: false, error: (error as Error).message };
     }
 }
 
+// ─── Duplicate Operations ────────────────────────────────────
+
 export async function markAsDuplicateAction(transactionId: string, duplicateOfId: string) {
     try {
+        const validated = markDuplicateSchema.parse({ transactionId, duplicateOfId });
         const userId = await getAuthUserId();
-        const result = await financialTransactionService.markAsDuplicate(transactionId, duplicateOfId, userId);
+        const result = await financialTransactionService.markAsDuplicate(
+            validated.transactionId, validated.duplicateOfId, userId
+        );
         return { success: true, data: result };
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
         console.error("Error marking duplicate:", error);
         return { success: false, error: (error as Error).message };
     }
@@ -106,11 +170,77 @@ export async function markAsDuplicateAction(transactionId: string, duplicateOfId
 
 export async function resolveDuplicateAction(transactionId: string) {
     try {
+        const validatedId = transactionIdSchema.parse(transactionId);
         const userId = await getAuthUserId();
-        const result = await financialTransactionService.resolveDuplicate(transactionId, userId);
+        const result = await financialTransactionService.resolveDuplicate(validatedId, userId);
         return { success: true, data: result };
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
         console.error("Error resolving duplicate:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+// ─── Workflow Transitions ────────────────────────────────────
+
+export async function reviewTransactionAction(transactionId: string) {
+    try {
+        const validatedId = transactionIdSchema.parse(transactionId);
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.reviewTransaction(validatedId, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error reviewing transaction:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function rejectTransactionAction(transactionId: string) {
+    try {
+        const validatedId = transactionIdSchema.parse(transactionId);
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.rejectTransaction(validatedId, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error rejecting transaction:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function archiveTransactionAction(transactionId: string) {
+    try {
+        const validatedId = transactionIdSchema.parse(transactionId);
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.archiveTransaction(validatedId, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error archiving transaction:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function softDeleteTransactionAction(transactionId: string) {
+    try {
+        const validatedId = transactionIdSchema.parse(transactionId);
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.softDeleteTransaction(validatedId, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error deleting transaction:", error);
         return { success: false, error: (error as Error).message };
     }
 }

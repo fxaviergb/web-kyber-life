@@ -1,6 +1,7 @@
 import { IFinancialTransactionRepository } from "@/domain/repositories/financial";
 import { FinancialTransaction } from "@/domain/entities/financial";
 import { UUID } from "@/domain/core";
+import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
 import { createClient } from "@/infrastructure/supabase/server";
 
 export class SupabaseFinancialTransactionRepository implements IFinancialTransactionRepository {
@@ -120,28 +121,90 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
         return data.map(row => this.mapToEntity(row));
     }
 
-    async search(userId: UUID, query: string, filters?: any): Promise<FinancialTransaction[]> {
+    async search(userId: UUID, query: string, filters?: TransactionSearchFilters): Promise<FinancialTransaction[]> {
         const supabase = await createClient();
-        
-        let queryBuilder = supabase
+        let qb = supabase
             .from('financial_transactions')
             .select('*')
             .eq('owner_user_id', userId);
 
-        if (query) {
-            queryBuilder = queryBuilder.ilike('merchant', `%${query}%`);
-        }
+        qb = this.applyFilters(qb, query, filters);
 
-        if (filters) {
-            if (filters.status) queryBuilder = queryBuilder.eq('status', filters.status);
-            if (filters.type) queryBuilder = queryBuilder.eq('type', filters.type);
-            // More filters could be added here depending on UI needs
-        }
-
-        const { data, error } = await queryBuilder.order('date', { ascending: false });
-
+        const { data, error } = await qb.order('date', { ascending: false });
         if (error || !data) return [];
         return data.map(row => this.mapToEntity(row));
+    }
+
+    async findPaginated(
+        userId: UUID,
+        filters: TransactionSearchFilters,
+        pagination: PaginationParams,
+    ): Promise<PaginatedResult<FinancialTransaction>> {
+        const supabase = await createClient();
+        const { page, pageSize } = pagination;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        // Count query — exact count via header
+        let countQb = supabase
+            .from('financial_transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('owner_user_id', userId);
+        countQb = this.applyFilters(countQb, filters.query, filters);
+        const { count: totalItems, error: countError } = await countQb;
+
+        if (countError) throw new Error(`Pagination count error: ${countError.message}`);
+
+        const total = totalItems ?? 0;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+        // Data query
+        let dataQb = supabase
+            .from('financial_transactions')
+            .select('*')
+            .eq('owner_user_id', userId);
+        dataQb = this.applyFilters(dataQb, filters.query, filters);
+        dataQb = dataQb.order('date', { ascending: false }).range(from, to);
+
+        const { data, error } = await dataQb;
+        if (error) throw new Error(`Pagination data error: ${error.message}`);
+
+        return {
+            data: (data ?? []).map(row => this.mapToEntity(row)),
+            pagination: {
+                page,
+                pageSize,
+                totalItems: total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        };
+    }
+
+    /**
+     * Shared filter builder used by both `search` and `findPaginated`.
+     * Keeps all SQL-level filtering in a single place.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private applyFilters(qb: any, query?: string, filters?: TransactionSearchFilters) {
+        if (query) {
+            qb = qb.ilike('merchant', `%${query}%`);
+        }
+        if (!filters) return qb;
+
+        if (filters.status) qb = qb.eq('status', filters.status);
+        if (filters.type) qb = qb.eq('type', filters.type);
+        if (filters.categoryId) qb = qb.eq('category_id', filters.categoryId);
+        if (filters.institutionId) qb = qb.eq('institution_id', filters.institutionId);
+        if (filters.accountId) qb = qb.eq('account_id', filters.accountId);
+        if (filters.dateFrom) qb = qb.gte('date', filters.dateFrom);
+        if (filters.dateTo) qb = qb.lte('date', filters.dateTo);
+        if (filters.amountMin !== undefined) qb = qb.gte('amount', filters.amountMin);
+        if (filters.amountMax !== undefined) qb = qb.lte('amount', filters.amountMax);
+        if (filters.tags && filters.tags.length > 0) qb = qb.overlaps('tags', filters.tags);
+
+        return qb;
     }
 
     private mapToEntity(row: any): FinancialTransaction {

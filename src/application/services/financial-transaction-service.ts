@@ -2,6 +2,7 @@ import { UUID } from "../../domain/core";
 import { FinancialTransaction, FinancialTransactionType, FinancialTransactionStatus } from "../../domain/entities/financial";
 import { IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository } from "../../domain/repositories/financial";
 import { findDuplicates } from "../../domain/services/financial-deduplication";
+import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "../../domain/pagination";
 
 export interface CreateFinancialTransactionDTO {
     ownerUserId: UUID;
@@ -10,16 +11,44 @@ export interface CreateFinancialTransactionDTO {
     amount: number;
     currency: string;
     date: string; // ISODate
-    merchant?: string;
-    categoryId?: UUID;
-    institutionId?: UUID;
-    accountId?: UUID;
-    tags?: string[];
-    notes?: string;
-    executionId?: UUID;
-    originalAmount?: number;
-    originStats?: Record<string, any>;
+    merchant?: string | null;
+    categoryId?: UUID | null;
+    institutionId?: UUID | null;
+    accountId?: UUID | null;
+    tags?: string[] | null;
+    notes?: string | null;
+    executionId?: UUID | null;
+    originalAmount?: number | null;
+    originStats?: Record<string, unknown> | null;
 }
+
+// ─── Valid Workflow Transitions ───────────────────────────────
+
+const VALID_TRANSITIONS: Record<FinancialTransactionStatus, readonly FinancialTransactionStatus[]> = {
+    DETECTED:  ['REVIEWED', 'CONFIRMED', 'REJECTED', 'ARCHIVED', 'DELETED'],
+    REVIEWED:  ['CONFIRMED', 'REJECTED', 'ARCHIVED', 'DELETED'],
+    CONFIRMED: ['ARCHIVED', 'DELETED'],
+    REJECTED:  ['DETECTED', 'DELETED'],
+    MANUAL:    ['CONFIRMED', 'ARCHIVED', 'DELETED'],
+    DUPLICATE: ['CONFIRMED', 'DELETED'],
+    ARCHIVED:  ['DETECTED'],
+    DELETED:   [],
+} as const;
+
+function assertValidTransition(
+    currentStatus: FinancialTransactionStatus,
+    targetStatus: FinancialTransactionStatus,
+): void {
+    const allowed = VALID_TRANSITIONS[currentStatus];
+    if (!allowed.includes(targetStatus)) {
+        throw new Error(
+            `Invalid transition: cannot move from "${currentStatus}" to "${targetStatus}". ` +
+            `Allowed: [${allowed.join(", ")}]`,
+        );
+    }
+}
+
+// ─── Service ─────────────────────────────────────────────────
 
 export class FinancialTransactionService {
     constructor(
@@ -27,8 +56,9 @@ export class FinancialTransactionService {
         private auditLogRepo: IFinancialTransactionAuditLogRepository
     ) {}
 
+    // ── Create ───────────────────────────────────────────────
+
     async createTransaction(dto: CreateFinancialTransactionDTO): Promise<FinancialTransaction> {
-        // Deduplication check
         const existingTransactions = await this.transactionRepo.findByOwnerId(dto.ownerUserId);
         const duplicateIds = findDuplicates(dto, existingTransactions);
         const hasDuplicate = duplicateIds.length > 0;
@@ -60,81 +90,69 @@ export class FinancialTransactionService {
         const created = await this.transactionRepo.create(transaction);
 
         const auditAction = hasDuplicate ? 'CREATED_WITH_DUPLICATE_FLAG' : 'CREATED';
-        await this.auditLogRepo.create({
-            id: crypto.randomUUID(),
-            transactionId: created.id!,
-            changedByUserId: created.ownerUserId,
-            action: auditAction,
-            newState: {
-                ...(created as unknown as Record<string, any>),
-                ...(hasDuplicate ? { duplicateOfIds: duplicateIds } : {}),
-            },
-            createdAt: now,
-            updatedAt: now,
-            isDeleted: false,
+        await this.writeAuditLog(created.id!, created.ownerUserId, auditAction, undefined, {
+            ...(created as unknown as Record<string, unknown>),
+            ...(hasDuplicate ? { duplicateOfIds: duplicateIds } : {}),
         });
 
         return created;
     }
 
-    async markAsDuplicate(transactionId: UUID, duplicateOfId: UUID, userId: UUID): Promise<FinancialTransaction> {
-        const tx = await this.transactionRepo.findById(transactionId);
-        if (!tx || tx.ownerUserId !== userId) {
-            throw new Error("Transaction not found or unauthorized");
-        }
+    // ── Duplicate Operations ─────────────────────────────────
 
-        const previousState = { ...tx } as unknown as Record<string, any>;
+    async markAsDuplicate(transactionId: UUID, duplicateOfId: UUID, userId: UUID): Promise<FinancialTransaction> {
+        const tx = await this.findOwnedTransactionOrThrow(transactionId, userId);
+        const previousState = { ...tx } as unknown as Record<string, unknown>;
+
         tx.status = 'DUPLICATE';
         tx.possibleDuplicate = true;
         tx.updatedAt = new Date().toISOString();
 
         const updated = await this.transactionRepo.update(tx);
 
-        await this.auditLogRepo.create({
-            id: crypto.randomUUID(),
-            transactionId: updated.id!,
-            changedByUserId: userId,
-            action: 'MARKED_DUPLICATE',
-            previousState,
-            newState: {
-                ...(updated as unknown as Record<string, any>),
-                duplicateOfId,
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            isDeleted: false,
+        await this.writeAuditLog(updated.id!, userId, 'MARKED_DUPLICATE', previousState, {
+            ...(updated as unknown as Record<string, unknown>),
+            duplicateOfId,
         });
 
         return updated;
     }
 
     async resolveDuplicate(transactionId: UUID, userId: UUID): Promise<FinancialTransaction> {
-        const tx = await this.transactionRepo.findById(transactionId);
-        if (!tx || tx.ownerUserId !== userId) {
-            throw new Error("Transaction not found or unauthorized");
-        }
+        const tx = await this.findOwnedTransactionOrThrow(transactionId, userId);
+        const previousState = { ...tx } as unknown as Record<string, unknown>;
 
-        const previousState = { ...tx } as unknown as Record<string, any>;
         tx.possibleDuplicate = false;
         tx.status = 'CONFIRMED';
         tx.updatedAt = new Date().toISOString();
 
         const updated = await this.transactionRepo.update(tx);
 
-        await this.auditLogRepo.create({
-            id: crypto.randomUUID(),
-            transactionId: updated.id!,
-            changedByUserId: userId,
-            action: 'DUPLICATE_RESOLVED',
-            previousState,
-            newState: updated as unknown as Record<string, any>,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            isDeleted: false,
-        });
+        await this.writeAuditLog(updated.id!, userId, 'DUPLICATE_RESOLVED', previousState,
+            updated as unknown as Record<string, unknown>);
 
         return updated;
     }
+
+    // ── Workflow Transitions ─────────────────────────────────
+
+    async reviewTransaction(transactionId: UUID, userId: UUID): Promise<FinancialTransaction> {
+        return this.transitionStatus(transactionId, userId, 'REVIEWED', 'STATUS_REVIEWED');
+    }
+
+    async rejectTransaction(transactionId: UUID, userId: UUID): Promise<FinancialTransaction> {
+        return this.transitionStatus(transactionId, userId, 'REJECTED', 'STATUS_REJECTED');
+    }
+
+    async archiveTransaction(transactionId: UUID, userId: UUID): Promise<FinancialTransaction> {
+        return this.transitionStatus(transactionId, userId, 'ARCHIVED', 'STATUS_ARCHIVED');
+    }
+
+    async softDeleteTransaction(transactionId: UUID, userId: UUID): Promise<FinancialTransaction> {
+        return this.transitionStatus(transactionId, userId, 'DELETED', 'STATUS_DELETED');
+    }
+
+    // ── Queries ──────────────────────────────────────────────
 
     async getTransactionsByUser(userId: UUID): Promise<FinancialTransaction[]> {
         return this.transactionRepo.findByOwnerId(userId);
@@ -144,7 +162,70 @@ export class FinancialTransactionService {
         return this.transactionRepo.findById(id);
     }
 
-    async getAuditTrail(transactionId: UUID): Promise<any[]> {
+    async getAuditTrail(transactionId: UUID): Promise<unknown[]> {
         return this.auditLogRepo.findByTransactionId(transactionId);
+    }
+
+    async searchPaginated(
+        userId: UUID,
+        filters: TransactionSearchFilters,
+        pagination?: Partial<PaginationParams>,
+    ): Promise<PaginatedResult<FinancialTransaction>> {
+        const page = Math.max(1, pagination?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, pagination?.pageSize ?? 20));
+        return this.transactionRepo.findPaginated(userId, filters, { page, pageSize });
+    }
+
+    // ── Private Helpers ──────────────────────────────────────
+
+    private async findOwnedTransactionOrThrow(transactionId: UUID, userId: UUID): Promise<FinancialTransaction> {
+        const tx = await this.transactionRepo.findById(transactionId);
+        if (!tx || tx.ownerUserId !== userId) {
+            throw new Error("Transaction not found or unauthorized");
+        }
+        return tx;
+    }
+
+    private async transitionStatus(
+        transactionId: UUID,
+        userId: UUID,
+        targetStatus: FinancialTransactionStatus,
+        auditAction: string,
+    ): Promise<FinancialTransaction> {
+        const tx = await this.findOwnedTransactionOrThrow(transactionId, userId);
+        const previousState = { ...tx } as unknown as Record<string, unknown>;
+
+        assertValidTransition(tx.status, targetStatus);
+
+        tx.status = targetStatus;
+        tx.updatedAt = new Date().toISOString();
+
+        const updated = await this.transactionRepo.update(tx);
+
+        await this.writeAuditLog(updated.id!, userId, auditAction, previousState,
+            updated as unknown as Record<string, unknown>);
+
+        return updated;
+    }
+
+    private async writeAuditLog(
+        transactionId: UUID,
+        userId: UUID,
+        action: string,
+        previousState?: Record<string, unknown>,
+        newState?: Record<string, unknown>,
+    ): Promise<void> {
+        const now = new Date().toISOString();
+        await this.auditLogRepo.create({
+            id: crypto.randomUUID(),
+            transactionId,
+            changedByUserId: userId,
+            action,
+            previousState: previousState ?? null,
+            newState: newState ?? null,
+            createdAt: now,
+            updatedAt: now,
+            isDeleted: false,
+        });
     }
 }

@@ -1,10 +1,5 @@
-/**
- * IndexedDB offline store for financial data.
- *
- * Uses the native IndexedDB API (no external deps) wrapped in promises.
- * Stores dashboard snapshots and recent transactions so the financial
- * module renders instantly even without network access.
- */
+import { FINANCIAL_FLAGS } from "@/lib/feature-flags";
+
 
 const DB_NAME = "kyberlife_financial";
 const DB_VERSION = 1;
@@ -89,7 +84,7 @@ async function clearStore(store: StoreName): Promise<void> {
  * Returns `false` on the server and in browsers that block storage.
  */
 function isAvailable(): boolean {
-    return typeof indexedDB !== "undefined";
+    return typeof indexedDB !== "undefined" && FINANCIAL_FLAGS.OFFLINE_ENABLED;
 }
 
 // ── Public API ─────────────────────────────────────────────────────────

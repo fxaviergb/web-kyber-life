@@ -2,6 +2,7 @@ import { InMemoryRepository } from "./in-memory-repository";
 import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution } from "@/domain/entities";
 import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionRepository } from "@/domain/repositories";
 import { UUID } from "@/domain/core";
+import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
 
 export class InMemoryFinancialTransactionAuditLogRepository extends InMemoryRepository<FinancialTransactionAuditLog> implements IFinancialTransactionAuditLogRepository {
     async findByTransactionId(transactionId: UUID): Promise<FinancialTransactionAuditLog[]> {
@@ -38,18 +39,59 @@ export class InMemoryFinancialTransactionRepository extends InMemoryRepository<F
     async findRecent(userId: UUID, limit: number): Promise<FinancialTransaction[]> {
         return (await this.findByOwnerId(userId)).slice(0, limit);
     }
-    async search(userId: UUID, query: string, filters?: any): Promise<FinancialTransaction[]> {
-        let results = await this.findByOwnerId(userId);
+    async search(userId: UUID, query: string, filters?: TransactionSearchFilters): Promise<FinancialTransaction[]> {
+        return this.applyFilters(await this.findByOwnerId(userId), query, filters);
+    }
+    async findPaginated(
+        userId: UUID,
+        filters: TransactionSearchFilters,
+        pagination: PaginationParams,
+    ): Promise<PaginatedResult<FinancialTransaction>> {
+        const all = this.applyFilters(await this.findByOwnerId(userId), filters.query, filters);
+        const totalItems = all.length;
+        const { page, pageSize } = pagination;
+        const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+        const from = (page - 1) * pageSize;
+        const data = all.slice(from, from + pageSize);
+
+        return {
+            data,
+            pagination: {
+                page,
+                pageSize,
+                totalItems,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        };
+    }
+
+    private applyFilters(
+        results: FinancialTransaction[],
+        query?: string,
+        filters?: TransactionSearchFilters,
+    ): FinancialTransaction[] {
+        let filtered = results;
         if (query) {
-            results = results.filter(t => t.merchant?.toLowerCase().includes(query.toLowerCase()));
+            const q = query.toLowerCase();
+            filtered = filtered.filter(t => t.merchant?.toLowerCase().includes(q));
         }
-        if (filters?.status) {
-            results = results.filter(t => t.status === filters.status);
+        if (!filters) return filtered;
+
+        if (filters.status) filtered = filtered.filter(t => t.status === filters.status);
+        if (filters.type) filtered = filtered.filter(t => t.type === filters.type);
+        if (filters.categoryId) filtered = filtered.filter(t => t.categoryId === filters.categoryId);
+        if (filters.institutionId) filtered = filtered.filter(t => t.institutionId === filters.institutionId);
+        if (filters.accountId) filtered = filtered.filter(t => t.accountId === filters.accountId);
+        if (filters.dateFrom) filtered = filtered.filter(t => t.date >= filters.dateFrom!);
+        if (filters.dateTo) filtered = filtered.filter(t => t.date <= filters.dateTo!);
+        if (filters.amountMin !== undefined) filtered = filtered.filter(t => t.amount >= filters.amountMin!);
+        if (filters.amountMax !== undefined) filtered = filtered.filter(t => t.amount <= filters.amountMax!);
+        if (filters.tags && filters.tags.length > 0) {
+            filtered = filtered.filter(t => filters.tags!.some(tag => t.tags?.includes(tag)));
         }
-        if (filters?.type) {
-            results = results.filter(t => t.type === filters.type);
-        }
-        return results;
+        return filtered;
     }
 }
 
