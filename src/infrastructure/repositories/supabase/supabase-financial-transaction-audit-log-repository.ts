@@ -3,10 +3,13 @@ import { FinancialTransactionAuditLog } from "@/domain/entities/financial";
 import { UUID } from "@/domain/core";
 import { createClient } from "@/infrastructure/supabase/server";
 
+const AUDIT_LOG_COLUMNS = 'id, transaction_id, changed_by_user_id, action, previous_state, new_state, created_at';
+
 export class SupabaseFinancialTransactionAuditLogRepository implements IFinancialTransactionAuditLogRepository {
     async create(entity: FinancialTransactionAuditLog): Promise<FinancialTransactionAuditLog> {
         const supabase = await createClient();
-        
+        const now = new Date().toISOString();
+
         const insertData = {
             id: entity.id,
             transaction_id: entity.transactionId,
@@ -14,17 +17,17 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
             action: entity.action,
             previous_state: entity.previousState,
             new_state: entity.newState,
-            created_at: entity.createdAt || new Date().toISOString(),
+            created_at: entity.createdAt || now,
         };
 
         const { data, error } = await supabase
             .from('financial_transaction_audit_logs')
             .insert(insertData)
-            .select()
+            .select(AUDIT_LOG_COLUMNS)
             .single();
 
         if (error) throw new Error(`Error creating audit log: ${error.message}`);
-        
+
         return this.mapToEntity(data);
     }
 
@@ -32,7 +35,7 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('financial_transaction_audit_logs')
-            .select('*')
+            .select(AUDIT_LOG_COLUMNS)
             .eq('id', id)
             .single();
 
@@ -56,7 +59,7 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('financial_transaction_audit_logs')
-            .select('*')
+            .select(AUDIT_LOG_COLUMNS)
             .eq('transaction_id', transactionId)
             .order('created_at', { ascending: false });
 
