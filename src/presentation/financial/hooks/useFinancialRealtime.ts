@@ -49,7 +49,9 @@ interface UseFinancialRealtimeReturn {
 
 // ─── Constants ─────────────────────────────────────────────────
 
-const DEFAULT_POLLING_INTERVAL_MS = 30_000;
+const DEFAULT_POLLING_INTERVAL_MS = process.env.NEXT_PUBLIC_FINANCIAL_POLLING_INTERVAL_MS 
+    ? parseInt(process.env.NEXT_PUBLIC_FINANCIAL_POLLING_INTERVAL_MS, 10) 
+    : 60_000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_BASE_DELAY_MS = 1_000;
 

@@ -76,6 +76,24 @@ export function MobileDrawer({ open, onOpenChange }: MobileDrawerProps) {
         setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
     };
 
+    const activeHref = (() => {
+        let longestMatch = "";
+        const checkItems = (items: MenuItem[]) => {
+            for (const item of items) {
+                if (item.href && (pathname === item.href || pathname.startsWith(item.href + "/"))) {
+                    if (item.href.length > longestMatch.length) {
+                        longestMatch = item.href;
+                    }
+                }
+                if (item.items) {
+                    checkItems(item.items);
+                }
+            }
+        };
+        checkItems(MENU_ITEMS);
+        return longestMatch;
+    })();
+
     const renderMenuItem = (item: MenuItem, level = 0): React.ReactElement | null => {
         // Section Header
         if (item.isSection) {
@@ -122,7 +140,7 @@ export function MobileDrawer({ open, onOpenChange }: MobileDrawerProps) {
         }
 
         // Leaf Link
-        const isActive = item.href ? pathname.startsWith(item.href) : false;
+        const isActive = item.href ? item.href === activeHref : false;
 
         return (
             <Link

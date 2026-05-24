@@ -40,6 +40,13 @@ export class FinancialInboxService {
         // Map types correctly or fallback
         const transactionType = dto.type ?? (scannerTx.type as FinancialTransaction['type']) ?? 'EXPENSE';
         
+        const isValidUuid = (id: string | null | undefined) => {
+            if (!id) return false;
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+        };
+
+        const validExecutionId = isValidUuid(scannerTx.executionId) ? scannerTx.executionId : undefined;
+
         const transaction: FinancialTransaction = {
             id: crypto.randomUUID(),
             ownerUserId: dto.userId,
@@ -55,8 +62,11 @@ export class FinancialInboxService {
             tags: [],
             notes: dto.notes ?? scannerTx.description ?? null,
             possibleDuplicate: false,
-            executionId: scannerTx.executionId,
-            originStats: scannerTx.originStats,
+            executionId: validExecutionId,
+            originStats: {
+                ...((scannerTx.originStats as Record<string, unknown>) || {}),
+                originalExecutionId: scannerTx.executionId, // Preserve the original non-UUID execution ID for debugging
+            },
             date: scannerTx.date || now,
             createdAt: now,
             updatedAt: now,

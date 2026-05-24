@@ -245,12 +245,7 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                 </div>
             )}
 
-            {isPollingFallback && !isFromCache && (
-                <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-2 text-xs text-blue-400">
-                    <Radio className="h-3.5 w-3.5 shrink-0" />
-                    <span>Actualizaciones en vivo no disponibles; reintentando cada 30 s</span>
-                </div>
-            )}
+
 
             {transactions.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground">

@@ -80,12 +80,7 @@ export function FinancialDashboard() {
                 </div>
             )}
 
-            {isPollingFallback && !isStale && (
-                <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-2 text-xs text-blue-400">
-                    <Radio className="h-3.5 w-3.5 shrink-0" />
-                    <span>Actualizaciones en vivo no disponibles; reintentando cada 30 s</span>
-                </div>
-            )}
+
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
