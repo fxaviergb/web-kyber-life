@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createTransactionAction } from "@/app/actions/financial-transactions";
 import { FinancialTransactionType } from "@/domain/entities/financial";
+import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 
 export function TransactionForm() {
     const router = useRouter();
@@ -24,25 +25,53 @@ export function TransactionForm() {
 
     // Load draft on mount
     useEffect(() => {
-        const draft = localStorage.getItem("financial_transaction_draft");
-        if (draft) {
+        const loadDraft = async () => {
             try {
-                const parsed = JSON.parse(draft);
-                if (parsed.type) setType(parsed.type);
-                if (parsed.amount) setAmount(parsed.amount);
-                if (parsed.date) setDate(parsed.date);
-                if (parsed.merchant) setMerchant(parsed.merchant);
-                if (parsed.notes) setNotes(parsed.notes);
+                const drafts = await financialOfflineStore.drafts.getAll();
+                const latestDraft = drafts.length > 0 ? drafts[drafts.length - 1] : null;
+                
+                if (latestDraft) {
+                    const data = latestDraft.data as any;
+                    if (data.type) setType(data.type);
+                    if (data.amount) setAmount(data.amount.toString());
+                    if (data.date) setDate(data.date.split("T")[0]);
+                    if (data.merchant) setMerchant(data.merchant);
+                    if (data.notes) setNotes(data.notes);
+                }
             } catch (e) {
-                console.error("Failed to parse transaction draft", e);
+                console.error("Failed to load transaction draft from offline store", e);
             }
-        }
+        };
+        loadDraft();
     }, []);
 
     // Save draft when values change
     useEffect(() => {
-        const draft = { type, amount, date, merchant, notes };
-        localStorage.setItem("financial_transaction_draft", JSON.stringify(draft));
+        const saveDraft = async () => {
+            try {
+                // To avoid storing multiple drafts for the same form session, we might want to 
+                // just keep one draft or clear existing before adding, but for simplicity we'll
+                // clear all and add the current one as the unique draft for this form instance.
+                await financialOfflineStore.drafts.clear();
+                if (amount || merchant || notes) {
+                    await financialOfflineStore.drafts.add("draft_transaction", {
+                        type,
+                        amount: Number(amount) || 0,
+                        date: new Date(date).toISOString(),
+                        merchant,
+                        notes,
+                        status: "MANUAL",
+                        currency: "USD",
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to save draft to offline store", e);
+            }
+        };
+        
+        // Use a small timeout to debounce saving
+        const timeoutId = setTimeout(saveDraft, 500);
+        return () => clearTimeout(timeoutId);
     }, [type, amount, date, merchant, notes]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -54,28 +83,52 @@ export function TransactionForm() {
         }
 
         setIsSubmitting(true);
+        
+        const transactionData = {
+            type,
+            status: "MANUAL" as const,
+            amount: Number(amount),
+            currency: "USD",
+            date: new Date(date).toISOString(),
+            merchant: merchant || undefined,
+            notes: notes || undefined,
+        };
+
+        if (!navigator.onLine) {
+            try {
+                await financialOfflineStore.drafts.add(`draft_${Date.now()}`, transactionData);
+                toast.success("Guardado localmente. Se sincronizará cuando tengas conexión.");
+                router.push("/financial/transactions");
+                router.refresh();
+            } catch (error) {
+                toast.error("Error al guardar localmente");
+            } finally {
+                setIsSubmitting(false);
+            }
+            return;
+        }
 
         try {
-            const result = await createTransactionAction({
-                type,
-                status: "MANUAL",
-                amount: Number(amount),
-                currency: "USD",
-                date: new Date(date).toISOString(),
-                merchant: merchant || undefined,
-                notes: notes || undefined,
-            });
+            const result = await createTransactionAction(transactionData);
 
             if (result.success) {
-                toast.success("Transaccion creada correctamente");
-                localStorage.removeItem("financial_transaction_draft");
+                toast.success("Transacción creada correctamente");
+                await financialOfflineStore.drafts.clear();
                 router.push("/financial/transactions");
                 router.refresh();
             } else {
                 toast.error(result.error || "No se pudo crear la transacción");
             }
-        } catch {
-            toast.error("Ocurrio un error inesperado");
+        } catch (error) {
+            // Handle network errors even if navigator.onLine was true
+            try {
+                await financialOfflineStore.drafts.add(`draft_${Date.now()}`, transactionData);
+                toast.success("Error de red. Guardado localmente para sincronización futura.");
+                router.push("/financial/transactions");
+                router.refresh();
+            } catch (e) {
+                toast.error("Ocurrió un error inesperado y no se pudo guardar localmente.");
+            }
         } finally {
             setIsSubmitting(false);
         }

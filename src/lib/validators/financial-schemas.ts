@@ -39,12 +39,19 @@ export const createTransactionSchema = z.object({
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 
+export const updateTransactionSchema = createTransactionSchema.partial().extend({
+    id: z.string().uuid("Invalid transaction ID"),
+});
+
+export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
+
 // ─── Search / List Transactions ──────────────────────────────
 
 export const searchTransactionsSchema = z.object({
     query: z.string().max(200).optional(),
     status: transactionStatusSchema.optional(),
     type: transactionTypeSchema.optional(),
+    currency: z.string().min(3).max(3).optional(),
 });
 
 export type SearchTransactionsInput = z.infer<typeof searchTransactionsSchema>;
@@ -55,6 +62,7 @@ export const paginatedSearchSchema = z.object({
     query: z.string().max(200).optional(),
     status: transactionStatusSchema.optional(),
     type: transactionTypeSchema.optional(),
+    currency: z.string().min(3).max(3).optional(),
     categoryId: z.string().uuid().optional(),
     institutionId: z.string().uuid().optional(),
     accountId: z.string().uuid().optional(),
@@ -81,6 +89,14 @@ export type MarkDuplicateInput = z.infer<typeof markDuplicateSchema>;
 // ─── Workflow Transitions ────────────────────────────────────
 
 export const transactionIdSchema = z.string().uuid("Invalid transaction ID");
+
+export const bulkActionSchema = z.object({
+    ids: z.array(transactionIdSchema).min(1, "At least one transaction ID is required"),
+});
+
+export const bulkCategorizeSchema = bulkActionSchema.extend({
+    categoryId: z.string().uuid("Invalid category ID"),
+});
 
 // ─── Dashboard Params ────────────────────────────────────────
 

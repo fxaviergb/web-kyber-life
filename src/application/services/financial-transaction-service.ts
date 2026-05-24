@@ -98,6 +98,30 @@ export class FinancialTransactionService {
         return created;
     }
 
+    // ── Update ───────────────────────────────────────────────
+
+    async updateTransaction(
+        transactionId: UUID,
+        userId: UUID,
+        data: Partial<CreateFinancialTransactionDTO>
+    ): Promise<FinancialTransaction> {
+        const tx = await this.findOwnedTransactionOrThrow(transactionId, userId);
+        const previousState = { ...tx } as unknown as Record<string, unknown>;
+
+        const updatedTx: FinancialTransaction = {
+            ...tx,
+            ...data,
+            updatedAt: new Date().toISOString(),
+        };
+
+        const updated = await this.transactionRepo.update(updatedTx);
+
+        await this.writeAuditLog(updated.id!, userId, 'UPDATED', previousState, 
+            updated as unknown as Record<string, unknown>);
+
+        return updated;
+    }
+
     // ── Duplicate Operations ─────────────────────────────────
 
     async markAsDuplicate(transactionId: UUID, duplicateOfId: UUID, userId: UUID): Promise<FinancialTransaction> {
@@ -149,7 +173,35 @@ export class FinancialTransactionService {
     }
 
     async softDeleteTransaction(transactionId: UUID, userId: UUID): Promise<FinancialTransaction> {
-        return this.transitionStatus(transactionId, userId, 'DELETED', 'STATUS_DELETED');
+        const tx = await this.findOwnedTransactionOrThrow(transactionId, userId);
+        
+        await this.transactionRepo.delete(transactionId);
+        
+        // We set the status locally so the UI can optimistically remove it
+        tx.status = 'DELETED';
+        return tx;
+    }
+
+    // ── Bulk Operations ──────────────────────────────────────
+
+    async bulkConfirmTransactions(transactionIds: UUID[], userId: UUID): Promise<FinancialTransaction[]> {
+        return Promise.all(transactionIds.map(id => this.transitionStatus(id, userId, 'CONFIRMED', 'STATUS_CONFIRMED')));
+    }
+
+    async bulkRejectTransactions(transactionIds: UUID[], userId: UUID): Promise<FinancialTransaction[]> {
+        return Promise.all(transactionIds.map(id => this.transitionStatus(id, userId, 'REJECTED', 'STATUS_REJECTED')));
+    }
+
+    async bulkArchiveTransactions(transactionIds: UUID[], userId: UUID): Promise<FinancialTransaction[]> {
+        return Promise.all(transactionIds.map(id => this.transitionStatus(id, userId, 'ARCHIVED', 'STATUS_ARCHIVED')));
+    }
+
+    async bulkDeleteTransactions(transactionIds: UUID[], userId: UUID): Promise<FinancialTransaction[]> {
+        return Promise.all(transactionIds.map(id => this.softDeleteTransaction(id, userId)));
+    }
+
+    async bulkCategorizeTransactions(transactionIds: UUID[], categoryId: UUID, userId: UUID): Promise<FinancialTransaction[]> {
+        return Promise.all(transactionIds.map(id => this.updateTransaction(id, userId, { categoryId })));
     }
 
     // ── Queries ──────────────────────────────────────────────
@@ -193,6 +245,12 @@ export class FinancialTransactionService {
         auditAction: string,
     ): Promise<FinancialTransaction> {
         const tx = await this.findOwnedTransactionOrThrow(transactionId, userId);
+        
+        // Idempotency check: if already in target state, do nothing
+        if (tx.status === targetStatus) {
+            return tx;
+        }
+
         const previousState = { ...tx } as unknown as Record<string, unknown>;
 
         assertValidTransition(tx.status, targetStatus);

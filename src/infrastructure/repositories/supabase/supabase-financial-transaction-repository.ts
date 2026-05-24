@@ -191,13 +191,18 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
         if (query) {
             qb = qb.ilike('merchant', `%${query}%`);
         }
-        if (!filters) return qb;
+        if (filters?.status) {
+            qb = qb.eq('status', filters.status);
+        } else {
+            qb = qb.neq('status', 'DELETED').neq('status', 'ARCHIVED');
+        }
 
-        if (filters.status) qb = qb.eq('status', filters.status);
+        if (!filters) return qb;
         if (filters.type) qb = qb.eq('type', filters.type);
         if (filters.categoryId) qb = qb.eq('category_id', filters.categoryId);
         if (filters.institutionId) qb = qb.eq('institution_id', filters.institutionId);
         if (filters.accountId) qb = qb.eq('account_id', filters.accountId);
+        if (filters.currency) qb = qb.eq('currency', filters.currency);
         if (filters.dateFrom) qb = qb.gte('date', filters.dateFrom);
         if (filters.dateTo) qb = qb.lte('date', filters.dateTo);
         if (filters.amountMin !== undefined) qb = qb.gte('amount', filters.amountMin);

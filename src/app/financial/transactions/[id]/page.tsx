@@ -6,6 +6,8 @@ import { ArrowLeft, Calendar, CreditCard, Tag, FileText, Activity, ServerCrash }
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { TransactionDetailClient } from "@/presentation/financial/components/TransactionDetailClient";
+import { TransactionActionButtons } from "@/presentation/financial/components/TransactionActionButtons";
+import { OriginStatsViewer } from "@/presentation/financial/components/OriginStatsViewer";
 
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleString("es-ES", {
@@ -57,6 +59,7 @@ export default async function TransactionDetailPage({
                     <p className="text-muted-foreground mt-1">
                         Visualiza la información detallada de este registro.
                     </p>
+                    <TransactionActionButtons transaction={transaction} />
                 </div>
             </div>
 
@@ -151,23 +154,7 @@ export default async function TransactionDetailPage({
                     />
 
                     {/* Origin Stats Card */}
-                    <Card className="shadow-sm border-border/50">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Activity className="h-5 w-5 text-primary/70" />
-                                Datos de origen
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {transaction.originStats ? (
-                                <div className="bg-muted/50 rounded-md p-3 text-xs font-mono overflow-x-auto">
-                                    <pre>{JSON.stringify(transaction.originStats, null, 2)}</pre>
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">No hay datos brutos del escaneo disponibles.</p>
-                            )}
-                        </CardContent>
-                    </Card>
+                    <OriginStatsViewer originStats={transaction.originStats} />
 
                     {/* System Info Card */}
                     <Card className="shadow-sm border-border/50">

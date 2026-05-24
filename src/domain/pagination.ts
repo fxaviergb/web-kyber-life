@@ -36,4 +36,5 @@ export interface TransactionSearchFilters {
     amountMin?: number;
     amountMax?: number;
     tags?: string[];
+    currency?: string;
 }

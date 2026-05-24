@@ -77,9 +77,13 @@ export class InMemoryFinancialTransactionRepository extends InMemoryRepository<F
             const q = query.toLowerCase();
             filtered = filtered.filter(t => t.merchant?.toLowerCase().includes(q));
         }
-        if (!filters) return filtered;
+        if (filters?.status) {
+            filtered = filtered.filter(t => t.status === filters.status);
+        } else {
+            filtered = filtered.filter(t => t.status !== 'DELETED' && t.status !== 'ARCHIVED');
+        }
 
-        if (filters.status) filtered = filtered.filter(t => t.status === filters.status);
+        if (!filters) return filtered;
         if (filters.type) filtered = filtered.filter(t => t.type === filters.type);
         if (filters.categoryId) filtered = filtered.filter(t => t.categoryId === filters.categoryId);
         if (filters.institutionId) filtered = filtered.filter(t => t.institutionId === filters.institutionId);

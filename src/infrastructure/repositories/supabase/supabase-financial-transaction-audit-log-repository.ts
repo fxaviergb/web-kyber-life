@@ -3,8 +3,6 @@ import { FinancialTransactionAuditLog } from "@/domain/entities/financial";
 import { UUID } from "@/domain/core";
 import { createClient } from "@/infrastructure/supabase/server";
 
-const AUDIT_LOG_COLUMNS = 'id, transaction_id, changed_by_user_id, action, previous_state, new_state, created_at';
-
 export class SupabaseFinancialTransactionAuditLogRepository implements IFinancialTransactionAuditLogRepository {
     async create(entity: FinancialTransactionAuditLog): Promise<FinancialTransactionAuditLog> {
         const supabase = await createClient();
@@ -23,7 +21,7 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
         const { data, error } = await supabase
             .from('financial_transaction_audit_logs')
             .insert(insertData)
-            .select(AUDIT_LOG_COLUMNS)
+            .select()
             .single();
 
         if (error) throw new Error(`Error creating audit log: ${error.message}`);
@@ -35,7 +33,7 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('financial_transaction_audit_logs')
-            .select(AUDIT_LOG_COLUMNS)
+            .select()
             .eq('id', id)
             .single();
 
@@ -59,7 +57,7 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('financial_transaction_audit_logs')
-            .select(AUDIT_LOG_COLUMNS)
+            .select()
             .eq('transaction_id', transactionId)
             .order('created_at', { ascending: false });
 
@@ -76,7 +74,7 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
             previousState: row.previous_state as Record<string, unknown> | null,
             newState: row.new_state as Record<string, unknown> | null,
             createdAt: row.created_at as string,
-            updatedAt: row.created_at as string, // Audit logs are immutable — no updated_at column
+            updatedAt: (row.updated_at as string) || (row.created_at as string),
             isDeleted: false,
         };
     }

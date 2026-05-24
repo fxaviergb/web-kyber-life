@@ -8,6 +8,9 @@ import {
     paginatedSearchSchema,
     markDuplicateSchema,
     transactionIdSchema,
+    updateTransactionSchema,
+    bulkActionSchema,
+    bulkCategorizeSchema,
 } from "@/lib/validators/financial-schemas";
 import { z } from "zod";
 
@@ -40,6 +43,8 @@ export async function searchTransactionsAction(params: { query?: string; status?
         }
         if (validated.status) {
             filtered = filtered.filter(t => t.status === validated.status);
+        } else {
+            filtered = filtered.filter(t => t.status !== 'DELETED' && t.status !== 'ARCHIVED');
         }
         if (validated.type) {
             filtered = filtered.filter(t => t.type === validated.type);
@@ -241,6 +246,102 @@ export async function softDeleteTransactionAction(transactionId: string) {
             return { success: false, error: `Validation failed: ${formatZodError(error)}` };
         }
         console.error("Error deleting transaction:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+// ─── Update ──────────────────────────────────────────────────
+
+export async function updateTransactionAction(id: string, data: Record<string, unknown>) {
+    try {
+        const validated = updateTransactionSchema.parse({ ...data, id });
+        const userId = await getAuthUserId();
+
+        const { id: txId, ...updateData } = validated;
+        const result = await financialTransactionService.updateTransaction(txId, userId, updateData);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error updating transaction:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+// ─── Bulk Operations ─────────────────────────────────────────
+
+export async function bulkConfirmTransactionsAction(ids: string[]) {
+    try {
+        const validated = bulkActionSchema.parse({ ids });
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.bulkConfirmTransactions(validated.ids, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error bulk confirming transactions:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function bulkRejectTransactionsAction(ids: string[]) {
+    try {
+        const validated = bulkActionSchema.parse({ ids });
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.bulkRejectTransactions(validated.ids, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error bulk rejecting transactions:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function bulkArchiveTransactionsAction(ids: string[]) {
+    try {
+        const validated = bulkActionSchema.parse({ ids });
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.bulkArchiveTransactions(validated.ids, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error bulk archiving transactions:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function bulkDeleteTransactionsAction(ids: string[]) {
+    try {
+        const validated = bulkActionSchema.parse({ ids });
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.bulkDeleteTransactions(validated.ids, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error bulk deleting transactions:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function bulkCategorizeTransactionsAction(ids: string[], categoryId: string) {
+    try {
+        const validated = bulkCategorizeSchema.parse({ ids, categoryId });
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.bulkCategorizeTransactions(validated.ids, validated.categoryId, userId);
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error bulk categorizing transactions:", error);
         return { success: false, error: (error as Error).message };
     }
 }

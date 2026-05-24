@@ -26,6 +26,12 @@ Plataforma de control de procesos personales cotidianos. Gestiona tus gastos, su
 - **Historial de Compras**: Registro detallado de todas tus transacciones pasadas.
 - **Analytics**: Tableros visuales con gráficos de gasto mensual, distribución por categorías y productos más comprados.
 
+### 💰 Gestión Financiera
+- **Módulo de Transacciones**: Registro integral de ingresos, gastos y transferencias.
+- **Bandeja de Entrada**: Procesamiento de transacciones escaneadas automáticamente desde notificaciones bancarias.
+- **Línea de Tiempo**: Visualización cronológica de transacciones con filtros avanzados y sincronización en tiempo real.
+- **Auditoría y Trazabilidad**: Control riguroso del ciclo de vida y estados de las transacciones (Pendiente, Completado, Archivado).
+
 ### 👤 Perfil de Usuario
 - **Gestión Integral**: Personalización de perfil, cambio de contraseña y gestión de datos personales.
 - **Configuración**: Ajustes de preferencias de usuario.

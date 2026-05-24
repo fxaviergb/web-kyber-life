@@ -2,13 +2,14 @@ import { FINANCIAL_FLAGS } from "@/lib/feature-flags";
 
 
 const DB_NAME = "kyberlife_financial";
-const DB_VERSION = 1;
+const DB_VERSION = 5;
 
 const STORES = {
     DASHBOARD_KPI: "dashboard_kpi",
     DASHBOARD_MONTHLY: "dashboard_monthly",
     DASHBOARD_TYPE: "dashboard_type",
     TRANSACTIONS: "transactions",
+    DRAFTS: "drafts",
 } as const;
 
 type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -79,6 +80,16 @@ async function clearStore(store: StoreName): Promise<void> {
     });
 }
 
+async function removeEntry(store: StoreName, key: string): Promise<void> {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(store, "readwrite");
+        tx.objectStore(store).delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
 /**
  * Checks whether IndexedDB is available in the current environment.
  * Returns `false` on the server and in browsers that block storage.
@@ -122,6 +133,18 @@ export const financialOfflineStore = {
             isAvailable() ? putEntry(STORES.TRANSACTIONS, userId, data) : Promise.resolve(),
         clear: () =>
             isAvailable() ? clearStore(STORES.TRANSACTIONS) : Promise.resolve(),
+    },
+
+    /** Pending transaction drafts to be synced when online. */
+    drafts: {
+        getAll: () =>
+            isAvailable() ? getAllEntries(STORES.DRAFTS).then(entries => entries.map(e => ({ id: e.key, data: e.data }))) : Promise.resolve([]),
+        add: <T>(id: string, data: T) =>
+            isAvailable() ? putEntry(STORES.DRAFTS, id, data) : Promise.resolve(),
+        remove: (id: string) =>
+            isAvailable() ? removeEntry(STORES.DRAFTS, id) : Promise.resolve(),
+        clear: () =>
+            isAvailable() ? clearStore(STORES.DRAFTS) : Promise.resolve(),
     },
 
     /** Cache timestamp for freshness checks. */
