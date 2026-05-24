@@ -15,7 +15,6 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
             previous_state: entity.previousState,
             new_state: entity.newState,
             created_at: entity.createdAt || new Date().toISOString(),
-            updated_at: entity.updatedAt || new Date().toISOString()
         };
 
         const { data, error } = await supabase
@@ -65,16 +64,16 @@ export class SupabaseFinancialTransactionAuditLogRepository implements IFinancia
         return data.map(row => this.mapToEntity(row));
     }
 
-    private mapToEntity(row: any): FinancialTransactionAuditLog {
+    private mapToEntity(row: Record<string, unknown>): FinancialTransactionAuditLog {
         return {
-            id: row.id,
-            transactionId: row.transaction_id,
-            changedByUserId: row.changed_by_user_id,
-            action: row.action,
-            previousState: row.previous_state,
-            newState: row.new_state,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
+            id: row.id as UUID,
+            transactionId: row.transaction_id as UUID,
+            changedByUserId: row.changed_by_user_id as UUID,
+            action: row.action as string,
+            previousState: row.previous_state as Record<string, unknown> | null,
+            newState: row.new_state as Record<string, unknown> | null,
+            createdAt: row.created_at as string,
+            updatedAt: row.created_at as string, // Audit logs are immutable — no updated_at column
             isDeleted: false,
         };
     }
