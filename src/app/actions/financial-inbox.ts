@@ -41,6 +41,20 @@ export async function getUnprocessedInboxTransactionsAction() {
     }
 }
 
+export async function getScannerTransactionByIdAction(scannerTransactionId: string) {
+    try {
+        const userId = await getAuthUserId();
+        const transaction = await financialInboxService.getScannerTransactionById(scannerTransactionId, userId);
+        if (!transaction) {
+            return { success: false, error: "Scanner transaction not found or unauthorized" };
+        }
+        return { success: true, data: transaction };
+    } catch (error) {
+        console.error("Error fetching scanner transaction:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
 export async function mapInboxTransactionAction(data: Record<string, unknown>) {
     try {
         const validated = mapInboxTransactionSchema.parse(data);

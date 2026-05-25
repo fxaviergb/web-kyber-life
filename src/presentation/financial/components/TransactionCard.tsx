@@ -5,16 +5,16 @@ import NextLink from "next/link";
 
 import { FinancialTransaction } from "@/domain/entities/financial";
 import { Badge } from "@/components/ui/badge";
-import { 
-    ArrowDownRight, 
-    ArrowUpRight, 
-    RefreshCw, 
+import {
+    ArrowDownRight,
+    ArrowUpRight,
+    RefreshCw,
     CreditCard,
     MoreHorizontal,
     CheckCircle2,
     AlertCircle
 } from "lucide-react";
-import { 
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -24,9 +24,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { 
-    reviewTransactionAction, 
-    archiveTransactionAction, 
+import {
+    reviewTransactionAction,
+    archiveTransactionAction,
     softDeleteTransactionAction,
     updateTransactionAction
 } from "@/app/actions/financial-transactions";
@@ -40,18 +40,18 @@ interface TransactionCardProps {
     onDeleted?: () => void;
 }
 
-export function TransactionCard({ 
-    transaction, 
-    isSelected = false, 
-    onToggleSelect, 
-    onEdit, 
-    onStatusChange, 
-    onDeleted 
+export function TransactionCard({
+    transaction,
+    isSelected = false,
+    onToggleSelect,
+    onEdit,
+    onStatusChange,
+    onDeleted
 }: TransactionCardProps) {
     const [isLoading, setIsLoading] = useState(false);
     const isIncome = transaction.type === 'INCOME' || transaction.type === 'DEPOSIT' || transaction.type === 'REFUND';
     const isExpense = transaction.type === 'EXPENSE' || transaction.type === 'PAYMENT' || transaction.type === 'WITHDRAWAL' || transaction.type === 'FEE' || transaction.type === 'TAX';
-    
+
     // Status visual indicators
     const statusConfig = {
         DETECTED: { color: "bg-blue-500/10 text-blue-600 dark:text-blue-400", icon: AlertCircle, label: "Nueva" },
@@ -103,23 +103,23 @@ export function TransactionCard({
             <div className="flex items-center gap-4">
                 {onToggleSelect && (
                     <div className="pl-1">
-                        <Checkbox 
-                            checked={isSelected} 
-                            onCheckedChange={onToggleSelect} 
+                        <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={onToggleSelect}
                             className="opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
                         />
                     </div>
                 )}
                 <div className={cn(
                     "flex items-center justify-center w-12 h-12 rounded-full",
-                    isIncome ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : 
-                    isExpense ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : 
-                    "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                    isIncome ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                        isExpense ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" :
+                            "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                 )}>
-                    {isIncome ? <ArrowDownRight className="w-6 h-6" /> : 
-                     isExpense ? <ArrowUpRight className="w-6 h-6" /> : 
-                     transaction.type === 'TRANSFER' ? <RefreshCw className="w-6 h-6" /> :
-                     <CreditCard className="w-6 h-6" />}
+                    {isIncome ? <ArrowDownRight className="w-6 h-6" /> :
+                        isExpense ? <ArrowUpRight className="w-6 h-6" /> :
+                            transaction.type === 'TRANSFER' ? <RefreshCw className="w-6 h-6" /> :
+                                <CreditCard className="w-6 h-6" />}
                 </div>
                 <div className="flex flex-col">
                     <span className="font-medium text-foreground text-base">
@@ -172,7 +172,7 @@ export function TransactionCard({
                         )}
                         <DropdownMenuItem asChild>
                             <NextLink href={`/financial/transactions/${transaction.id}`}>
-                                Ver detalles completos
+                                Ver detalles
                             </NextLink>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={onEdit}>
@@ -183,7 +183,7 @@ export function TransactionCard({
                                 Archivar
                             </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={() => handleAction(softDeleteTransactionAction, "Transacción eliminada", "DELETED", true)}
                         >

@@ -8,20 +8,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CalendarDays, Check, CircleAlert, Inbox as InboxIcon, RefreshCw, Sparkles, Store, Wallet, X } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, Inbox as InboxIcon, RefreshCw, Sparkles, Store, Wallet, X, Edit2, Undo2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
 
 interface EditState {
     type: string;
     merchant: string;
+    amount?: number | null;
+    date?: string | null;
+    description?: string;
 }
 
 const TYPE_OPTIONS = [
     { value: "EXPENSE", label: "Gasto" },
     { value: "INCOME", label: "Ingreso" },
-    { value: "TRANSFER", label: "Transferencia" },
+    { value: "TRANSFER", label: "Transferencias propias" },
 ] as const;
 
 const DEFAULT_TRANSACTION_TYPE = "EXPENSE";
@@ -37,9 +41,17 @@ function normalizeTransactionType(type?: string | null) {
     return supportedType?.value ?? DEFAULT_TRANSACTION_TYPE;
 }
 
+function formatLocalDatetime(dateStr?: string | null) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function formatAmount(amount?: number | null, currency = "USD") {
     if (amount == null) {
-        return "Monto pendiente";
+        return "--";
     }
 
     return new Intl.NumberFormat("es-ES", {
@@ -91,6 +103,25 @@ export function FinancialInbox() {
 
     // Editing State per transaction
     const [editStates, setEditStates] = useState<Record<string, EditState>>({});
+    const [isEditing, setIsEditing] = useState<Record<string, boolean>>({});
+
+    const toggleEdit = (txId: string) => {
+        setIsEditing((prev) => ({ ...prev, [txId]: !prev[txId] }));
+    };
+
+    const cancelEdit = (txId: string, tx: FinancialScannerTransaction) => {
+        setEditStates((prev) => ({
+            ...prev,
+            [txId]: {
+                type: normalizeTransactionType(tx.type),
+                merchant: tx.merchant || "",
+                amount: tx.amount ?? null,
+                date: formatLocalDatetime(tx.date),
+                description: tx.description || "",
+            },
+        }));
+        setIsEditing((prev) => ({ ...prev, [txId]: false }));
+    };
 
     const syncEditStates = useCallback((nextTransactions: FinancialScannerTransaction[]) => {
         setEditStates((prev) => {
@@ -105,6 +136,9 @@ export function FinancialInbox() {
                 nextState[transactionId] = prev[transactionId] ?? {
                     type: normalizeTransactionType(tx.type),
                     merchant: tx.merchant || "",
+                    amount: tx.amount ?? null,
+                    date: formatLocalDatetime(tx.date),
+                    description: tx.description || "",
                 };
             });
 
@@ -225,7 +259,10 @@ export function FinancialInbox() {
             const result = await mapInboxTransactionAction({
                 scannerTransactionId: tx.id!,
                 type: (editState?.type as FinancialScannerTransaction["type"]) || DEFAULT_TRANSACTION_TYPE,
-                merchant: editState?.merchant || undefined
+                merchant: editState?.merchant || undefined,
+                amount: editState?.amount !== undefined ? editState.amount : undefined,
+                date: editState?.date ? new Date(editState.date).toISOString() : undefined,
+                notes: editState?.description || undefined,
             });
 
             if (result.success) {
@@ -264,7 +301,7 @@ export function FinancialInbox() {
         setProcessingId(null);
     };
 
-    const updateEditState = (txId: string, field: 'type' | 'merchant', value: string) => {
+    const updateEditState = (txId: string, field: keyof EditState, value: any) => {
         setEditStates(prev => ({
             ...prev,
             [txId]: {
@@ -338,6 +375,7 @@ export function FinancialInbox() {
             <section className="grid gap-4 xl:grid-cols-2">
                 {transactions.map((tx, index) => {
                     const isProcessing = processingId === tx.id;
+                    const editing = isEditing[tx.id!] || false;
 
                     return (
                         <Card
@@ -345,20 +383,42 @@ export function FinancialInbox() {
                             className="group relative overflow-hidden rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
                         >
                             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/60 to-transparent" aria-hidden="true" />
-                            <CardHeader className="gap-4 border-b border-border/50 px-5 py-4 sm:px-6">
+                            <CardHeader className="gap-3 border-b border-border/50 px-5 py-3 sm:px-6">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="space-y-2">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <Badge variant="warning" className="rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.14em]">
+                                            <span className="text-xs font-medium text-foreground whitespace-nowrap">SCAN {String(index + 1).padStart(2, "0")}</span>
+
+                                            <Badge variant="warning" className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.14em] shrink-0">
                                                 Pendiente
                                             </Badge>
-                                            <span className="text-xs text-muted-foreground">Escaneo #{String(index + 1).padStart(2, "0")}</span>
+
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 px-2.5 text-[11px] rounded-full hover:bg-bg-primary text-muted-foreground border border-border/50 bg-bg-primary/50 shadow-sm shrink-0 whitespace-nowrap inline-flex items-center"
+                                                onClick={() => editing ? cancelEdit(tx.id!, tx) : toggleEdit(tx.id!)}
+                                                disabled={isProcessing}
+                                            >
+                                                {editing ? (
+                                                    <>
+                                                        <Undo2 className="h-3 w-3 mr-1 shrink-0" />
+                                                        Cancelar
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Edit2 className="h-3 w-3 mr-1 shrink-0" />
+                                                        Editar
+                                                    </>
+                                                )}
+                                            </Button>
+
                                             {tx.relatedTransactionHint && (
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <button
                                                             type="button"
-                                                            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-warning-text/25 bg-warning-bg text-warning-text transition-colors hover:bg-warning-bg/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning-text/40"
+                                                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-warning-text/25 bg-warning-bg text-warning-text transition-colors hover:bg-warning-bg/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning-text/40"
                                                             aria-label="Ver posible relación detectada"
                                                         >
                                                             <CircleAlert className="h-3.5 w-3.5" />
@@ -378,96 +438,172 @@ export function FinancialInbox() {
                                         </div>
 
                                         <div className="space-y-1">
-                                            <CardTitle className="text-lg tracking-tight sm:text-xl">
-                                                {editStates[tx.id!]?.merchant || tx.merchant || "Comercio por confirmar"}
-                                            </CardTitle>
-                                            <CardDescription className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
-                                                <span className="inline-flex items-center gap-1.5">
-                                                    <CalendarDays className="h-3.5 w-3.5" />
-                                                    {formatDate(tx.date)}
-                                                </span>
+                                            {editing ? (
+                                                <Input
+                                                    value={editStates[tx.id!]?.merchant || ""}
+                                                    onChange={(event) => updateEditState(tx.id!, "merchant", event.target.value)}
+                                                    placeholder="Ingresa el nombre del comercio"
+                                                    className="h-9 font-semibold text-lg border-border/50 bg-bg-primary mt-1"
+                                                />
+                                            ) : (
+                                                <CardTitle className="text-lg tracking-tight sm:text-xl">
+                                                    {editStates[tx.id!]?.merchant || tx.merchant || "Comercio por confirmar"}
+                                                </CardTitle>
+                                            )}
+
+                                            <CardDescription className="flex flex-col gap-2 text-xs sm:text-sm pt-1">
+                                                <div className="flex items-center gap-1.5 w-full max-w-[240px]">
+                                                    <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                    {editing ? (
+                                                        <Input
+                                                            type="datetime-local"
+                                                            value={editStates[tx.id!]?.date || ""}
+                                                            onChange={(e) => updateEditState(tx.id!, "date", e.target.value)}
+                                                            className="h-8 text-xs py-1 px-2 border-border/50 bg-bg-primary"
+                                                        />
+                                                    ) : (
+                                                        <span>{editStates[tx.id!]?.date ? formatDate(editStates[tx.id!]!.date) : "Fecha no detectada"}</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 w-full max-w-[240px]">
+                                                    <Wallet className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                    <span className="text-muted-foreground shrink-0">Tipo:</span>
+                                                    {editing ? (
+                                                        <Select
+                                                            value={editStates[tx.id!]?.type || DEFAULT_TRANSACTION_TYPE}
+                                                            onValueChange={(value) => updateEditState(tx.id!, "type", value)}
+                                                        >
+                                                            <SelectTrigger className="h-8 text-xs py-1 px-2 border-border/50 bg-bg-primary shadow-none flex-1">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {TYPE_OPTIONS.map((option) => (
+                                                                    <SelectItem key={option.value} value={option.value}>
+                                                                        {option.label}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    ) : (
+                                                        <Badge
+                                                            variant={
+                                                                editStates[tx.id!]?.type === "EXPENSE" ? "danger" :
+                                                                    editStates[tx.id!]?.type === "INCOME" ? "success" :
+                                                                        editStates[tx.id!]?.type === "TRANSFER" ? "warning" :
+                                                                            "outline"
+                                                            }
+                                                            className="text-xs px-2.5 py-0.5 shrink-0"
+                                                        >
+                                                            {TYPE_OPTIONS.find(o => o.value === editStates[tx.id!]?.type)?.label || "Gasto"}
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             </CardDescription>
                                         </div>
                                     </div>
 
-                                    <div className="flex min-w-[152px] flex-col rounded-2xl border border-border/50 bg-bg-primary px-4 py-3 text-left sm:text-right">
-                                        <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Monto</span>
-                                        <span className="mt-1.5 text-xl font-semibold tracking-tight text-foreground">
-                                            {formatAmount(tx.amount, tx.currency || "USD")}
-                                        </span>
-                                        <span className="mt-1 text-xs text-muted-foreground">{tx.currency || "USD"}</span>
+                                    <div className="flex min-w-[110px] shrink-0 flex-col rounded-2xl bg-bg-primary/50 px-3 py-2.5 text-left sm:text-right border-none justify-center">
+                                        <div className="flex items-center justify-between sm:justify-end gap-3">
+                                            <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Monto</span>
+                                        </div>
+                                        <div className="mt-1 flex items-center sm:justify-end gap-1">
+                                            {editing ? (
+                                                <div className="flex items-center gap-1">
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={editStates[tx.id!]?.amount ?? ""}
+                                                        onChange={(e) => updateEditState(tx.id!, "amount", e.target.value ? parseFloat(e.target.value) : null)}
+                                                        className="h-7 w-20 text-right font-semibold text-sm border-border/50 bg-bg-secondary px-2"
+                                                    />
+                                                    <span className="text-xs text-muted-foreground font-medium">{tx.currency || "USD"}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-lg font-semibold tracking-tight">{formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </CardHeader>
 
-                            <CardContent className="space-y-4 px-5 py-4 sm:px-6">
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    <div className="rounded-2xl border border-border/50 bg-bg-primary p-3.5">
-                                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                            <Wallet className="h-3.5 w-3.5" />
-                                            Tipo
-                                        </div>
-                                        <div className="mt-2">
-                                            <Select
-                                                value={editStates[tx.id!]?.type || DEFAULT_TRANSACTION_TYPE}
-                                                onValueChange={(value) => updateEditState(tx.id!, "type", value)}
-                                            >
-                                                <SelectTrigger className="h-10 rounded-xl border-border/60 bg-bg-secondary shadow-none">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {TYPE_OPTIONS.map((option) => (
-                                                        <SelectItem key={option.value} value={option.value}>
-                                                            {option.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <div className="rounded-2xl border border-border/50 bg-bg-primary p-3.5">
-                                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                            <Store className="h-3.5 w-3.5" />
-                                            Comercio
-                                        </div>
-                                        <Input
-                                            value={editStates[tx.id!]?.merchant || ""}
-                                            onChange={(event) => updateEditState(tx.id!, "merchant", event.target.value)}
-                                            placeholder="Ingresa el nombre del comercio"
-                                            className="mt-2 h-10 rounded-xl border-border/60 bg-bg-secondary shadow-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="rounded-[1.35rem] border border-border/50 bg-bg-primary p-4">
+                            <CardContent className="space-y-4 px-5 py-3 sm:px-6">
+                                <div className="rounded-[1.35rem] bg-bg-primary/50 p-4 border-none">
                                     <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
                                         <Sparkles className="h-3.5 w-3.5 text-accent-primary" />
                                         Contexto extraído
                                     </div>
-                                    <p className="line-clamp-4 text-sm leading-6 text-muted-foreground whitespace-pre-wrap">
-                                        {tx.description || "No hay descripción disponible para este escaneo."}
-                                    </p>
+                                    {editing ? (
+                                        <textarea
+                                            value={editStates[tx.id!]?.description || ""}
+                                            onChange={(e) => updateEditState(tx.id!, "description", e.target.value)}
+                                            className="w-full min-h-[60px] rounded-xl border border-border/50 bg-bg-secondary p-3 text-sm leading-6 text-foreground focus:outline-none focus:ring-2 focus:ring-accent-primary/50 resize-y"
+                                            placeholder="No hay descripción disponible para este escaneo."
+                                        />
+                                    ) : (
+                                        <p className="text-sm leading-6 text-muted-foreground">
+                                            {editStates[tx.id!]?.description || "No hay descripción disponible para este escaneo."}
+                                        </p>
+                                    )}
                                 </div>
                             </CardContent>
 
-                            <CardFooter className="flex flex-col gap-3 border-t border-border/50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
-                                <Button
-                                    variant="outline"
-                                    className="w-full rounded-xl sm:w-auto"
-                                    onClick={() => handleDismiss(tx.id!)}
-                                    disabled={isProcessing}
+                            <CardFooter className="flex flex-col gap-3 border-t border-border/50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                                <Link
+                                    href={`/financial/scans/${tx.id}`}
+                                    className="w-full sm:w-auto"
                                 >
-                                    <X className="h-4 w-4" />
-                                    Descartar
-                                </Button>
-                                <Button
-                                    className="w-full rounded-xl sm:w-auto"
-                                    onClick={() => handleConfirm(tx)}
-                                    disabled={isProcessing}
-                                >
-                                    <Check className="h-4 w-4" />
-                                    {isProcessing ? "Guardando..." : "Confirmar"}
-                                </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full text-muted-foreground hover:text-foreground"
+                                        disabled={isProcessing}
+                                    >
+                                        Ver Detalles
+                                    </Button>
+                                </Link>
+
+                                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                    {editing ? (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full rounded-xl sm:w-auto text-muted-foreground"
+                                                onClick={() => cancelEdit(tx.id!, tx)}
+                                                disabled={isProcessing}
+                                            >
+                                                <Undo2 className="h-4 w-4 mr-1.5" />
+                                                Cancelar
+                                            </Button>
+                                            <Button
+                                                className="w-full rounded-xl sm:w-auto bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90"
+                                                onClick={() => toggleEdit(tx.id!)}
+                                                disabled={isProcessing}
+                                            >
+                                                <Check className="h-4 w-4 mr-1.5" />
+                                                Listo
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full rounded-xl sm:w-auto border-border/50 hover:bg-bg-primary"
+                                                onClick={() => handleDismiss(tx.id!)}
+                                                disabled={isProcessing}
+                                            >
+                                                <X className="h-4 w-4 mr-1.5 text-muted-foreground" />
+                                                Descartar
+                                            </Button>
+                                            <Button
+                                                className="w-full rounded-xl sm:w-auto"
+                                                onClick={() => handleConfirm(tx)}
+                                                disabled={isProcessing}
+                                            >
+                                                <Check className="h-4 w-4 mr-1.5" />
+                                                {isProcessing ? "Guardando..." : "Confirmar"}
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
                             </CardFooter>
                         </Card>
                     );

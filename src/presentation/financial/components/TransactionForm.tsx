@@ -151,7 +151,7 @@ export function TransactionForm() {
                             <SelectContent>
                                 <SelectItem value="EXPENSE">Gasto</SelectItem>
                                 <SelectItem value="INCOME">Ingreso</SelectItem>
-                                <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                                <SelectItem value="TRANSFER">Transferencias propias</SelectItem>
                                 <SelectItem value="SUBSCRIPTION">Suscripción</SelectItem>
                             </SelectContent>
                         </Select>

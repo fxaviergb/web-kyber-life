@@ -24,6 +24,14 @@ export class FinancialInboxService {
         return this.scannerRepo.findUnprocessedByOwnerId(userId);
     }
 
+    async getScannerTransactionById(scannerTransactionId: UUID, userId: UUID): Promise<FinancialScannerTransaction | null> {
+        const scannerTx = await this.scannerRepo.findById(scannerTransactionId);
+        if (!scannerTx || scannerTx.ownerUserId !== userId) {
+            return null;
+        }
+        return scannerTx;
+    }
+
     async mapAndConfirmTransaction(dto: MapScannerTransactionDTO): Promise<FinancialTransaction> {
         const scannerTx = await this.scannerRepo.findById(dto.scannerTransactionId);
         if (!scannerTx || scannerTx.ownerUserId !== dto.userId) {

@@ -108,7 +108,7 @@ export function TransactionEditModal({
                             <SelectContent>
                                 <SelectItem value="EXPENSE">Gasto</SelectItem>
                                 <SelectItem value="INCOME">Ingreso</SelectItem>
-                                <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                                <SelectItem value="TRANSFER">Transferencias propias</SelectItem>
                                 <SelectItem value="SUBSCRIPTION">Suscripción</SelectItem>
                                 <SelectItem value="PAYMENT">Pago</SelectItem>
                                 <SelectItem value="REFUND">Reembolso</SelectItem>
