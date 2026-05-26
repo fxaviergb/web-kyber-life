@@ -60,6 +60,17 @@ export async function searchTransactionsAction(params: { query?: string; status?
     }
 }
 
+export async function getUniqueTagsAction() {
+    try {
+        const userId = await getAuthUserId();
+        const result = await financialTransactionService.getUniqueTags(userId);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error("Error fetching unique tags:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
 // ─── Paginated Search ────────────────────────────────────────
 
 export async function searchPaginatedTransactionsAction(params: Record<string, unknown>) {

@@ -182,6 +182,21 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
         };
     }
 
+    async getUniqueTags(userId: UUID): Promise<string[]> {
+        const supabase = await createClient();
+        const { data, error } = await supabase.rpc('get_unique_financial_tags', {
+            p_user_id: userId
+        });
+
+        if (error) {
+            console.error('Error fetching unique tags:', error);
+            return [];
+        }
+
+        // data should be an array of objects like { tag: 'FOOD' }
+        return (data || []).map((item: any) => item.tag);
+    }
+
     /**
      * Shared filter builder used by both `search` and `findPaginated`.
      * Keeps all SQL-level filtering in a single place.

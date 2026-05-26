@@ -16,6 +16,7 @@ export interface IFinancialTransactionRepository extends IRepository<FinancialTr
     findRecent(userId: UUID, limit: number): Promise<FinancialTransaction[]>;
     search(userId: UUID, query: string, filters?: TransactionSearchFilters): Promise<FinancialTransaction[]>;
     findPaginated(userId: UUID, filters: TransactionSearchFilters, pagination: PaginationParams): Promise<PaginatedResult<FinancialTransaction>>;
+    getUniqueTags(userId: UUID): Promise<string[]>;
 }
 
 export interface IFinancialScanExecutionRepository extends IRepository<FinancialScanExecution> {

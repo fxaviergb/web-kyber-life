@@ -62,6 +62,17 @@ function formatAmount(amount?: number | null, currency = "USD") {
     }).format(amount);
 }
 
+/**
+ * Extract the best available context from a scanner transaction.
+ * Priority: originStats.emailBody → originStats.snippet → description
+ */
+function extractContext(tx: FinancialScannerTransaction): string {
+    const stats = tx.originStats as Record<string, unknown> | null | undefined;
+    const emailBody = stats?.emailBody as string | undefined;
+    const snippet = stats?.snippet as string | undefined;
+    return emailBody || snippet || tx.description || "";
+}
+
 function formatDate(value?: string | null) {
     if (!value) {
         return "Fecha no detectada";
@@ -117,7 +128,7 @@ export function FinancialInbox() {
                 merchant: tx.merchant || "",
                 amount: tx.amount ?? null,
                 date: formatLocalDatetime(tx.date),
-                description: tx.description || "",
+                description: extractContext(tx),
             },
         }));
         setIsEditing((prev) => ({ ...prev, [txId]: false }));
@@ -138,7 +149,7 @@ export function FinancialInbox() {
                     merchant: tx.merchant || "",
                     amount: tx.amount ?? null,
                     date: formatLocalDatetime(tx.date),
-                    description: tx.description || "",
+                    description: extractContext(tx),
                 };
             });
 

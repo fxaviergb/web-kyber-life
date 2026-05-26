@@ -11,6 +11,9 @@ export interface MapScannerTransactionDTO {
     type?: FinancialTransaction['type'];
     notes?: string;
     merchant?: string;
+    amount?: number;
+    date?: string;
+    tags?: string[];
 }
 
 export class FinancialInboxService {
@@ -60,22 +63,22 @@ export class FinancialInboxService {
             ownerUserId: dto.userId,
             type: transactionType,
             status: 'CONFIRMED',
-            amount: scannerTx.amount || 0,
+            amount: dto.amount ?? scannerTx.amount ?? 0,
             originalAmount: scannerTx.amount,
             currency: scannerTx.currency || 'USD',
             merchant: dto.merchant ?? scannerTx.merchant ?? null,
             categoryId: dto.categoryId ?? null,
             institutionId: dto.institutionId ?? null,
             accountId: dto.accountId ?? null,
-            tags: [],
-            notes: dto.notes ?? scannerTx.description ?? null,
+            tags: dto.tags ?? [],
+            notes: dto.notes ?? (scannerTx.originStats as Record<string, string>)?.emailBody ?? (scannerTx.originStats as Record<string, string>)?.snippet ?? scannerTx.description ?? null,
             possibleDuplicate: false,
             executionId: validExecutionId,
             originStats: {
                 ...((scannerTx.originStats as Record<string, unknown>) || {}),
                 originalExecutionId: scannerTx.executionId, // Preserve the original non-UUID execution ID for debugging
             },
-            date: scannerTx.date || now,
+            date: dto.date ?? scannerTx.date ?? now,
             createdAt: now,
             updatedAt: now,
             isDeleted: false,

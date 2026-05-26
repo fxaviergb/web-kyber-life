@@ -5,89 +5,134 @@ import NextLink from "next/link";
 
 import { FinancialTransaction } from "@/domain/entities/financial";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
-    ArrowDownRight,
-    ArrowUpRight,
-    RefreshCw,
-    CreditCard,
-    MoreHorizontal,
+    CalendarDays,
+    Wallet,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    Sparkles,
+    Archive,
+    Trash2,
+    Eye,
 } from "lucide-react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
     reviewTransactionAction,
     archiveTransactionAction,
     softDeleteTransactionAction,
-    updateTransactionAction
 } from "@/app/actions/financial-transactions";
+
+// ─── Types ────────────────────────────────────────────────────
 
 interface TransactionCardProps {
     transaction: FinancialTransaction;
-    isSelected?: boolean;
-    onToggleSelect?: () => void;
-    onEdit?: () => void;
-    onStatusChange?: (status: FinancialTransaction['status']) => void;
+    onStatusChange?: (status: FinancialTransaction["status"]) => void;
     onDeleted?: () => void;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────
+
+const TYPE_LABELS: Record<string, string> = {
+    EXPENSE: "Gasto",
+    INCOME: "Ingreso",
+    TRANSFER: "Transferencias propias",
+    SUBSCRIPTION: "Suscripción",
+    PAYMENT: "Pago",
+    REFUND: "Reembolso",
+    WITHDRAWAL: "Retiro",
+    DEPOSIT: "Depósito",
+    FEE: "Comisión",
+    TAX: "Impuesto",
+    OTHER: "Otro",
+};
+
+function getTypeBadgeVariant(type: string): "danger" | "success" | "warning" | "outline" {
+    const INCOME_TYPES = ["INCOME", "DEPOSIT", "REFUND"];
+    const EXPENSE_TYPES = ["EXPENSE", "PAYMENT", "WITHDRAWAL", "FEE", "TAX", "SUBSCRIPTION"];
+
+    if (EXPENSE_TYPES.includes(type)) return "danger";
+    if (INCOME_TYPES.includes(type)) return "success";
+    if (type === "TRANSFER") return "warning";
+    return "outline";
+}
+
+const STATUS_CONFIG: Record<string, { variant: "warning" | "success" | "danger" | "outline" | "default"; label: string }> = {
+    DETECTED: { variant: "warning", label: "Nueva" },
+    REVIEWED: { variant: "warning", label: "Revisada" },
+    CONFIRMED: { variant: "success", label: "Confirmada" },
+    REJECTED: { variant: "danger", label: "Rechazada" },
+    DUPLICATE: { variant: "warning", label: "Duplicada" },
+    ARCHIVED: { variant: "outline", label: "Archivada" },
+    MANUAL: { variant: "outline", label: "Manual" },
+    DELETED: { variant: "danger", label: "Eliminada" },
+};
+
+function formatAmount(amount: number, currency = "USD"): string {
+    return new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(amount);
+}
+
+function formatDate(dateStr: string): string {
+    return new Intl.DateTimeFormat("es-ES", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(new Date(dateStr));
+}
+
+/**
+ * Extract the best available context from a transaction.
+ * Priority: originStats.emailBody → originStats.snippet → notes
+ */
+function extractContext(tx: FinancialTransaction): string {
+    const stats = tx.originStats as Record<string, unknown> | null | undefined;
+    const emailBody = stats?.emailBody as string | undefined;
+    const snippet = stats?.snippet as string | undefined;
+    return emailBody || snippet || tx.notes || "";
+}
+
+// ─── Component ────────────────────────────────────────────────
+
 export function TransactionCard({
     transaction,
-    isSelected = false,
-    onToggleSelect,
-    onEdit,
     onStatusChange,
-    onDeleted
+    onDeleted,
 }: TransactionCardProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const isIncome = transaction.type === 'INCOME' || transaction.type === 'DEPOSIT' || transaction.type === 'REFUND';
-    const isExpense = transaction.type === 'EXPENSE' || transaction.type === 'PAYMENT' || transaction.type === 'WITHDRAWAL' || transaction.type === 'FEE' || transaction.type === 'TAX';
 
-    // Status visual indicators
-    const statusConfig = {
-        DETECTED: { color: "bg-blue-500/10 text-blue-600 dark:text-blue-400", icon: AlertCircle, label: "Nueva" },
-        REVIEWED: { color: "bg-amber-500/10 text-amber-600 dark:text-amber-400", icon: CheckCircle2, label: "Revisada" },
-        CONFIRMED: { color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", icon: CheckCircle2, label: "Confirmada" },
-        REJECTED: { color: "bg-red-500/10 text-red-600 dark:text-red-400", icon: AlertCircle, label: "Rechazada" },
-        DUPLICATE: { color: "bg-orange-500/10 text-orange-600 dark:text-orange-400", icon: AlertCircle, label: "Duplicada" },
-        ARCHIVED: { color: "bg-slate-500/10 text-slate-600 dark:text-slate-400", icon: CheckCircle2, label: "Archivada" },
-        MANUAL: { color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400", icon: CheckCircle2, label: "Manual" },
-        DELETED: { color: "bg-red-500/10 text-red-600 dark:text-red-400", icon: AlertCircle, label: "Eliminada" }
-    };
-
-    const config = statusConfig[transaction.status] || statusConfig.DETECTED;
-    const StatusIcon = config.icon;
+    const isIncome = ["INCOME", "DEPOSIT", "REFUND"].includes(transaction.type);
+    const statusCfg = STATUS_CONFIG[transaction.status] ?? STATUS_CONFIG.DETECTED;
+    const typeLabel = TYPE_LABELS[transaction.type] ?? transaction.type;
+    const typeBadgeVariant = getTypeBadgeVariant(transaction.type);
+    const displayContext = extractContext(transaction);
 
     const handleAction = async (
         actionFn: (id: string) => Promise<{ success: boolean; error?: string }>,
         successMessage: string,
-        statusUpdate?: FinancialTransaction['status'],
-        isDelete = false
+        statusUpdate?: FinancialTransaction["status"],
+        isDelete = false,
     ) => {
         setIsLoading(true);
         try {
             const res = await actionFn(transaction.id!);
             if (res.success) {
                 toast.success(successMessage);
-                if (statusUpdate && onStatusChange) {
-                    onStatusChange(statusUpdate);
-                }
-                if (isDelete && onDeleted) {
-                    onDeleted();
-                }
+                if (statusUpdate && onStatusChange) onStatusChange(statusUpdate);
+                if (isDelete && onDeleted) onDeleted();
             } else {
                 toast.error(res.error || "Ocurrió un error");
             }
-        } catch (error) {
+        } catch {
             toast.error("Error inesperado");
         } finally {
             setIsLoading(false);
@@ -95,103 +140,189 @@ export function TransactionCard({
     };
 
     return (
-        <div className={cn(
-            "group relative flex items-center justify-between p-4 rounded-xl bg-card border transition-all duration-200 hover:shadow-sm",
-            isSelected ? "border-primary bg-primary/5" : "border-border/50 hover:border-border",
-            isLoading && "opacity-60 pointer-events-none"
-        )}>
-            <div className="flex items-center gap-4">
-                {onToggleSelect && (
-                    <div className="pl-1">
-                        <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={onToggleSelect}
-                            className="opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
-                        />
+        <Card
+            className={cn(
+                "group relative overflow-hidden rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+                isLoading && "opacity-60 pointer-events-none",
+            )}
+        >
+            {/* Decorative gradient line */}
+            <div
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/60 to-transparent"
+                aria-hidden="true"
+            />
+
+            {/* ── Header ───────────────────────────────────── */}
+            <CardHeader className="gap-3 border-b border-border/50 px-5 py-3 sm:px-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    {/* Left: Info */}
+                    <div className="space-y-2 min-w-0 flex-1">
+                        {/* Top row: Checkbox + Status badge + Actions */}
+                        <div className="flex flex-wrap items-center gap-2">
+
+                            <Badge
+                                variant={statusCfg.variant}
+                                className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.14em] shrink-0"
+                            >
+                                {statusCfg.label}
+                            </Badge>
+
+                            {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
+                                <Badge
+                                    variant="warning"
+                                    className="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] shrink-0 gap-1"
+                                >
+                                    <AlertCircle className="h-3 w-3" />
+                                    Posible Duplicado
+                                </Badge>
+                            )}
+                        </div>
+
+                        {/* Merchant name */}
+                        <div className="space-y-1 mt-1">
+                            <CardTitle className="text-lg tracking-tight sm:text-xl truncate">
+                                {transaction.merchant || typeLabel}
+                            </CardTitle>
+                        </div>
+
+                        {/* Date + Type badges */}
+                        <CardDescription className="flex flex-col gap-2 text-xs sm:text-sm pt-1">
+                            <div className="flex items-center gap-1.5 w-full max-w-[240px]">
+                                <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <span>{formatDate(transaction.date)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 w-full max-w-[240px]">
+                                <Wallet className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <span className="text-muted-foreground shrink-0">Tipo:</span>
+                                <Badge
+                                    variant={typeBadgeVariant}
+                                    className="text-xs px-2.5 py-0.5 shrink-0"
+                                >
+                                    {typeLabel}
+                                </Badge>
+                            </div>
+                        </CardDescription>
+                    </div>
+
+                    {/* Right: Amount pill */}
+                    <div className="flex min-w-[110px] shrink-0 flex-col rounded-2xl bg-bg-primary/50 px-3 py-2.5 text-left sm:text-right border-none justify-center">
+                        <div className="flex items-center justify-between sm:justify-end gap-3">
+                            <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                                Monto
+                            </span>
+                        </div>
+                        <div className="mt-1 flex items-center sm:justify-end gap-1">
+                            <span
+                                className={cn(
+                                    "text-lg font-semibold tracking-tight",
+                                    isIncome && "text-emerald-500",
+                                )}
+                            >
+                                {isIncome ? "+" : ""}
+                                {formatAmount(transaction.amount, transaction.currency)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </CardHeader>
+
+            {/* ── Content: Notes / Context ──────────────────── */}
+            <CardContent className="space-y-4 px-5 py-3 sm:px-6">
+                <div className="rounded-[1.35rem] bg-bg-primary/50 p-4 border-none">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                        <Sparkles className="h-3.5 w-3.5 text-accent-primary" />
+                        Contexto extraído
+                    </div>
+                    <p className="text-sm leading-6 text-muted-foreground whitespace-pre-wrap">
+                        {displayContext || "Sin contexto disponible para esta transacción."}
+                    </p>
+                </div>
+
+                {/* Tags */}
+                {transaction.tags && transaction.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {transaction.tags.map((tag) => (
+                            <Badge
+                                key={tag}
+                                variant="outline"
+                                className="rounded-full text-[10px] px-2 py-0.5"
+                            >
+                                {tag}
+                            </Badge>
+                        ))}
                     </div>
                 )}
-                <div className={cn(
-                    "flex items-center justify-center w-12 h-12 rounded-full",
-                    isIncome ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                        isExpense ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" :
-                            "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                )}>
-                    {isIncome ? <ArrowDownRight className="w-6 h-6" /> :
-                        isExpense ? <ArrowUpRight className="w-6 h-6" /> :
-                            transaction.type === 'TRANSFER' ? <RefreshCw className="w-6 h-6" /> :
-                                <CreditCard className="w-6 h-6" />}
-                </div>
-                <div className="flex flex-col">
-                    <span className="font-medium text-foreground text-base">
-                        {transaction.merchant || transaction.type}
-                    </span>
-                    <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-muted-foreground">
-                            {transaction.notes || "Sin categoría"}
-                        </span>
-                        {['DETECTED', 'MANUAL', 'DUPLICATE', 'REJECTED', 'REVIEWED'].includes(transaction.status) && (
-                            <Badge variant="outline" className={cn("text-[10px] uppercase h-5 px-1.5", config.color)}>
-                                <StatusIcon className="w-3 h-3 mr-1" />
-                                {config.label}
-                            </Badge>
-                        )}
-                        {transaction.possibleDuplicate && transaction.status !== 'DUPLICATE' && (
-                            <Badge variant="outline" className="text-[10px] uppercase h-5 px-1.5 bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                                <AlertCircle className="w-3 h-3 mr-1" />
-                                Posible Duplicado
-                            </Badge>
-                        )}
-                    </div>
-                </div>
-            </div>
+            </CardContent>
 
-            <div className="flex items-center gap-4">
-                <div className="flex flex-col items-end">
-                    <span className={cn(
-                        "font-semibold text-base",
-                        isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
-                    )}>
-                        {isIncome ? "+" : "-"}${transaction.amount.toFixed(2)}
-                    </span>
-                    <span className="text-xs text-muted-foreground uppercase mt-1">
-                        {transaction.currency}
-                    </span>
-                </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Acciones</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        {transaction.status === 'DETECTED' && (
-                            <DropdownMenuItem onClick={() => handleAction(reviewTransactionAction, "Transacción marcada como revisada", "REVIEWED")}>
-                                Revisar
-                            </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem asChild>
-                            <NextLink href={`/financial/transactions/${transaction.id}`}>
-                                Ver detalles
-                            </NextLink>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={onEdit}>
-                            Editar detalles rápido
-                        </DropdownMenuItem>
-                        {transaction.status !== 'ARCHIVED' && (
-                            <DropdownMenuItem onClick={() => handleAction(archiveTransactionAction, "Transacción archivada", "ARCHIVED")}>
-                                Archivar
-                            </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleAction(softDeleteTransactionAction, "Transacción eliminada", "DELETED", true)}
+            {/* ── Footer ───────────────────────────────────── */}
+            <CardFooter className="flex flex-col gap-2 border-t border-border/50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <NextLink
+                    href={`/financial/transactions/${transaction.id}`}
+                    className="w-full sm:w-auto"
+                >
+                    <Button
+                        variant="ghost"
+                        className="w-full text-muted-foreground hover:text-foreground"
+                        disabled={isLoading}
+                    >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver detalles
+                    </Button>
+                </NextLink>
+
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    {transaction.status === "DETECTED" && (
+                        <Button
+                            variant="outline"
+                            className="w-full rounded-xl sm:w-auto border-border/50 hover:bg-bg-primary"
+                            onClick={() =>
+                                handleAction(
+                                    reviewTransactionAction,
+                                    "Transacción marcada como revisada",
+                                    "REVIEWED",
+                                )
+                            }
+                            disabled={isLoading}
                         >
-                            Eliminar
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        </div>
+                            <CheckCircle2 className="h-4 w-4 mr-1.5 text-muted-foreground" />
+                            Revisar
+                        </Button>
+                    )}
+                    {transaction.status !== "ARCHIVED" && (
+                        <Button
+                            variant="outline"
+                            className="w-full rounded-xl sm:w-auto border-border/50 hover:bg-bg-primary"
+                            onClick={() =>
+                                handleAction(
+                                    archiveTransactionAction,
+                                    "Transacción archivada",
+                                    "ARCHIVED",
+                                )
+                            }
+                            disabled={isLoading}
+                        >
+                            <Archive className="h-4 w-4 mr-1.5 text-muted-foreground" />
+                            Archivar
+                        </Button>
+                    )}
+                    <Button
+                        variant="ghost"
+                        className="w-full rounded-xl sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() =>
+                            handleAction(
+                                softDeleteTransactionAction,
+                                "Transacción eliminada",
+                                "DELETED",
+                                true,
+                            )
+                        }
+                        disabled={isLoading}
+                    >
+                        <Trash2 className="h-4 w-4 mr-1.5" />
+                        Eliminar
+                    </Button>
+                </div>
+            </CardFooter>
+        </Card>
     );
 }

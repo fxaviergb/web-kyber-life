@@ -118,6 +118,9 @@ export const mapInboxTransactionSchema = z.object({
     type: transactionTypeSchema.optional(),
     notes: z.string().max(2000).optional().nullable(),
     merchant: z.string().max(255).optional().nullable(),
+    amount: z.number().positive().optional().nullable(),
+    date: z.string().optional().nullable(),
+    tags: z.array(z.string().max(50)).max(20).optional().nullable(),
 });
 
 export type MapInboxTransactionInput = z.infer<typeof mapInboxTransactionSchema>;

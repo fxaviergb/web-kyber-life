@@ -5,11 +5,10 @@ import { FinancialTransaction } from "@/domain/entities/financial";
 import type { PaginatedResult } from "@/domain/pagination";
 import { TransactionCard } from "./TransactionCard";
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
-import { searchPaginatedTransactionsAction, bulkConfirmTransactionsAction, bulkRejectTransactionsAction, bulkArchiveTransactionsAction, bulkDeleteTransactionsAction, createTransactionAction } from "@/app/actions/financial-transactions";
+import { searchPaginatedTransactionsAction, createTransactionAction } from "@/app/actions/financial-transactions";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
-import { WifiOff, Loader2, CheckSquare, X, Trash2, CheckCircle2, AlertCircle, Archive } from "lucide-react";
+import { WifiOff, Loader2 } from "lucide-react";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
-import { TransactionEditModal } from "./TransactionEditModal";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -113,11 +112,6 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
-    
-    // Selection & Edit State
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
-    const [isBulkLoading, setIsBulkLoading] = useState(false);
 
     const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -343,16 +337,6 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
     }, []);
 
     // ── Handlers ─────────────────────────────────────────────
-    const toggleSelection = useCallback((id: string) => {
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    }, []);
-
-    const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
     const updateLocalTransaction = useCallback((id: string, updates: Partial<FinancialTransaction>) => {
         setTransactions(prev => {
@@ -362,36 +346,6 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
             return prev.map(t => t.id === id ? { ...t, ...updates } : t);
         });
     }, [searchFilters?.status]);
-
-    const executeBulkAction = async (
-        actionFn: (ids: string[]) => Promise<{ success: boolean; error?: string; data?: any }>,
-        successMessage: string,
-        statusUpdate?: FinancialTransaction['status']
-    ) => {
-        if (selectedIds.size === 0) return;
-        setIsBulkLoading(true);
-        try {
-            const ids = Array.from(selectedIds);
-            const res = await actionFn(ids);
-            if (res.success) {
-                toast.success(successMessage);
-                if (statusUpdate) {
-                    setTransactions(prev => {
-                        if (statusUpdate === 'DELETED') return prev.filter(t => !ids.includes(t.id!));
-                        if (statusUpdate === 'ARCHIVED' && searchFilters?.status !== 'ARCHIVED') return prev.filter(t => !ids.includes(t.id!));
-                        return prev.map(t => ids.includes(t.id!) ? { ...t, status: statusUpdate } : t);
-                    });
-                }
-                clearSelection();
-            } else {
-                toast.error(res.error || "Ocurrió un error");
-            }
-        } catch (e) {
-            toast.error("Ocurrió un error inesperado");
-        } finally {
-            setIsBulkLoading(false);
-        }
-    };
 
     // ── Render ───────────────────────────────────────────────
     const grouped = groupTransactionsByDate(transactions);
@@ -417,14 +371,11 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                         <h3 className="text-sm font-medium text-muted-foreground tracking-tight sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10">
                             {dateLabel}
                         </h3>
-                        <div className="flex flex-col gap-2">
+                        <div className="grid gap-4 xl:grid-cols-2">
                             {items.map(t => (
                                 <TransactionCard 
                                     key={t.id} 
                                     transaction={t} 
-                                    isSelected={selectedIds.has(t.id!)}
-                                    onToggleSelect={() => toggleSelection(t.id!)}
-                                    onEdit={() => setEditingTransaction(t)}
                                     onStatusChange={(status) => updateLocalTransaction(t.id!, { status })}
                                     onDeleted={() => setTransactions(prev => prev.filter(x => x.id !== t.id))}
                                 />
@@ -450,56 +401,7 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                 </p>
             )}
 
-            {/* Bulk Actions Floating Bar */}
-            {selectedIds.size > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 fade-in duration-200">
-                    <div className="bg-foreground text-background shadow-xl rounded-full px-4 py-3 flex items-center gap-4 border border-border/20">
-                        <div className="flex items-center gap-2 pr-4 border-r border-background/20 font-medium text-sm">
-                            <span className="flex items-center justify-center bg-background/20 text-background rounded-full w-6 h-6 text-xs">
-                                {selectedIds.size}
-                            </span>
-                            seleccionadas
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <Button size="sm" variant="ghost" className="text-background hover:bg-background/20 hover:text-background h-8 px-3" onClick={() => executeBulkAction(bulkConfirmTransactionsAction, "Transacciones confirmadas", "CONFIRMED")} disabled={isBulkLoading}>
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                                Confirmar
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-background hover:bg-background/20 hover:text-background h-8 px-3" onClick={() => executeBulkAction(bulkRejectTransactionsAction, "Transacciones rechazadas", "REJECTED")} disabled={isBulkLoading}>
-                                <AlertCircle className="w-4 h-4 mr-2" />
-                                Rechazar
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-background hover:bg-background/20 hover:text-background h-8 px-3" onClick={() => executeBulkAction(bulkArchiveTransactionsAction, "Transacciones archivadas", "ARCHIVED")} disabled={isBulkLoading}>
-                                <Archive className="w-4 h-4 mr-2" />
-                                Archivar
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/20 hover:text-red-300 h-8 px-3" onClick={() => executeBulkAction(bulkDeleteTransactionsAction, "Transacciones eliminadas", "DELETED")} disabled={isBulkLoading}>
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Eliminar
-                            </Button>
-                        </div>
-                        <Button size="icon" variant="ghost" className="text-background hover:bg-background/20 hover:text-background h-8 w-8 ml-2 rounded-full" onClick={clearSelection}>
-                            <X className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Edit Modal */}
-            {editingTransaction && (
-                <TransactionEditModal
-                    isOpen={!!editingTransaction}
-                    transaction={editingTransaction}
-                    onClose={() => setEditingTransaction(null)}
-                    onSuccess={() => {
-                        // Optimistically re-fetch or let realtime handle it, 
-                        // but since we want immediate feedback we should update local state.
-                        // However, the modal doesn't return the updated transaction directly to onSuccess in the current implementation,
-                        // so we can just reload the page or rely on realtime for now, or we can update the modal to pass it.
-                        // For simplicity, we just trigger a router refresh or leave it if realtime updates it.
-                    }}
-                />
-            )}
+            {/* Edit Modal implementation removed, using inline edit in TransactionCard */}
         </div>
     );
 }

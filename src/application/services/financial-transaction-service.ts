@@ -214,6 +214,14 @@ export class FinancialTransactionService {
         return this.transactionRepo.findById(id);
     }
 
+    async getUniqueTags(userId: UUID): Promise<string[]> {
+        if (!this.transactionRepo.getUniqueTags) {
+            console.warn("getUniqueTags is not implemented on the current transaction repository.");
+            return [];
+        }
+        return this.transactionRepo.getUniqueTags(userId);
+    }
+
     async getAuditTrail(transactionId: UUID): Promise<unknown[]> {
         return this.auditLogRepo.findByTransactionId(transactionId);
     }

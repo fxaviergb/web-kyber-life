@@ -97,6 +97,19 @@ export class InMemoryFinancialTransactionRepository extends InMemoryRepository<F
         }
         return filtered;
     }
+
+    async getUniqueTags(userId: UUID): Promise<string[]> {
+        const transactions = await this.findByOwnerId(userId);
+        const tagsSet = new Set<string>();
+        for (const t of transactions) {
+            if (t.tags) {
+                for (const tag of t.tags) {
+                    tagsSet.add(tag);
+                }
+            }
+        }
+        return Array.from(tagsSet);
+    }
 }
 
 export class InMemoryUserRepository extends InMemoryRepository<User> implements IUserRepository {
