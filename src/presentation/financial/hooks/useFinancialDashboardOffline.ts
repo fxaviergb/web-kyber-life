@@ -43,30 +43,62 @@ const INITIAL_STATE: DashboardState = {
  * 3. Merge fresh data and update the cache for the next visit.
  * 4. If the server call fails (offline), keep showing cached data with an `isStale` flag.
  */
-export function useFinancialDashboardOffline() {
+export function useFinancialDashboardOffline(startDate?: string, endDate?: string) {
     const [state, setState] = useState<DashboardState>(INITIAL_STATE);
-    const hasFetched = useRef(false);
+    // Track current dates to avoid unnecessary refetches if nothing changed
+    const currentDates = useRef({ startDate, endDate });
+
+    const getCacheKey = useCallback(() => {
+        if (!startDate && !endDate) return CACHE_KEY;
+        return `${CACHE_KEY}-${startDate || 'start'}-${endDate || 'end'}`;
+    }, [startDate, endDate]);
 
     const loadCachedData = useCallback(async () => {
         try {
+            const key = getCacheKey();
             const [cachedKpis, cachedMonthly, cachedType, cachedTransactions] = await Promise.all([
-                financialOfflineStore.kpi.get(CACHE_KEY),
-                financialOfflineStore.monthly.get(CACHE_KEY),
-                financialOfflineStore.typeBreakdown.get(CACHE_KEY),
-                financialOfflineStore.transactions.getAll(),
+                financialOfflineStore.kpi.get(key),
+                financialOfflineStore.monthly.get(key),
+                financialOfflineStore.typeBreakdown.get(key),
+                financialOfflineStore.transactions.get(key), // Use .get(key) instead of .getAll() for specific filter cache
             ]);
 
-            const hasCachedData = cachedKpis !== null;
+            let hasCachedData = cachedKpis !== null;
+            let kpis = cachedKpis as FinancialKPIs;
+            let monthly = (cachedMonthly as MonthlyBreakdown[]) ?? [];
+            let typeBreakdown = (cachedType as TypeBreakdown[]) ?? [];
+            let recent = (cachedTransactions as FinancialTransaction[]) ?? [];
+            let usingFallbackCache = false;
+
+            // If we have a filter but no specific cache, fallback to base cache and show a warning
+            if (!hasCachedData && (startDate || endDate)) {
+                const fallbackKpis = await financialOfflineStore.kpi.get(CACHE_KEY);
+                if (fallbackKpis) {
+                    const fallbackMonthly = await financialOfflineStore.monthly.get(CACHE_KEY);
+                    const fallbackType = await financialOfflineStore.typeBreakdown.get(CACHE_KEY);
+                    const fallbackTransactions = await financialOfflineStore.transactions.get(CACHE_KEY);
+                    
+                    hasCachedData = true;
+                    usingFallbackCache = true;
+                    kpis = fallbackKpis as FinancialKPIs;
+                    monthly = (fallbackMonthly as MonthlyBreakdown[]) ?? [];
+                    typeBreakdown = (fallbackType as TypeBreakdown[]) ?? [];
+                    recent = (fallbackTransactions as FinancialTransaction[]) ?? [];
+                }
+            }
 
             if (hasCachedData) {
                 setState(prev => ({
                     ...prev,
-                    kpis: cachedKpis as FinancialKPIs,
-                    monthly: (cachedMonthly as MonthlyBreakdown[]) ?? [],
-                    typeBreakdown: (cachedType as TypeBreakdown[]) ?? [],
-                    recent: (cachedTransactions?.[0] as FinancialTransaction[]) ?? [],
+                    kpis,
+                    monthly,
+                    typeBreakdown,
+                    recent,
                     loading: false,
                     isStale: true,
+                    error: usingFallbackCache 
+                        ? "Es posible que no se tenga toda la información por falta de conexión." 
+                        : null,
                 }));
             }
 
@@ -74,15 +106,16 @@ export function useFinancialDashboardOffline() {
         } catch {
             return false;
         }
-    }, []);
+    }, [getCacheKey, startDate, endDate]);
 
     const fetchFreshData = useCallback(async () => {
+        setState(prev => ({ ...prev, loading: true }));
         try {
             const [kpiRes, monthlyRes, typeRes, recentRes] = await Promise.all([
-                getFinancialKPIsAction(),
-                getMonthlyBreakdownAction(6),
-                getTypeBreakdownAction(),
-                getRecentTransactionsAction(5),
+                getFinancialKPIsAction(startDate, endDate),
+                getMonthlyBreakdownAction(6, startDate, endDate),
+                getTypeBreakdownAction(startDate, endDate),
+                getRecentTransactionsAction(5, startDate, endDate),
             ]);
 
             const freshKpis = kpiRes.success && kpiRes.data ? kpiRes.data : null;
@@ -101,32 +134,33 @@ export function useFinancialDashboardOffline() {
             });
 
             // Persist to IndexedDB for offline access
+            const key = getCacheKey();
             await Promise.all([
-                freshKpis ? financialOfflineStore.kpi.set(CACHE_KEY, freshKpis) : Promise.resolve(),
-                financialOfflineStore.monthly.set(CACHE_KEY, freshMonthly),
-                financialOfflineStore.typeBreakdown.set(CACHE_KEY, freshType),
-                financialOfflineStore.transactions.set(CACHE_KEY, freshRecent),
+                freshKpis ? financialOfflineStore.kpi.set(key, freshKpis) : Promise.resolve(),
+                financialOfflineStore.monthly.set(key, freshMonthly),
+                financialOfflineStore.typeBreakdown.set(key, freshType),
+                financialOfflineStore.transactions.set(key, freshRecent),
             ]);
         } catch (err) {
             setState(prev => ({
                 ...prev,
                 loading: false,
                 error: prev.isStale
-                    ? "Using cached data — unable to reach the server."
+                    ? "Es posible que no se tenga toda la información por falta de conexión."
                     : (err as Error).message,
             }));
         }
-    }, []);
+    }, [startDate, endDate, getCacheKey]);
 
+    // Fetch when dates change
     useEffect(() => {
-        if (hasFetched.current) return;
-        hasFetched.current = true;
-
+        currentDates.current = { startDate, endDate };
+        
         (async () => {
             await loadCachedData();
             await fetchFreshData();
         })();
-    }, [loadCachedData, fetchFreshData]);
+    }, [startDate, endDate, loadCachedData, fetchFreshData]);
 
     const refresh = useCallback(async () => {
         setState(prev => ({ ...prev, loading: true, error: null }));

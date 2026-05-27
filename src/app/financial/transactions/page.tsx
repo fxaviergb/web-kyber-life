@@ -16,6 +16,8 @@ export default async function TransactionsPage({
     const status = typeof params.status === 'string' ? params.status : undefined;
     const type = typeof params.type === 'string' ? params.type : undefined;
     const currency = typeof params.currency === 'string' ? params.currency : undefined;
+    const dateFrom = typeof params.dateFrom === 'string' ? params.dateFrom : undefined;
+    const dateTo = typeof params.dateTo === 'string' ? params.dateTo : undefined;
 
     // Server-side paginated first page
     const initialResult = await searchPaginatedTransactionsAction({
@@ -23,6 +25,8 @@ export default async function TransactionsPage({
         status,
         type,
         currency,
+        dateFrom,
+        dateTo,
         page: 1,
         pageSize: 20,
     });
@@ -32,7 +36,7 @@ export default async function TransactionsPage({
         : [];
 
     // Pass URL filters so the infinite-scroll can re-apply them
-    const searchFilters = { query, status, type, currency };
+    const searchFilters = { query, status, type, currency, dateFrom, dateTo };
 
     return (
         <div className="flex flex-col gap-6">

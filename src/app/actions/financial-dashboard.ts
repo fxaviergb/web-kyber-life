@@ -5,6 +5,7 @@ import { createClient } from "@/infrastructure/supabase/server";
 import {
     monthlyBreakdownSchema,
     recentTransactionsSchema,
+    dateFilterSchema,
 } from "@/lib/validators/financial-schemas";
 import { z } from "zod";
 
@@ -19,10 +20,15 @@ function formatZodError(error: z.ZodError): string {
     return error.issues.map((e: z.ZodIssue) => `${e.path.join(".")}: ${e.message}`).join("; ");
 }
 
-export async function getFinancialKPIsAction() {
+export async function getFinancialKPIsAction(startDate?: string, endDate?: string) {
     try {
+        const validated = dateFilterSchema.parse({ startDate, endDate });
         const userId = await getAuthUserId();
-        const data = await financialDashboardService.getKPIs(userId);
+        
+        const sDate = validated.startDate ? new Date(validated.startDate) : undefined;
+        const eDate = validated.endDate ? new Date(validated.endDate) : undefined;
+        
+        const data = await financialDashboardService.getKPIs(userId, sDate, eDate);
         return { success: true, data };
     } catch (error) {
         console.error("Error fetching financial KPIs:", error);
@@ -30,11 +36,15 @@ export async function getFinancialKPIsAction() {
     }
 }
 
-export async function getMonthlyBreakdownAction(monthsBack: number = 6) {
+export async function getMonthlyBreakdownAction(monthsBack: number = 6, startDate?: string, endDate?: string) {
     try {
-        const validated = monthlyBreakdownSchema.parse({ monthsBack });
+        const validated = monthlyBreakdownSchema.parse({ monthsBack, startDate, endDate });
         const userId = await getAuthUserId();
-        const data = await financialDashboardService.getMonthlyBreakdown(userId, validated.monthsBack);
+        
+        const sDate = validated.startDate ? new Date(validated.startDate) : undefined;
+        const eDate = validated.endDate ? new Date(validated.endDate) : undefined;
+        
+        const data = await financialDashboardService.getMonthlyBreakdown(userId, validated.monthsBack, sDate, eDate);
         return { success: true, data };
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -45,10 +55,15 @@ export async function getMonthlyBreakdownAction(monthsBack: number = 6) {
     }
 }
 
-export async function getTypeBreakdownAction() {
+export async function getTypeBreakdownAction(startDate?: string, endDate?: string) {
     try {
+        const validated = dateFilterSchema.parse({ startDate, endDate });
         const userId = await getAuthUserId();
-        const data = await financialDashboardService.getTypeBreakdown(userId);
+        
+        const sDate = validated.startDate ? new Date(validated.startDate) : undefined;
+        const eDate = validated.endDate ? new Date(validated.endDate) : undefined;
+        
+        const data = await financialDashboardService.getTypeBreakdown(userId, sDate, eDate);
         return { success: true, data };
     } catch (error) {
         console.error("Error fetching type breakdown:", error);
@@ -56,11 +71,15 @@ export async function getTypeBreakdownAction() {
     }
 }
 
-export async function getRecentTransactionsAction(limit: number = 5) {
+export async function getRecentTransactionsAction(limit: number = 5, startDate?: string, endDate?: string) {
     try {
-        const validated = recentTransactionsSchema.parse({ limit });
+        const validated = recentTransactionsSchema.parse({ limit, startDate, endDate });
         const userId = await getAuthUserId();
-        const data = await financialDashboardService.getRecentTransactions(userId, validated.limit);
+        
+        const sDate = validated.startDate ? new Date(validated.startDate) : undefined;
+        const eDate = validated.endDate ? new Date(validated.endDate) : undefined;
+        
+        const data = await financialDashboardService.getRecentTransactions(userId, validated.limit, sDate, eDate);
         return { success: true, data };
     } catch (error) {
         if (error instanceof z.ZodError) {

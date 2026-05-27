@@ -8,6 +8,7 @@ import { financialOfflineStore } from "@/infrastructure/offline/financial-offlin
 import { searchPaginatedTransactionsAction, createTransactionAction } from "@/app/actions/financial-transactions";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
 import { WifiOff, Loader2 } from "lucide-react";
+import { TransactionSummary } from "./TransactionSummary";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -359,7 +360,7 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                 </div>
             )}
 
-
+            <TransactionSummary transactions={transactions} />
 
             {transactions.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground">

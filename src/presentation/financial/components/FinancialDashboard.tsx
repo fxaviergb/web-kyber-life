@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyChart } from "./MonthlyChart";
@@ -8,6 +8,9 @@ import { TypeBreakdownChart } from "./TypeBreakdownChart";
 import { useFinancialDashboardOffline } from "../hooks/useFinancialDashboardOffline";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
 import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Radio } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -16,8 +19,50 @@ function formatCurrency(value: number): string {
 }
 
 export function FinancialDashboard() {
+    const [filterType, setFilterType] = useState<"all" | "today" | "week" | "month" | "custom">("all");
+    const [customStartDate, setCustomStartDate] = useState<string>("");
+    const [customEndDate, setCustomEndDate] = useState<string>("");
+
+    const { startDate, endDate } = useMemo(() => {
+        const now = new Date();
+        if (filterType === "all") return { startDate: undefined, endDate: undefined };
+        
+        if (filterType === "today") {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            const end = new Date();
+            end.setHours(23, 59, 59, 999);
+            return { startDate: d.toISOString(), endDate: end.toISOString() };
+        }
+        
+        if (filterType === "week") {
+            const start = new Date(now);
+            start.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // start of week (Monday)
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(now);
+            end.setHours(23, 59, 59, 999);
+            return { startDate: start.toISOString(), endDate: end.toISOString() };
+        }
+        
+        if (filterType === "month") {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now);
+            end.setHours(23, 59, 59, 999);
+            return { startDate: start.toISOString(), endDate: end.toISOString() };
+        }
+        
+        if (filterType === "custom") {
+            return { 
+                startDate: customStartDate ? new Date(customStartDate + "T00:00:00").toISOString() : undefined, 
+                endDate: customEndDate ? new Date(customEndDate + "T23:59:59").toISOString() : undefined
+            };
+        }
+        
+        return {};
+    }, [filterType, customStartDate, customEndDate]);
+
     const { kpis, monthly, typeBreakdown, recent, loading, isStale, error, refresh } =
-        useFinancialDashboardOffline();
+        useFinancialDashboardOffline(startDate, endDate);
 
     // ── Realtime: auto-refresh dashboard when transactions change ──
     const subscriptions = useMemo(
@@ -61,6 +106,48 @@ export function FinancialDashboard() {
 
     return (
         <div className="space-y-6">
+            {/* Filter Controls */}
+            <Card>
+                <CardContent className="pt-6 flex flex-col sm:flex-row items-start sm:items-end gap-4">
+                    <div className="space-y-2 flex-1 max-w-xs">
+                        <Label>Filtrar por fecha</Label>
+                        <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccione un rango" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todo el tiempo</SelectItem>
+                                <SelectItem value="today">Hoy</SelectItem>
+                                <SelectItem value="week">Esta semana</SelectItem>
+                                <SelectItem value="month">Este mes</SelectItem>
+                                <SelectItem value="custom">Personalizado</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {filterType === "custom" && (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1">
+                            <div className="space-y-2 w-full max-w-[200px]">
+                                <Label>Desde</Label>
+                                <Input 
+                                    type="date" 
+                                    value={customStartDate}
+                                    onChange={(e) => setCustomStartDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2 w-full max-w-[200px]">
+                                <Label>Hasta</Label>
+                                <Input 
+                                    type="date" 
+                                    value={customEndDate}
+                                    onChange={(e) => setCustomEndDate(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
             {/* Stale/offline banner */}
             {isStale && (
                 <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2.5 text-sm text-yellow-400">

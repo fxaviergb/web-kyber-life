@@ -100,11 +100,16 @@ export const bulkCategorizeSchema = bulkActionSchema.extend({
 
 // ─── Dashboard Params ────────────────────────────────────────
 
-export const monthlyBreakdownSchema = z.object({
+export const dateFilterSchema = z.object({
+    startDate: z.string().refine(v => !isNaN(Date.parse(v)), "Invalid startDate").optional(),
+    endDate: z.string().refine(v => !isNaN(Date.parse(v)), "Invalid endDate").optional(),
+});
+
+export const monthlyBreakdownSchema = dateFilterSchema.extend({
     monthsBack: z.number().int().min(1).max(24).default(6),
 });
 
-export const recentTransactionsSchema = z.object({
+export const recentTransactionsSchema = dateFilterSchema.extend({
     limit: z.number().int().min(1).max(50).default(5),
 });
 
