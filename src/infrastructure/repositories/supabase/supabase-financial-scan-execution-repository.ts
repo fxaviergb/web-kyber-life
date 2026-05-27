@@ -7,6 +7,7 @@ import { createClient } from "@/infrastructure/supabase/server";
 export class SupabaseFinancialScanExecutionRepository implements IFinancialScanExecutionRepository {
     private tableName = 'financial_scanner_executions';
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private mapToEntity(data: any): FinancialScanExecution {
         return {
             id: data.id,
@@ -190,7 +191,8 @@ export class SupabaseFinancialScanExecutionRepository implements IFinancialScanE
         }
         
         return {
-            data: (data || []).map(row => this.mapToEntity(row)),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data: (data || []).map((row: any) => this.mapToEntity(row)),
             pagination: {
                 page: pagination.page,
                 pageSize: pagination.pageSize,

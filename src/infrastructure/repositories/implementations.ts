@@ -1,6 +1,6 @@
 import { InMemoryRepository } from "./in-memory-repository";
-import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution } from "@/domain/entities";
-import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionRepository } from "@/domain/repositories";
+import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution, FinancialAccount, FinancialCategory } from "@/domain/entities";
+import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionRepository, IFinancialAccountRepository, IFinancialCategoryRepository } from "@/domain/repositories";
 import { UUID } from "@/domain/core";
 import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
 
@@ -60,6 +60,21 @@ export class InMemoryFinancialScanExecutionRepository extends InMemoryRepository
 export class InMemoryFinancialInstitutionRepository extends InMemoryRepository<FinancialInstitution> implements IFinancialInstitutionRepository {
     async findByOwnerId(userId: UUID): Promise<FinancialInstitution[]> {
         return (await this.findAll()).filter(i => i.ownerUserId === userId);
+    }
+}
+
+export class InMemoryFinancialAccountRepository extends InMemoryRepository<FinancialAccount> implements IFinancialAccountRepository {
+    async findByOwnerId(userId: UUID): Promise<FinancialAccount[]> {
+        return (await this.findAll()).filter(a => a.ownerUserId === userId);
+    }
+    async findByInstitutionId(institutionId: UUID): Promise<FinancialAccount[]> {
+        return (await this.findAll()).filter(a => a.institutionId === institutionId);
+    }
+}
+
+export class InMemoryFinancialCategoryRepository extends InMemoryRepository<FinancialCategory> implements IFinancialCategoryRepository {
+    async findAllBaseAndUser(userId: UUID): Promise<FinancialCategory[]> {
+        return (await this.findAll()).filter(c => c.ownerUserId === null || c.ownerUserId === userId);
     }
 }
 

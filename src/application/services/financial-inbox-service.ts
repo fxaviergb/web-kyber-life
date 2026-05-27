@@ -1,12 +1,13 @@
 import { UUID } from "../../domain/core";
 import { FinancialScannerTransaction, FinancialTransaction } from "../../domain/entities/financial";
-import { IFinancialScannerTransactionRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository } from "../../domain/repositories/financial";
+import { IFinancialScannerTransactionRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialInstitutionRepository } from "../../domain/repositories/financial";
 
 export interface MapScannerTransactionDTO {
     scannerTransactionId: UUID;
     userId: UUID;
     categoryId?: UUID;
     institutionId?: UUID;
+    institutionName?: string;
     accountId?: UUID;
     type?: FinancialTransaction['type'];
     notes?: string;
@@ -20,7 +21,8 @@ export class FinancialInboxService {
     constructor(
         private scannerRepo: IFinancialScannerTransactionRepository,
         private transactionRepo: IFinancialTransactionRepository,
-        private auditLogRepo: IFinancialTransactionAuditLogRepository
+        private auditLogRepo: IFinancialTransactionAuditLogRepository,
+        private institutionRepo: IFinancialInstitutionRepository
     ) {}
 
     async getUnprocessedTransactions(userId: UUID): Promise<FinancialScannerTransaction[]> {
@@ -58,6 +60,30 @@ export class FinancialInboxService {
 
         const validExecutionId = isValidUuid(scannerTx.executionId) ? scannerTx.executionId : undefined;
 
+        let finalInstitutionId = dto.institutionId ?? null;
+
+        // Auto-create or reuse institution if name is provided but no ID
+        if (!finalInstitutionId && dto.institutionName) {
+            const userInstitutions = await this.institutionRepo.findByOwnerId(dto.userId);
+            const existing = userInstitutions.find(inst => inst.name.toLowerCase() === dto.institutionName!.toLowerCase() && !inst.isDeleted);
+            
+            if (existing && existing.id) {
+                finalInstitutionId = existing.id;
+            } else {
+                const newInstitution = await this.institutionRepo.create({
+                    id: crypto.randomUUID(),
+                    ownerId: dto.userId,
+                    name: dto.institutionName,
+                    type: 'BANK',
+                    isActive: true,
+                    isDeleted: false,
+                    createdAt: now,
+                    updatedAt: now
+                });
+                finalInstitutionId = newInstitution.id!;
+            }
+        }
+
         const transaction: FinancialTransaction = {
             id: crypto.randomUUID(),
             ownerUserId: dto.userId,
@@ -68,7 +94,7 @@ export class FinancialInboxService {
             currency: scannerTx.currency || 'USD',
             merchant: dto.merchant ?? scannerTx.merchant ?? null,
             categoryId: dto.categoryId ?? null,
-            institutionId: dto.institutionId ?? null,
+            institutionId: finalInstitutionId,
             accountId: dto.accountId ?? null,
             tags: dto.tags ?? [],
             notes: dto.notes ?? (scannerTx.originStats as Record<string, string>)?.emailBody ?? (scannerTx.originStats as Record<string, string>)?.snippet ?? scannerTx.description ?? null,

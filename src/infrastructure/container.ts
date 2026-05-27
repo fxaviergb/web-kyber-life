@@ -14,7 +14,10 @@ import {
     InMemoryFinancialTransactionRepository,
     InMemoryFinancialTransactionAuditLogRepository,
     InMemoryFinancialScannerTransactionRepository,
-    InMemoryFinancialScanExecutionRepository
+    InMemoryFinancialScanExecutionRepository,
+    InMemoryFinancialInstitutionRepository,
+    InMemoryFinancialAccountRepository,
+    InMemoryFinancialCategoryRepository
 } from "./repositories/implementations";
 import { seedRepositories } from "./seed/seed-data";
 import { randomUUID } from "crypto";
@@ -35,7 +38,10 @@ import {
     SupabaseFinancialTransactionRepository,
     SupabaseFinancialTransactionAuditLogRepository,
     SupabaseFinancialScannerTransactionRepository,
-    SupabaseFinancialScanExecutionRepository
+    SupabaseFinancialScanExecutionRepository,
+    SupabaseFinancialInstitutionRepository,
+    SupabaseFinancialAccountRepository,
+    SupabaseFinancialCategoryRepository
 } from "./repositories/supabase"; // Need to create this index or import individually
 
 // ... Previous imports ...
@@ -77,6 +83,10 @@ export const financialTransactionAuditLogRepository = singleton("financialTransa
 export const financialScannerTransactionRepository = singleton("financialScannerTransactionRepo", () => isSupabase ? new SupabaseFinancialScannerTransactionRepository() : new InMemoryFinancialScannerTransactionRepository());
 export const financialScanExecutionRepository = singleton("financialScanExecutionRepo", () => isSupabase ? new SupabaseFinancialScanExecutionRepository() : new InMemoryFinancialScanExecutionRepository());
 
+export const financialInstitutionRepository = singleton("financialInstitutionRepo", () => isSupabase ? new SupabaseFinancialInstitutionRepository() : new InMemoryFinancialInstitutionRepository());
+export const financialAccountRepository = singleton("financialAccountRepo", () => isSupabase ? new SupabaseFinancialAccountRepository() : new InMemoryFinancialAccountRepository());
+export const financialCategoryRepository = singleton("financialCategoryRepo", () => isSupabase ? new SupabaseFinancialCategoryRepository() : new InMemoryFinancialCategoryRepository());
+
 // Services
 import { AuthService } from "@/application/services/auth-service";
 import { MasterDataService } from "@/application/services/master-data-service";
@@ -88,12 +98,14 @@ import { UserService } from "@/application/services/user-service";
 import { FinancialTransactionService } from "@/application/services/financial-transaction-service";
 import { FinancialInboxService } from "@/application/services/financial-inbox-service";
 import { FinancialDashboardService } from "@/application/services/financial-dashboard-service";
+import { FinancialSettingsService } from "@/application/services/financial-settings-service";
 
 export const authService = new AuthService(userRepository, passwordResetTokenRepository);
 export const userService = new UserService(userRepository);
 export const financialTransactionService = new FinancialTransactionService(financialTransactionRepository, financialTransactionAuditLogRepository);
-export const financialInboxService = new FinancialInboxService(financialScannerTransactionRepository, financialTransactionRepository, financialTransactionAuditLogRepository);
+export const financialInboxService = new FinancialInboxService(financialScannerTransactionRepository, financialTransactionRepository, financialTransactionAuditLogRepository, financialInstitutionRepository);
 export const financialDashboardService = new FinancialDashboardService(financialTransactionRepository);
+export const financialSettingsService = new FinancialSettingsService(financialInstitutionRepository, financialAccountRepository, financialCategoryRepository);
 export const masterDataService = new MasterDataService(supermarketRepository, categoryRepository, unitRepository);
 export const productService = new ProductService(genericItemRepository, brandProductRepository, priceObservationRepository);
 export const templateService = new TemplateService(templateRepository, templateItemRepository);
