@@ -26,7 +26,7 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
 
     // Form state
     const [name, setName] = useState("");
-    const [type, setType] = useState<FinancialAccount['type']>('CHECKING');
+    const [accountType, setAccountType] = useState<string>('CHECKING');
     const [currency, setCurrency] = useState('USD');
     const [institutionId, setInstitutionId] = useState<string>("none");
 
@@ -34,13 +34,13 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
         if (acc) {
             setEditingId(acc.id!);
             setName(acc.name);
-            setType(acc.type);
+            setAccountType(acc.accountType || 'CHECKING');
             setCurrency(acc.currency);
             setInstitutionId(acc.institutionId || "none");
         } else {
             setEditingId(null);
             setName("");
-            setType('CHECKING');
+            setAccountType('CHECKING');
             setCurrency('USD');
             setInstitutionId("none");
         }
@@ -57,7 +57,7 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
         try {
             const dataToSave = { 
                 name, 
-                type, 
+                accountType, 
                 currency, 
                 institutionId: institutionId === "none" ? null : institutionId 
             };
@@ -124,7 +124,7 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Tipo</Label>
-                                    <Select value={type} onValueChange={(val) => setType(val as any)}>
+                                    <Select value={accountType} onValueChange={setAccountType}>
                                         <SelectTrigger>
                                             <SelectValue />
                                         </SelectTrigger>
@@ -214,7 +214,7 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
                                         </div>
                                     </div>
                                     <div className="mt-2 text-xs font-medium px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md self-start text-gray-600 dark:text-gray-300">
-                                        {acc.type === 'CHECKING' ? 'Corriente' : acc.type === 'SAVINGS' ? 'Ahorros' : acc.type === 'CREDIT_CARD' ? 'Tarjeta' : acc.type === 'CASH' ? 'Efectivo' : acc.type} • {acc.currency}
+                                        {acc.accountType === 'CHECKING' ? 'Corriente' : acc.accountType === 'SAVINGS' ? 'Ahorros' : acc.accountType === 'CREDIT_CARD' ? 'Tarjeta' : acc.accountType === 'CASH' ? 'Efectivo' : acc.accountType || 'Cuenta'} • {acc.currency}
                                     </div>
                                 </div>
                             );

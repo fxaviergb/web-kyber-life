@@ -9,7 +9,6 @@ import { createInstitutionAction, updateInstitutionAction, deleteInstitutionActi
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { UUID } from "@/domain/core";
 
@@ -25,17 +24,14 @@ export function InstitutionManager({ initialData }: InstitutionManagerProps) {
 
     // Form state
     const [name, setName] = useState("");
-    const [type, setType] = useState<FinancialInstitution['type']>('BANK');
 
     const handleOpenDialog = (inst?: FinancialInstitution) => {
         if (inst) {
             setEditingId(inst.id!);
             setName(inst.name);
-            setType(inst.type);
         } else {
             setEditingId(null);
             setName("");
-            setType('BANK');
         }
         setIsDialogOpen(true);
     };
@@ -49,11 +45,11 @@ export function InstitutionManager({ initialData }: InstitutionManagerProps) {
         setIsSubmitting(true);
         try {
             if (editingId) {
-                await updateInstitutionAction(editingId, { name, type });
-                setInstitutions(institutions.map(i => i.id === editingId ? { ...i, name, type } : i));
+                await updateInstitutionAction(editingId, { name });
+                setInstitutions(institutions.map(i => i.id === editingId ? { ...i, name } : i));
                 toast.success("Institución actualizada");
             } else {
-                const newInst = await createInstitutionAction({ name, type });
+                const newInst = await createInstitutionAction({ name });
                 setInstitutions([...institutions, newInst]);
                 toast.success("Institución creada");
             }
@@ -106,20 +102,6 @@ export function InstitutionManager({ initialData }: InstitutionManagerProps) {
                                         placeholder="Ej. Banco Pichincha"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Tipo</Label>
-                                    <Select value={type} onValueChange={(val) => setType(val as any)}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="BANK">Banco</SelectItem>
-                                            <SelectItem value="CREDIT_CARD">Tarjeta de Crédito</SelectItem>
-                                            <SelectItem value="WALLET">Billetera Digital</SelectItem>
-                                            <SelectItem value="OTHER">Otro</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
                                 <Button 
                                     className="w-full" 
                                     onClick={handleSave} 
@@ -151,7 +133,6 @@ export function InstitutionManager({ initialData }: InstitutionManagerProps) {
                                     </div>
                                     <div>
                                         <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">{inst.name}</h3>
-                                        <p className="text-xs text-gray-500">{inst.type === 'BANK' ? 'Banco' : inst.type === 'CREDIT_CARD' ? 'Tarjeta' : inst.type === 'WALLET' ? 'Billetera' : 'Otro'}</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -9,7 +9,6 @@ import { createCategoryAction, updateCategoryAction, deleteCategoryAction } from
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { UUID } from "@/domain/core";
 
@@ -25,19 +24,16 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
 
     // Form state
     const [name, setName] = useState("");
-    const [type, setType] = useState<FinancialCategory['type']>('EXPENSE');
     const [color, setColor] = useState("#3b82f6"); // Default blue
 
     const handleOpenDialog = (cat?: FinancialCategory) => {
         if (cat) {
             setEditingId(cat.id!);
             setName(cat.name);
-            setType(cat.type);
             setColor(cat.color || "#3b82f6");
         } else {
             setEditingId(null);
             setName("");
-            setType('EXPENSE');
             setColor("#3b82f6");
         }
         setIsDialogOpen(true);
@@ -53,9 +49,7 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
         try {
             const dataToSave = { 
                 name, 
-                type, 
-                color, 
-                isSystem: false // Users can only create custom categories
+                color
             };
 
             if (editingId) {
@@ -87,15 +81,6 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
         }
     };
 
-    const getTypeColor = (t: string) => {
-        switch(t) {
-            case 'EXPENSE': return 'text-red-600 bg-red-100 dark:bg-red-900/30';
-            case 'INCOME': return 'text-green-600 bg-green-100 dark:bg-green-900/30';
-            case 'TRANSFER': return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30';
-            default: return 'text-gray-600 bg-gray-100 dark:bg-gray-800';
-        }
-    };
-
     return (
         <Card className="border-none shadow-none">
             <CardHeader className="px-0">
@@ -124,19 +109,6 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                                         onChange={(e) => setName(e.target.value)}
                                         placeholder="Ej. Alimentación"
                                     />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Tipo</Label>
-                                    <Select value={type} onValueChange={(val) => setType(val as any)}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="EXPENSE">Gasto</SelectItem>
-                                            <SelectItem value="INCOME">Ingreso</SelectItem>
-                                            <SelectItem value="TRANSFER">Transferencia</SelectItem>
-                                        </SelectContent>
-                                    </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="cat-color">Color</Label>
@@ -180,14 +152,14 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                                     <div className="flex items-center gap-3">
                                         <div 
                                             className="w-10 h-10 rounded-full flex items-center justify-center opacity-80"
-                                            style={{ backgroundColor: `${cat.color}20`, color: cat.color || '#3b82f6' }}
+                                            style={{ backgroundColor: `${cat.color || '#3b82f6'}20`, color: cat.color || '#3b82f6' }}
                                         >
                                             <Tags className="w-5 h-5" />
                                         </div>
                                         <div>
                                             <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                                 {cat.name}
-                                                {cat.isSystem && (
+                                                {cat.ownerUserId === null && (
                                                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase tracking-wider">
                                                         Sistema
                                                     </span>
@@ -196,7 +168,7 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                                         </div>
                                     </div>
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {!cat.isSystem && (
+                                        {cat.ownerUserId !== null && (
                                             <>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-500" onClick={() => handleOpenDialog(cat)}>
                                                     <Edit2 className="w-4 h-4" />
@@ -207,9 +179,6 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                                             </>
                                         )}
                                     </div>
-                                </div>
-                                <div className={`mt-2 text-[10px] font-semibold px-2 py-1 rounded-md self-start uppercase tracking-wider ${getTypeColor(cat.type)}`}>
-                                    {cat.type === 'EXPENSE' ? 'Gasto' : cat.type === 'INCOME' ? 'Ingreso' : 'Transferencia'}
                                 </div>
                             </div>
                         ))}

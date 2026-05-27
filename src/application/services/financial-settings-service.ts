@@ -23,11 +23,9 @@ export class FinancialSettingsService {
     async createInstitution(userId: UUID, data: Partial<FinancialInstitution>): Promise<FinancialInstitution> {
         const institution: FinancialInstitution = {
             id: randomUUID(),
-            ownerId: userId,
+            ownerUserId: userId,
             name: data.name!,
-            type: data.type || 'BANK',
             logoUrl: data.logoUrl || null,
-            isActive: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isDeleted: false
@@ -37,7 +35,7 @@ export class FinancialSettingsService {
 
     async updateInstitution(userId: UUID, institutionId: UUID, data: Partial<FinancialInstitution>): Promise<FinancialInstitution> {
         const existing = await this.institutionRepo.findById(institutionId);
-        if (!existing || existing.ownerId !== userId || existing.isDeleted) {
+        if (!existing || existing.ownerUserId !== userId || existing.isDeleted) {
             throw new Error("Institution not found or access denied");
         }
         
@@ -52,7 +50,7 @@ export class FinancialSettingsService {
 
     async deleteInstitution(userId: UUID, institutionId: UUID): Promise<void> {
         const existing = await this.institutionRepo.findById(institutionId);
-        if (!existing || existing.ownerId !== userId) {
+        if (!existing || existing.ownerUserId !== userId) {
             throw new Error("Institution not found or access denied");
         }
         
@@ -75,22 +73,19 @@ export class FinancialSettingsService {
         // Validate institution exists and belongs to user
         if (data.institutionId) {
             const institution = await this.institutionRepo.findById(data.institutionId);
-            if (!institution || institution.ownerId !== userId || institution.isDeleted) {
+            if (!institution || institution.ownerUserId !== userId || institution.isDeleted) {
                  throw new Error("Invalid institution");
             }
         }
 
         const account: FinancialAccount = {
             id: randomUUID(),
-            ownerId: userId,
+            ownerUserId: userId,
             institutionId: data.institutionId || null,
             name: data.name!,
-            type: data.type || 'CHECKING',
+            accountType: data.accountType || 'CHECKING',
+            lastFour: data.lastFour || null,
             currency: data.currency || 'USD',
-            balance: data.balance || 0,
-            color: data.color || null,
-            icon: data.icon || null,
-            isActive: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isDeleted: false
@@ -100,13 +95,13 @@ export class FinancialSettingsService {
 
     async updateAccount(userId: UUID, accountId: UUID, data: Partial<FinancialAccount>): Promise<FinancialAccount> {
         const existing = await this.accountRepo.findById(accountId);
-        if (!existing || existing.ownerId !== userId || existing.isDeleted) {
+        if (!existing || existing.ownerUserId !== userId || existing.isDeleted) {
             throw new Error("Account not found or access denied");
         }
 
         if (data.institutionId && data.institutionId !== existing.institutionId) {
             const institution = await this.institutionRepo.findById(data.institutionId);
-            if (!institution || institution.ownerId !== userId || institution.isDeleted) {
+            if (!institution || institution.ownerUserId !== userId || institution.isDeleted) {
                  throw new Error("Invalid institution");
             }
         }
@@ -122,7 +117,7 @@ export class FinancialSettingsService {
 
     async deleteAccount(userId: UUID, accountId: UUID): Promise<void> {
         const existing = await this.accountRepo.findById(accountId);
-        if (!existing || existing.ownerId !== userId) {
+        if (!existing || existing.ownerUserId !== userId) {
             throw new Error("Account not found or access denied");
         }
         
@@ -144,14 +139,11 @@ export class FinancialSettingsService {
     async createCategory(userId: UUID, data: Partial<FinancialCategory>): Promise<FinancialCategory> {
         const category: FinancialCategory = {
             id: randomUUID(),
-            ownerId: userId,
+            ownerUserId: userId,
             name: data.name!,
-            type: data.type || 'EXPENSE',
             color: data.color || null,
             icon: data.icon || null,
             parentId: data.parentId || null,
-            isBase: false,
-            isActive: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isDeleted: false
@@ -161,12 +153,12 @@ export class FinancialSettingsService {
 
     async updateCategory(userId: UUID, categoryId: UUID, data: Partial<FinancialCategory>): Promise<FinancialCategory> {
         const existing = await this.categoryRepo.findById(categoryId);
-        if (!existing || existing.ownerId !== userId || existing.isDeleted) {
+        if (!existing || existing.ownerUserId !== userId || existing.isDeleted) {
             throw new Error("Category not found or access denied");
         }
         
-        // Cannot modify base categories
-        if (existing.isBase) {
+        // Cannot modify base categories (ownerUserId === null means system category)
+        if (existing.ownerUserId === null) {
              throw new Error("Cannot modify system base categories");
         }
         
@@ -181,12 +173,12 @@ export class FinancialSettingsService {
 
     async deleteCategory(userId: UUID, categoryId: UUID): Promise<void> {
         const existing = await this.categoryRepo.findById(categoryId);
-        if (!existing || existing.ownerId !== userId) {
+        if (!existing || existing.ownerUserId !== userId) {
             throw new Error("Category not found or access denied");
         }
 
         // Cannot delete base categories
-        if (existing.isBase) {
+        if (existing.ownerUserId === null) {
              throw new Error("Cannot delete system base categories");
         }
         
