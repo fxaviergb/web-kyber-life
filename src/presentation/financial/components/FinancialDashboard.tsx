@@ -107,46 +107,54 @@ export function FinancialDashboard() {
     return (
         <div className="space-y-6">
             {/* Filter Controls */}
-            <Card>
-                <CardContent className="pt-6 flex flex-col sm:flex-row items-start sm:items-end gap-4">
-                    <div className="space-y-2 flex-1 max-w-xs">
-                        <Label>Filtrar por fecha</Label>
-                        <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Seleccione un rango" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todo el tiempo</SelectItem>
-                                <SelectItem value="today">Hoy</SelectItem>
-                                <SelectItem value="week">Esta semana</SelectItem>
-                                <SelectItem value="month">Este mes</SelectItem>
-                                <SelectItem value="custom">Personalizado</SelectItem>
-                            </SelectContent>
-                        </Select>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+                <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden -mb-2 sm:mb-0">
+                    <div className="inline-flex items-center p-1 bg-muted/40 border border-border/40 rounded-xl">
+                        {(
+                            [
+                                { id: 'all', label: 'Todo el tiempo' },
+                                { id: 'today', label: 'Hoy' },
+                                { id: 'week', label: 'Semana' },
+                                { id: 'month', label: 'Mes' },
+                                { id: 'custom', label: 'Personalizado' }
+                            ] as const
+                        ).map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setFilterType(tab.id as any)}
+                                className={`
+                                    relative px-4 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg whitespace-nowrap
+                                    ${filterType === tab.id 
+                                        ? 'text-foreground bg-background shadow-sm ring-1 ring-border/50' 
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
+                                `}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
                     </div>
+                </div>
 
-                    {filterType === "custom" && (
-                        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1">
-                            <div className="space-y-2 w-full max-w-[200px]">
-                                <Label>Desde</Label>
-                                <Input 
-                                    type="date" 
-                                    value={customStartDate}
-                                    onChange={(e) => setCustomStartDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2 w-full max-w-[200px]">
-                                <Label>Hasta</Label>
-                                <Input 
-                                    type="date" 
-                                    value={customEndDate}
-                                    onChange={(e) => setCustomEndDate(e.target.value)}
-                                />
-                            </div>
+                {filterType === "custom" && (
+                    <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-top-1">
+                        <div className="flex items-center gap-2 w-full bg-muted/20 p-1 rounded-xl border border-border/40">
+                            <Input 
+                                type="date" 
+                                value={customStartDate}
+                                onChange={(e) => setCustomStartDate(e.target.value)}
+                                className="h-8 text-xs bg-background border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-offset-0"
+                            />
+                            <span className="text-muted-foreground/50 text-xs font-medium">a</span>
+                            <Input 
+                                type="date" 
+                                value={customEndDate}
+                                onChange={(e) => setCustomEndDate(e.target.value)}
+                                className="h-8 text-xs bg-background border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-offset-0"
+                            />
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                )}
+            </div>
 
             {/* Stale/offline banner */}
             {isStale && (
