@@ -3,18 +3,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { triggerFinancialScanAction, getScanExecutionsAction } from '@/app/actions/financial-scanner';
-import { Calendar, Search, RefreshCw, CheckCircle2, XCircle, Clock, ChevronLeft } from 'lucide-react';
+import { Calendar, Search, RefreshCw, CheckCircle2, XCircle, Clock, ChevronLeft, Mail } from 'lucide-react';
 import { FinancialScanExecution } from '@/domain/entities/financial';
-import { format, isAfter } from 'date-fns';
+import { format, isAfter, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
 
 type ScanRange = 'today' | 'week' | 'custom';
 
+function getWeekRange(): { start: string; end: string } {
+    const today = new Date();
+    return {
+        start: format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+        end: format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+    };
+}
+
 export function ScannerManager() {
-    const [range, setRange] = useState<ScanRange>('today');
-    const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const weekRange = getWeekRange();
+    const [range, setRange] = useState<ScanRange>('week');
+    const [startDate, setStartDate] = useState(weekRange.start);
+    const [endDate, setEndDate] = useState(weekRange.end);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     // History State
@@ -23,11 +32,11 @@ export function ScannerManager() {
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-    const loadHistory = useCallback(async (pageNum: number, isInitial = false) => {
+    const loadHistory = useCallback(async (pageNum: number, isInitial = false, start?: string, end?: string) => {
         setIsLoadingHistory(true);
         try {
-            console.log("Cargando historial, página:", pageNum);
-            const res = await getScanExecutionsAction(pageNum, 10);
+            console.log("Cargando historial, página:", pageNum, "rango:", start, end);
+            const res = await getScanExecutionsAction(pageNum, 10, start, end);
             console.log("Respuesta de historial:", res);
             if (res.success && res.data) {
                 if (isInitial) {
@@ -45,8 +54,9 @@ export function ScannerManager() {
     }, []);
 
     useEffect(() => {
-        loadHistory(1, true);
-    }, [loadHistory]);
+        setPage(1);
+        loadHistory(1, true, startDate, endDate);
+    }, [startDate, endDate, loadHistory]);
 
     const handleRangeChange = (newRange: ScanRange) => {
         setRange(newRange);
@@ -55,11 +65,8 @@ export function ScannerManager() {
             setStartDate(format(today, 'yyyy-MM-dd'));
             setEndDate(format(today, 'yyyy-MM-dd'));
         } else if (newRange === 'week') {
-            // "Esta semana" starts on Monday and ends on Sunday
-            import('date-fns').then(({ startOfWeek, endOfWeek }) => {
-                setStartDate(format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
-                setEndDate(format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
-            });
+            setStartDate(format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+            setEndDate(format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
         }
     };
 
@@ -91,7 +98,7 @@ export function ScannerManager() {
                 toast.success("El escaneo se ha iniciado en segundo plano");
                 setTimeout(() => {
                     setPage(1);
-                    loadHistory(1, true);
+                    loadHistory(1, true, startDate, endDate);
                 }, 1000);
             } else {
                 toast.error(res.error || "Error al iniciar el escaneo");
@@ -204,34 +211,44 @@ export function ScannerManager() {
                         }
                         
                         return (
-                        <div key={exec.id} className="flex items-center justify-between p-4 rounded-2xl border border-border/50 bg-bg-primary/50 hover:bg-bg-primary transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2 rounded-xl bg-bg-secondary shadow-sm border border-border/50">
+                        <div key={exec.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-border/50 bg-bg-primary/50 hover:bg-bg-primary transition-colors">
+                            <div className="flex items-center gap-4 min-w-0">
+                                <div className="p-2 rounded-xl bg-bg-secondary shadow-sm border border-border/50 shrink-0">
                                     <StatusIcon status={exec.status} />
                                 </div>
-                                <div>
-                                    <p className="font-medium text-sm text-text-primary">
-                                        Escaneo vía {exec.source === 'GMAIL_N8N_WEBHOOK' ? 'N8N Gmail' : exec.source}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {format(new Date(exec.startedAt), "d MMM, HH:mm", { locale: es })}
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-text-secondary flex items-center gap-1.5">
+                                            <Calendar className="w-3.5 h-3.5 shrink-0" />
+                                            {format(new Date(exec.startedAt), "d MMM yyyy, HH:mm", { locale: es })}
                                         </span>
                                         {exec.completedAt && (
                                             <span className="text-xs text-text-tertiary">
-                                                (Finalizó: {format(new Date(exec.completedAt), "HH:mm")})
+                                                → {format(new Date(exec.completedAt), "HH:mm")}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {exec.source === 'GMAIL_N8N_WEBHOOK' && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-medium text-text-tertiary bg-bg-secondary px-1.5 py-0.5 rounded">
+                                                <Mail className="w-3 h-3" />
+                                                Gmail
+                                            </span>
+                                        )}
+                                        {exec.source !== 'GMAIL_N8N_WEBHOOK' && exec.source && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-medium text-text-tertiary bg-bg-secondary px-1.5 py-0.5 rounded">
+                                                {exec.source}
                                             </span>
                                         )}
                                     </div>
                                     {exec.errorDetails && (
-                                        <div className="text-xs text-danger-text mt-1">
-                                            Error: {exec.errorDetails}
-                                        </div>
+                                        <p className="text-xs text-danger-text mt-1.5 line-clamp-2">
+                                            {exec.errorDetails}
+                                        </p>
                                     )}
                                 </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${statusStyles}`}>
                                     {exec.status}
                                 </div>
@@ -256,7 +273,7 @@ export function ScannerManager() {
                                 onClick={() => {
                                     const nextPage = page + 1;
                                     setPage(nextPage);
-                                    loadHistory(nextPage);
+                                    loadHistory(nextPage, false, startDate, endDate);
                                 }}
                                 disabled={isLoadingHistory}
                                 className="text-sm font-medium text-accent-primary hover:text-accent-primary/80 transition-colors disabled:opacity-50"

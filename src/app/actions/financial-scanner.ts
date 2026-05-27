@@ -58,7 +58,12 @@ export async function triggerFinancialScanAction(startDate: string, endDate: str
     }
 }
 
-export async function getScanExecutionsAction(page: number = 1, limit: number = 10) {
+export async function getScanExecutionsAction(
+    page: number = 1, 
+    limit: number = 10,
+    dateFrom?: string,
+    dateTo?: string
+) {
     try {
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -67,9 +72,12 @@ export async function getScanExecutionsAction(page: number = 1, limit: number = 
             return { success: false, error: "No autorizado" };
         }
 
+        const dateFilter = dateFrom && dateTo ? { dateFrom, dateTo } : undefined;
+
         const result = await financialScanExecutionRepository.findPaginatedByOwnerId(user.id, {
             page,
-            pageSize: limit
+            pageSize: limit,
+            dateFilter
         });
 
         return { success: true, data: result };

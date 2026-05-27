@@ -24,8 +24,19 @@ export class InMemoryFinancialScanExecutionRepository extends InMemoryRepository
         const results = (await this.findByOwnerId(userId)).filter(e => e.source === source);
         return results.length > 0 ? results[0] : null;
     }
-    async findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams): Promise<PaginatedResult<FinancialScanExecution>> {
-        const all = (await this.findByOwnerId(userId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    async findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams, dateFilter?: import('@/domain/repositories/financial').ScanExecutionDateFilter): Promise<PaginatedResult<FinancialScanExecution>> {
+        let all = (await this.findByOwnerId(userId));
+        
+        if (dateFilter?.dateFrom) {
+            const fromDate = new Date(`${dateFilter.dateFrom}T00:00:00`).getTime();
+            all = all.filter(e => new Date(e.startedAt).getTime() >= fromDate);
+        }
+        if (dateFilter?.dateTo) {
+            const toDate = new Date(`${dateFilter.dateTo}T23:59:59.999`).getTime();
+            all = all.filter(e => new Date(e.startedAt).getTime() <= toDate);
+        }
+
+        all = all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         const totalItems = all.length;
         const { page, pageSize } = pagination;
         const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));

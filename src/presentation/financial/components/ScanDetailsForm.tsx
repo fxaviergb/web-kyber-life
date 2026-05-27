@@ -64,7 +64,8 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleConfirm = async () => {
+    const handleConfirm = async (e: React.MouseEvent) => {
+        e.preventDefault();
         try {
             setIsProcessing(true);
             const parsedAmount = parseFloat(formData.amount);
@@ -93,8 +94,9 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
         }
     };
 
-    const handleDismiss = async () => {
-        if (!confirm("¿Estás seguro de que deseas descartar este registro?")) return;
+    const handleDismiss = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!window.confirm("¿Estás seguro de que deseas descartar este registro?")) return;
         
         try {
             setIsProcessing(true);
@@ -303,6 +305,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                 </Button>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                     <Button
+                        type="button"
                         variant="outline"
                         className="w-full rounded-lg sm:w-auto hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
                         onClick={handleDismiss}
@@ -312,6 +315,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                         Descartar Registro
                     </Button>
                     <Button
+                        type="button"
                         className="w-full rounded-lg sm:w-auto"
                         onClick={handleConfirm}
                         disabled={isProcessing}

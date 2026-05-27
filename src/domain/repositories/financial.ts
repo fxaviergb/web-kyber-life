@@ -19,10 +19,15 @@ export interface IFinancialTransactionRepository extends IRepository<FinancialTr
     getUniqueTags(userId: UUID): Promise<string[]>;
 }
 
+export interface ScanExecutionDateFilter {
+    dateFrom?: string;
+    dateTo?: string;
+}
+
 export interface IFinancialScanExecutionRepository extends IRepository<FinancialScanExecution> {
     findByOwnerId(userId: UUID): Promise<FinancialScanExecution[]>;
     findLatestBySource(userId: UUID, source: string): Promise<FinancialScanExecution | null>;
-    findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams): Promise<PaginatedResult<FinancialScanExecution>>;
+    findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams, dateFilter?: ScanExecutionDateFilter): Promise<PaginatedResult<FinancialScanExecution>>;
 }
 
 export interface IFinancialScannerTransactionRepository extends IRepository<FinancialScannerTransaction> {

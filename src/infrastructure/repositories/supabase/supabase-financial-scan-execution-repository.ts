@@ -140,14 +140,26 @@ export class SupabaseFinancialScanExecutionRepository implements IFinancialScanE
         return data ? this.mapToEntity(data) : null;
     }
     
-    async findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams): Promise<PaginatedResult<FinancialScanExecution>> {
+    async findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams, dateFilter?: import('@/domain/repositories/financial').ScanExecutionDateFilter): Promise<PaginatedResult<FinancialScanExecution>> {
         const supabase = await createClient();
         
+        // Build base query filters
+        const buildQuery = (query: any) => {
+            query = query.eq('owner_user_id', userId);
+            if (dateFilter?.dateFrom) {
+                query = query.gte('started_at', `${dateFilter.dateFrom}T00:00:00`);
+            }
+            if (dateFilter?.dateTo) {
+                query = query.lte('started_at', `${dateFilter.dateTo}T23:59:59`);
+            }
+            return query;
+        };
+
         // Get total count
-        const { count, error: countError } = await supabase
+        const countQuery = supabase
             .from(this.tableName)
-            .select('*', { count: 'exact', head: true })
-            .eq('owner_user_id', userId);
+            .select('*', { count: 'exact', head: true });
+        const { count, error: countError } = await buildQuery(countQuery);
             
         if (countError) {
             console.error(`Error counting ${this.tableName}:`, countError);
@@ -162,10 +174,10 @@ export class SupabaseFinancialScanExecutionRepository implements IFinancialScanE
         const from = (pagination.page - 1) * pagination.pageSize;
         const to = from + pagination.pageSize - 1;
         
-        const { data, error } = await supabase
+        const dataQuery = supabase
             .from(this.tableName)
-            .select('*')
-            .eq('owner_user_id', userId)
+            .select('*');
+        const { data, error } = await buildQuery(dataQuery)
             .order('created_at', { ascending: false })
             .range(from, to);
             
