@@ -47,3 +47,9 @@ test-update-phone.ts
 lint-results.txt
 ts_errors.txt
 supabase/.temp/
+
+# AI agent cache
+.gemini/
+
+# SWC compiler cache
+.swc/
