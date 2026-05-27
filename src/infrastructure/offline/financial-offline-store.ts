@@ -127,6 +127,8 @@ export const financialOfflineStore = {
 
     /** Recent transactions for offline viewing. */
     transactions: {
+        get: (userId: string) =>
+            isAvailable() ? getEntry(STORES.TRANSACTIONS, userId).then(e => e?.data ?? null) : Promise.resolve(null),
         getAll: () =>
             isAvailable() ? getAllEntries(STORES.TRANSACTIONS).then(entries => entries.map(e => e.data)) : Promise.resolve([]),
         set: <T>(userId: string, data: T) =>

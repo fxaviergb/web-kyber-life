@@ -13,7 +13,8 @@ import {
     InMemoryPasswordResetTokenRepository,
     InMemoryFinancialTransactionRepository,
     InMemoryFinancialTransactionAuditLogRepository,
-    InMemoryFinancialScannerTransactionRepository
+    InMemoryFinancialScannerTransactionRepository,
+    InMemoryFinancialScanExecutionRepository
 } from "./repositories/implementations";
 import { seedRepositories } from "./seed/seed-data";
 import { randomUUID } from "crypto";
@@ -33,7 +34,8 @@ import {
     SupabasePriceObservationRepository,
     SupabaseFinancialTransactionRepository,
     SupabaseFinancialTransactionAuditLogRepository,
-    SupabaseFinancialScannerTransactionRepository
+    SupabaseFinancialScannerTransactionRepository,
+    SupabaseFinancialScanExecutionRepository
 } from "./repositories/supabase"; // Need to create this index or import individually
 
 // ... Previous imports ...
@@ -73,6 +75,7 @@ export const priceObservationRepository = singleton("priceObservationRepo", () =
 export const financialTransactionRepository = singleton("financialTransactionRepo", () => isSupabase ? new SupabaseFinancialTransactionRepository() : new InMemoryFinancialTransactionRepository());
 export const financialTransactionAuditLogRepository = singleton("financialTransactionAuditLogRepo", () => isSupabase ? new SupabaseFinancialTransactionAuditLogRepository() : new InMemoryFinancialTransactionAuditLogRepository());
 export const financialScannerTransactionRepository = singleton("financialScannerTransactionRepo", () => isSupabase ? new SupabaseFinancialScannerTransactionRepository() : new InMemoryFinancialScannerTransactionRepository());
+export const financialScanExecutionRepository = singleton("financialScanExecutionRepo", () => isSupabase ? new SupabaseFinancialScanExecutionRepository() : new InMemoryFinancialScanExecutionRepository());
 
 // Services
 import { AuthService } from "@/application/services/auth-service";

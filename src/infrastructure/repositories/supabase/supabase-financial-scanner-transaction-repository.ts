@@ -1,6 +1,6 @@
-import { UUID } from "../../../domain/core";
-import { FinancialScannerTransaction } from "../../../domain/entities/financial";
-import { IFinancialScannerTransactionRepository } from "../../../domain/repositories/financial";
+import type { UUID } from "../../../domain/core";
+import type { FinancialScannerTransaction } from "../../../domain/entities/financial";
+import type { IFinancialScannerTransactionRepository } from "../../../domain/repositories/financial";
 import { createClient } from "@/infrastructure/supabase/server";
 
 export class SupabaseFinancialScannerTransactionRepository implements IFinancialScannerTransactionRepository {

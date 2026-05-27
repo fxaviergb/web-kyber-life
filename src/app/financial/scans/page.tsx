@@ -1,7 +1,9 @@
 import { Metadata } from "next";
 import { FinancialInbox } from "@/presentation/financial/components/FinancialInbox";
 import { Suspense } from "react";
-import { Inbox as InboxIcon } from "lucide-react";
+import { Inbox as InboxIcon, Search } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
     title: "Bandeja de escaneos financieros - KyberLife",
@@ -21,6 +23,13 @@ export default function ScansInboxPage() {
                         Revisa las transacciones extraídas por escaneos automáticos y asígnalas a tus cuentas.
                     </p>
                 </div>
+                
+                <Link href="/financial/scanner">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-medium shadow-sm transition-all">
+                        <Search className="w-4 h-4" />
+                        Iniciar Escaneo
+                    </Button>
+                </Link>
             </div>
 
             <div className="mt-8">

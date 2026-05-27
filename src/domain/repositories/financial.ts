@@ -22,6 +22,7 @@ export interface IFinancialTransactionRepository extends IRepository<FinancialTr
 export interface IFinancialScanExecutionRepository extends IRepository<FinancialScanExecution> {
     findByOwnerId(userId: UUID): Promise<FinancialScanExecution[]>;
     findLatestBySource(userId: UUID, source: string): Promise<FinancialScanExecution | null>;
+    findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams): Promise<PaginatedResult<FinancialScanExecution>>;
 }
 
 export interface IFinancialScannerTransactionRepository extends IRepository<FinancialScannerTransaction> {

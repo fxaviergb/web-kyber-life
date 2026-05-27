@@ -24,6 +24,26 @@ export class InMemoryFinancialScanExecutionRepository extends InMemoryRepository
         const results = (await this.findByOwnerId(userId)).filter(e => e.source === source);
         return results.length > 0 ? results[0] : null;
     }
+    async findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams): Promise<PaginatedResult<FinancialScanExecution>> {
+        const all = (await this.findByOwnerId(userId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        const totalItems = all.length;
+        const { page, pageSize } = pagination;
+        const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+        const from = (page - 1) * pageSize;
+        const data = all.slice(from, from + pageSize);
+
+        return {
+            data,
+            pagination: {
+                page,
+                pageSize,
+                totalItems,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        };
+    }
 }
 
 export class InMemoryFinancialInstitutionRepository extends InMemoryRepository<FinancialInstitution> implements IFinancialInstitutionRepository {

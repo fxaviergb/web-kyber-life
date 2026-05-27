@@ -1,6 +1,6 @@
-import { IFinancialTransactionAuditLogRepository } from "@/domain/repositories/financial";
-import { FinancialTransactionAuditLog } from "@/domain/entities/financial";
-import { UUID } from "@/domain/core";
+import type { IFinancialTransactionAuditLogRepository } from "@/domain/repositories/financial";
+import type { FinancialTransactionAuditLog } from "@/domain/entities/financial";
+import type { UUID } from "@/domain/core";
 import { createClient } from "@/infrastructure/supabase/server";
 
 export class SupabaseFinancialTransactionAuditLogRepository implements IFinancialTransactionAuditLogRepository {

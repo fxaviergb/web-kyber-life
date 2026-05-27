@@ -1,7 +1,7 @@
-import { IFinancialTransactionRepository } from "@/domain/repositories/financial";
-import { FinancialTransaction } from "@/domain/entities/financial";
-import { UUID } from "@/domain/core";
-import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
+import type { IFinancialTransactionRepository } from "@/domain/repositories/financial";
+import type { FinancialTransaction } from "@/domain/entities/financial";
+import type { UUID } from "@/domain/core";
+import type { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
 import { createClient } from "@/infrastructure/supabase/server";
 
 export class SupabaseFinancialTransactionRepository implements IFinancialTransactionRepository {

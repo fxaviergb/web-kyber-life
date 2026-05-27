@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CalendarDays, Check, CircleAlert, Inbox as InboxIcon, RefreshCw, Sparkles, Store, Wallet, X, Edit2, Undo2 } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, Inbox as InboxIcon, RefreshCw, Sparkles, Store, Wallet, X, Edit2, Undo2, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -340,6 +340,13 @@ export function FinancialInbox() {
                             aparecerán aquí listos para confirmar y clasificar.
                         </p>
                     </div>
+                    
+                    <Link href="/financial/scanner" className="mt-4">
+                        <Button className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-medium">
+                            <Search className="w-4 h-4" />
+                            Iniciar Nuevo Escaneo
+                        </Button>
+                    </Link>
                 </CardContent>
             </Card>
         );
@@ -398,7 +405,7 @@ export function FinancialInbox() {
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="space-y-2">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-xs font-medium text-foreground whitespace-nowrap">SCAN {String(index + 1).padStart(2, "0")}</span>
+                                            <span className="text-xs font-medium text-foreground whitespace-nowrap"># {String(index + 1).padStart(2, "0")}</span>
 
                                             <Badge variant="warning" className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.14em] shrink-0">
                                                 Pendiente

@@ -185,6 +185,7 @@ export function FinancialDashboard() {
                     icon={TrendingUp}
                     iconClassName="text-green-500"
                     description="Todos los ingresos confirmados"
+                    tooltipText="Suma de todas las transacciones positivas (ingresos, depósitos y devoluciones) dentro del rango de fechas seleccionado."
                 />
                 <StatCard
                     title="Gastos totales"
@@ -192,6 +193,7 @@ export function FinancialDashboard() {
                     icon={TrendingDown}
                     iconClassName="text-red-500"
                     description="Todos los gastos confirmados"
+                    tooltipText="Suma de todas las transacciones negativas (pagos, compras, retiros y comisiones) dentro del rango de fechas seleccionado."
                 />
                 <StatCard
                     title="Balance neto"
@@ -199,6 +201,7 @@ export function FinancialDashboard() {
                     icon={DollarSign}
                     iconClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
                     description="Ingresos menos gastos"
+                    tooltipText="Diferencia exacta entre tus ingresos totales y gastos totales. Un balance positivo indica superávit."
                     trend={kpis ? {
                         value: `${kpis.transactionCount} transacciones`,
                         positive: kpis.netBalance >= 0,
@@ -209,6 +212,7 @@ export function FinancialDashboard() {
                     value={formatCurrency(kpis?.avgTransactionAmount ?? 0)}
                     icon={Activity}
                     description="Monto promedio por transacción"
+                    tooltipText="Valor promedio general, calculado dividiendo el volumen total de dinero movido entre la cantidad de transacciones."
                 />
             </div>
 
