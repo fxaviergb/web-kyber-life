@@ -69,7 +69,16 @@ Renombra `.env.example` a `.env` y configura las variables:
 | `NEXT_PUBLIC_AUTH_STRATEGY` | ✅ | Debe coincidir con `DATA_SOURCE` (accesible en el cliente) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Solo Supabase | URL del proyecto en Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Solo Supabase | Clave anónima pública de Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | ❌ Opcional | Clave de servicio para tareas administrativas |
 | `NEXT_PUBLIC_SESSION_TIMEOUT_MS` | ❌ Opcional | Tiempo de inactividad en ms antes de cerrar sesión. Default: `1800000` (30 min) |
+| `NEXT_PUBLIC_BASE_URL` | ❌ Opcional | URL base para callbacks de autenticación. Default: `http://localhost:3000` |
+| `NEXT_PUBLIC_FF_FINANCIAL_REALTIME` | ❌ Opcional | Habilita WebSocket Realtime de Supabase (`true`/`false`). Default: `false` |
+| `NEXT_PUBLIC_FF_FINANCIAL_POLLING` | ❌ Opcional | Habilita polling HTTP como fallback (`true`/`false`). Default: `true` |
+| `NEXT_PUBLIC_FF_FINANCIAL_AI` | ❌ Opcional | Habilita categorización con IA (`true`/`false`). Default: `false` |
+| `NEXT_PUBLIC_FF_FINANCIAL_OFFLINE` | ❌ Opcional | Habilita caché offline IndexedDB (`true`/`false`). Default: `true` |
+| `NEXT_PUBLIC_FF_FINANCIAL_RECURRING` | ❌ Opcional | Habilita detección de transacciones recurrentes (`true`/`false`). Default: `false` |
+| `NEXT_PUBLIC_FINANCIAL_POLLING_INTERVAL_MS` | ❌ Opcional | Intervalo de polling en ms. Default: `60000` |
+| `N8N_SCANNER_WEBHOOK_URL` | ❌ Opcional | Webhook de N8N para escaneo automático de transacciones |
 
 > **Nota:** `DATA_SOURCE` y `NEXT_PUBLIC_AUTH_STRATEGY` deben tener **el mismo valor**. Next.js no expone variables sin prefijo `NEXT_PUBLIC_` al navegador; por eso existen las dos.
 

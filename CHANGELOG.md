@@ -19,3 +19,18 @@ All notable changes to this project will be documented in this file.
   - Fixed an import collision causing a ReferenceError (`Link is not defined`) in `TransactionCard`'s DropdownMenu by renaming the import to `NextLink`.
 - **Database**:
   - Purged existing soft-deleted transactions (`status = 'DELETED'`) via direct hard deletion query to maintain consistency with the new logic.
+
+### Added
+- **Environment Configuration**:
+  - Documented all environment variables in `.env.example`: feature flags (`NEXT_PUBLIC_FF_FINANCIAL_*`), `NEXT_PUBLIC_BASE_URL`, `N8N_SCANNER_WEBHOOK_URL`, polling interval.
+  - Added `N8N_SCANNER_WEBHOOK_URL` support for automated financial scanning via N8N webhook.
+  - Added UUID validation for scanner `executionId` in `FinancialInboxService` to prevent broken foreign key references.
+- **Scans Inbox UI**:
+  - Redesigned `FinancialInbox` with compact card layout, inline type/merchant editing, and subtle polling status indicator.
+  - Replaced full-screen reload with silent background merge of new records.
+  - Added warning popover for `relatedTransactionHint` to save space.
+
+### Fixed
+- **Scans Inbox**: Type select not loading the suggested value on first render — added `normalizeTransactionType` helper.
+- **Financial Module**: Fixed `realtimeStatus` unused variable lint warnings in `FinancialDashboard` and `TransactionTimeline`.
+- **Session handling**: Added `useEffect` mount guard to `Sidebar` to prevent hydration mismatch with Radix UI components.
