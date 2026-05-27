@@ -10,6 +10,7 @@ const STORES = {
     DASHBOARD_TYPE: "dashboard_type",
     TRANSACTIONS: "transactions",
     DRAFTS: "drafts",
+    SETTINGS_QUEUE: "settings_queue",
 } as const;
 
 type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -147,6 +148,18 @@ export const financialOfflineStore = {
             isAvailable() ? removeEntry(STORES.DRAFTS, id) : Promise.resolve(),
         clear: () =>
             isAvailable() ? clearStore(STORES.DRAFTS) : Promise.resolve(),
+    },
+
+    /** Pending configuration changes (institutions, accounts, categories). */
+    settingsQueue: {
+        getAll: () =>
+            isAvailable() ? getAllEntries(STORES.SETTINGS_QUEUE).then(entries => entries.map(e => ({ id: e.key, data: e.data }))) : Promise.resolve([]),
+        add: <T>(id: string, data: T) =>
+            isAvailable() ? putEntry(STORES.SETTINGS_QUEUE, id, data) : Promise.resolve(),
+        remove: (id: string) =>
+            isAvailable() ? removeEntry(STORES.SETTINGS_QUEUE, id) : Promise.resolve(),
+        clear: () =>
+            isAvailable() ? clearStore(STORES.SETTINGS_QUEUE) : Promise.resolve(),
     },
 
     /** Cache timestamp for freshness checks. */

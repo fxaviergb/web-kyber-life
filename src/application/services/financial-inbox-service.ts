@@ -72,10 +72,8 @@ export class FinancialInboxService {
             } else {
                 const newInstitution = await this.institutionRepo.create({
                     id: crypto.randomUUID(),
-                    ownerId: dto.userId,
+                    ownerUserId: dto.userId,
                     name: dto.institutionName,
-                    type: 'BANK',
-                    isActive: true,
                     isDeleted: false,
                     createdAt: now,
                     updatedAt: now
