@@ -121,101 +121,87 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
     const otherBarPercent = (totalOther / maxAbsolute) * 100;
 
     return (
-        <div className="relative overflow-hidden rounded-xl border border-border-base bg-bg-secondary/40 backdrop-blur-xl shadow-custom-sm p-3 sm:p-4 flex flex-col lg:flex-row gap-4 lg:items-center">
+        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 sm:p-6 flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center">
 
             {/* ── LEFT SIDE: BALANCE NETO ── */}
-            <div className="relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left gap-1 lg:w-1/3 lg:shrink-0">
-                <div className="flex items-center gap-1.5 justify-center lg:justify-start">
-                    <div className="flex items-center justify-center w-4 h-4 rounded bg-accent-brand/10 text-accent-brand">
-                        <Wallet className="w-2.5 h-2.5" />
+            <div className="relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left gap-2 lg:w-1/3 lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8">
+                <div className="flex items-center gap-2 justify-center lg:justify-start">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-brand/10 text-accent-brand">
+                        <Wallet className="w-3.5 h-3.5" />
                     </div>
-                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-text-tertiary">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Balance Neto
                     </span>
-                    <span className="px-1.5 py-0.5 rounded-full bg-bg-tertiary/50 text-[9px] font-medium border border-border-base text-text-secondary">
+                    <span className="px-2 py-0.5 rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
                         {transactions.length} reg.
                     </span>
                 </div>
                 
-                <div className="mt-0.5 flex items-baseline justify-center lg:justify-start gap-1">
+                <div className="mt-1 flex items-baseline justify-center lg:justify-start gap-1">
                     <span className={cn(
-                        "text-xl sm:text-2xl font-medium",
-                        balance > 0 ? "text-accent-success" : (balance < 0 ? "text-accent-danger" : "text-text-tertiary")
+                        "text-3xl sm:text-4xl font-light tracking-tight",
+                        balance > 0 ? "text-accent-success" : (balance < 0 ? "text-accent-danger" : "text-muted-foreground")
                     )}>
                         {balance > 0 ? "+" : balance < 0 ? "-" : ""}
-                    </span>
-                    <span className="text-2xl sm:text-3xl font-bold tracking-tight tabular-nums text-text-primary">
                         {formatCurrency(Math.abs(balance), primaryCurrency)}
                     </span>
                 </div>
             </div>
 
             {/* ── RIGHT SIDE: BREAKDOWN ── */}
-            <div className="relative z-10 flex flex-col gap-2 w-full lg:w-2/3">
-                {/* Progress Bar */}
-                <div className="h-1.5 w-full flex bg-bg-tertiary/40 rounded-full overflow-hidden shadow-inner">
-                    <div className="bg-accent-success h-full transition-all duration-1000 ease-out" style={{ width: `${incomeBarPercent}%` }} />
-                    <div className="bg-accent-danger h-full transition-all duration-1000 ease-out" style={{ width: `${expenseBarPercent}%` }} />
-                    {otherCount > 0 && <div className="bg-accent-info h-full transition-all duration-1000 ease-out" style={{ width: `${otherBarPercent}%` }} />}
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="relative z-10 flex flex-col gap-5 w-full lg:w-2/3">
+                {/* Stats */}
+                <div className="flex flex-row w-full justify-between gap-4">
                     {/* Income */}
-                    <div className="flex flex-col gap-1 p-2 rounded-lg bg-bg-primary/50 border border-border-base/50 hover:bg-bg-primary/80 transition-colors">
-                        <div className="flex items-center gap-1.5">
-                            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-accent-success/10 shrink-0">
-                                <TrendingUp className="h-3 w-3 text-accent-success" />
-                            </div>
-                            <span className="text-[11px] font-medium text-text-secondary">Ingresos</span>
+                    <div className="flex flex-col gap-1 flex-1">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <TrendingUp className="h-3.5 w-3.5 text-accent-success" />
+                            <span className="text-xs font-medium text-muted-foreground">Ingresos</span>
                         </div>
-                        <div className="flex flex-col mt-0.5">
-                            <span className="text-sm font-bold tabular-nums text-text-primary truncate">
-                                {formatCurrency(totalIncome, primaryCurrency)}
-                            </span>
-                            <span className="text-[9px] font-medium text-text-tertiary mt-0.5">
-                                {incomeCount} {incomeCount === 1 ? 'txn' : 'txns'}
-                            </span>
-                        </div>
+                        <span className="text-xl font-medium tracking-tight text-foreground">
+                            {formatCurrency(totalIncome, primaryCurrency)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                            {incomeCount} {incomeCount === 1 ? 'transacción' : 'transacciones'}
+                        </span>
                     </div>
 
                     {/* Expense */}
-                    <div className="flex flex-col gap-1 p-2 rounded-lg bg-bg-primary/50 border border-border-base/50 hover:bg-bg-primary/80 transition-colors">
-                        <div className="flex items-center gap-1.5">
-                            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-accent-danger/10 shrink-0">
-                                <TrendingDown className="h-3 w-3 text-accent-danger" />
-                            </div>
-                            <span className="text-[11px] font-medium text-text-secondary">Gastos</span>
+                    <div className="flex flex-col gap-1 flex-1">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <TrendingDown className="h-3.5 w-3.5 text-accent-danger" />
+                            <span className="text-xs font-medium text-muted-foreground">Gastos</span>
                         </div>
-                        <div className="flex flex-col mt-0.5">
-                            <span className="text-sm font-bold tabular-nums text-text-primary truncate">
-                                {formatCurrency(totalExpense, primaryCurrency)}
-                            </span>
-                            <span className="text-[9px] font-medium text-text-tertiary mt-0.5">
-                                {expenseCount} {expenseCount === 1 ? 'txn' : 'txns'}
-                            </span>
-                        </div>
+                        <span className="text-xl font-medium tracking-tight text-foreground">
+                            {formatCurrency(totalExpense, primaryCurrency)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                            {expenseCount} {expenseCount === 1 ? 'transacción' : 'transacciones'}
+                        </span>
                     </div>
 
                     {/* Other */}
                     {otherCount > 0 && (
-                        <div className="flex flex-col gap-1 p-2 rounded-lg bg-bg-primary/50 border border-border-base/50 col-span-2 sm:col-span-1 hover:bg-bg-primary/80 transition-colors">
-                            <div className="flex items-center gap-1.5">
-                                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-accent-info/10 shrink-0">
-                                    <ArrowLeftRight className="h-3 w-3 text-accent-info" />
-                                </div>
-                                <span className="text-[11px] font-medium text-text-secondary">Otros</span>
+                        <div className="flex flex-col gap-1 flex-1">
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <ArrowLeftRight className="h-3.5 w-3.5 text-accent-info" />
+                                <span className="text-xs font-medium text-muted-foreground">Otros</span>
                             </div>
-                            <div className="flex flex-col mt-0.5">
-                                <span className="text-sm font-bold tabular-nums text-text-primary truncate">
-                                    {formatCurrency(Math.abs(totalOther), primaryCurrency)}
-                                </span>
-                                <span className="text-[9px] font-medium text-text-tertiary mt-0.5">
-                                    {otherCount} {otherCount === 1 ? 'txn' : 'txns'}
-                                </span>
-                            </div>
+                            <span className="text-xl font-medium tracking-tight text-foreground">
+                                {formatCurrency(Math.abs(totalOther), primaryCurrency)}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                                {otherCount} {otherCount === 1 ? 'transacción' : 'transacciones'}
+                            </span>
                         </div>
                     )}
+                </div>
+
+                {/* Progress Bar */}
+                <div className="h-1.5 w-full flex bg-muted rounded-full overflow-hidden opacity-80 mt-1">
+                    <div className="bg-accent-success h-full transition-all duration-1000 ease-out" style={{ width: `${incomeBarPercent}%` }} />
+                    <div className="bg-accent-danger h-full transition-all duration-1000 ease-out" style={{ width: `${expenseBarPercent}%` }} />
+                    {otherCount > 0 && <div className="bg-accent-info h-full transition-all duration-1000 ease-out" style={{ width: `${otherBarPercent}%` }} />}
                 </div>
             </div>
 

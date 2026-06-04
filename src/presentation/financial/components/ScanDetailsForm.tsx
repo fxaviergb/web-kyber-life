@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FinancialScannerTransaction } from "@/domain/entities/financial";
 import { mapInboxTransactionAction, dismissInboxTransactionAction } from "@/app/actions/financial-inbox";
+import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
+import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, X, FileJson, Info, Pencil } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, X, FileJson, Info, Pencil, Building2, Landmark, FolderGit2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 
@@ -42,6 +44,15 @@ function normalizeType(type?: string | null) {
     return TYPE_OPTIONS.find(o => o.value === normalized)?.value || "EXPENSE";
 }
 
+const normalizeForMatch = (str?: string | null) => {
+    if (!str) return "";
+    try {
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    } catch {
+        return str.toLowerCase().replace(/[^a-zA-Z0-9]/g, "");
+    }
+};
+
 export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
     const router = useRouter();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -53,12 +64,66 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
         return {
             type: normalizeType(initialData.type),
-            merchant: initialData.merchant || "",
             amount: initialData.amount !== null ? String(initialData.amount) : "",
             date: initialData.date ? new Date(initialData.date).toISOString().slice(0, 16) : "",
             notes: defaultNotes,
+            institutionName: initialData.merchant || "",
+            accountName: "",
+            categoryName: initialData.category || "",
         };
     });
+
+    const [institutions, setInstitutions] = useState<string[]>([]);
+    const [accounts, setAccounts] = useState<string[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
+
+    useEffect(() => {
+        let mounted = true;
+        async function loadOptions() {
+            try {
+                const [insts, accs, cats] = await Promise.all([
+                    getInstitutionsAction(),
+                    getAccountsAction(),
+                    getCategoriesAction()
+                ]);
+                if (mounted) {
+                    const instNames = insts.map(i => i.name);
+                    setInstitutions(instNames);
+                    setAccounts(accs.map(a => a.name));
+                    setCategories(cats.map(c => c.name));
+
+                    if (initialData.merchant) {
+                        const normalizedMerchant = normalizeForMatch(initialData.merchant);
+                        
+                        // Try exact match first
+                        let matched = instNames.find(name => normalizeForMatch(name) === normalizedMerchant);
+                        
+                        // Fallback to fuzzy match (contains)
+                        if (!matched) {
+                            matched = instNames.find(name => {
+                                const nName = normalizeForMatch(name);
+                                return nName.includes(normalizedMerchant) || normalizedMerchant.includes(nName);
+                            });
+                        }
+
+                        if (matched) {
+                            setFormData(prev => {
+                                // Only override if the user hasn't changed it from the original yet
+                                if (prev.institutionName === initialData.merchant) {
+                                    return { ...prev, institutionName: matched };
+                                }
+                                return prev;
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading options:", error);
+            }
+        }
+        loadOptions();
+        return () => { mounted = false; };
+    }, [initialData.merchant]);
 
     const handleChange = (field: keyof typeof formData, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -66,17 +131,36 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
     const handleConfirm = async (e: React.MouseEvent) => {
         e.preventDefault();
+        
+        if (!formData.type) {
+            toast.error("El tipo de transacción es requerido");
+            return;
+        }
+
+        const parsedAmount = parseFloat(formData.amount);
+        if (isNaN(parsedAmount)) {
+            toast.error("El monto es requerido y debe ser un número válido");
+            return;
+        }
+
+        if (!formData.institutionName || formData.institutionName.trim() === "") {
+            toast.error("La institución es requerida");
+            return;
+        }
+
         try {
             setIsProcessing(true);
-            const parsedAmount = parseFloat(formData.amount);
             
             const result = await mapInboxTransactionAction({
                 scannerTransactionId: initialData.id,
                 type: formData.type,
-                merchant: formData.merchant || null,
+                merchant: formData.institutionName || null,
                 amount: isNaN(parsedAmount) ? null : parsedAmount,
                 date: formData.date ? new Date(formData.date).toISOString() : null,
                 notes: formData.notes || null,
+                institutionName: formData.institutionName || null,
+                accountName: formData.accountName || null,
+                categoryName: formData.categoryName || null,
             });
 
             if (!result.success) {
@@ -85,8 +169,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
             }
 
             toast.success("Transacción guardada exitosamente");
-            router.push("/financial/scans");
-            router.refresh();
+            router.replace("/financial/scans");
         } catch (error) {
             toast.error("Ocurrió un error inesperado");
         } finally {
@@ -107,8 +190,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
             }
 
             toast.success("Transacción descartada");
-            router.push("/financial/scans");
-            router.refresh();
+            router.replace("/financial/scans");
         } catch (error) {
             toast.error("Ocurrió un error inesperado");
         } finally {
@@ -146,9 +228,24 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                             
                             <div className="space-y-4">
                                 <div className="space-y-2">
+                                    <Label htmlFor="institutionName" className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Building2 className="h-3.5 w-3.5" />
+                                        Institución (Comercio / Origen) <span className="text-destructive">*</span>
+                                    </Label>
+                                    <AutocompleteInput
+                                        id="institutionName"
+                                        value={formData.institutionName}
+                                        onChange={(val) => handleChange("institutionName", val)}
+                                        options={institutions}
+                                        className="bg-background border-border/50"
+                                        placeholder="Ej. Banco de Chile, Sodexo..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
                                     <Label htmlFor="type" className="flex items-center gap-1.5 text-muted-foreground">
                                         <Tag className="h-3.5 w-3.5" />
-                                        Tipo de Transacción
+                                        Tipo de Transacción <span className="text-destructive">*</span>
                                     </Label>
                                     <Select value={formData.type} onValueChange={(val) => handleChange("type", val)}>
                                         <SelectTrigger className="w-full bg-background border-border/50">
@@ -170,7 +267,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                 <div className="space-y-2">
                                     <Label htmlFor="amount" className="flex items-center gap-1.5 text-muted-foreground">
                                         <DollarSign className="h-3.5 w-3.5" />
-                                        Monto ({initialData.currency || "USD"})
+                                        Monto ({initialData.currency || "USD"}) <span className="text-destructive">*</span>
                                     </Label>
                                     <Input
                                         id="amount"
@@ -180,6 +277,36 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("amount", e.target.value)}
                                         className="bg-background border-border/50 font-mono"
                                         placeholder="0.00"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="accountName" className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Landmark className="h-3.5 w-3.5" />
+                                        Cuenta
+                                    </Label>
+                                    <AutocompleteInput
+                                        id="accountName"
+                                        value={formData.accountName}
+                                        onChange={(val) => handleChange("accountName", val)}
+                                        options={accounts}
+                                        className="bg-background border-border/50"
+                                        placeholder="Ej. Cuenta Corriente, Tarjeta de Crédito..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="categoryName" className="flex items-center gap-1.5 text-muted-foreground">
+                                        <FolderGit2 className="h-3.5 w-3.5" />
+                                        Categoría
+                                    </Label>
+                                    <AutocompleteInput
+                                        id="categoryName"
+                                        value={formData.categoryName}
+                                        onChange={(val) => handleChange("categoryName", val)}
+                                        options={categories}
+                                        className="bg-background border-border/50"
+                                        placeholder="Ej. Supermercado, Transporte..."
                                     />
                                 </div>
 
@@ -197,19 +324,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="merchant" className="flex items-center gap-1.5 text-muted-foreground">
-                                        <Store className="h-3.5 w-3.5" />
-                                        Comercio / Origen
-                                    </Label>
-                                    <Input
-                                        id="merchant"
-                                        value={formData.merchant}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("merchant", e.target.value)}
-                                        className="bg-background border-border/50"
-                                        placeholder="Nombre del comercio..."
-                                    />
-                                </div>
+
 
                                 <div className="space-y-2">
                                     <Label htmlFor="notes" className="flex items-center gap-1.5 text-muted-foreground">

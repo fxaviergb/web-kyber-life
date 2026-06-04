@@ -46,10 +46,10 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
                 <Tooltip
                     formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
                     contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        borderColor: "hsl(var(--border))",
+                        backgroundColor: "var(--color-bg-secondary)",
+                        borderColor: "var(--color-border-base)",
                         borderRadius: "8px",
-                        color: "hsl(var(--foreground))",
+                        color: "var(--color-text-primary)",
                     }}
                 />
                 <Legend />

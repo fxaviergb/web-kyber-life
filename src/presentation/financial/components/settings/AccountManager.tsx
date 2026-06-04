@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FinancialAccount, FinancialInstitution } from "@/domain/entities/financial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,10 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingId, setEditingId] = useState<UUID | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        setAccounts(initialData);
+    }, [initialData]);
 
     // Form state
     const [name, setName] = useState("");
@@ -94,8 +98,8 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
     const activeInstitutions = institutions.filter(i => !i.isDeleted);
 
     return (
-        <Card className="border-none shadow-none">
-            <CardHeader className="px-0">
+        <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="px-0 pt-0">
                 <div className="flex justify-between items-center">
                     <div>
                         <CardTitle>Tus Cuentas</CardTitle>
@@ -179,42 +183,50 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
             </CardHeader>
             <CardContent className="px-0">
                 {accounts.filter(a => !a.isDeleted).length === 0 ? (
-                    <div className="text-center py-10 text-gray-500 border border-dashed rounded-lg bg-gray-50/50 dark:bg-gray-900/50">
-                        <CreditCard className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                        <p>No tienes cuentas registradas.</p>
-                        <Button variant="link" onClick={() => handleOpenDialog()}>
+                    <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl bg-muted/30">
+                        <CreditCard className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                        <p className="font-medium text-foreground">No tienes cuentas registradas</p>
+                        <p className="text-sm mt-1 mb-4">Añade cuentas para empezar a rastrear tu dinero.</p>
+                        <Button variant="outline" onClick={() => handleOpenDialog()} disabled={institutions.filter(i => !i.isDeleted).length === 0}>
                             Añadir la primera
                         </Button>
+                        {institutions.filter(i => !i.isDeleted).length === 0 && (
+                            <p className="text-xs text-red-500 mt-3">Primero debes crear una institución.</p>
+                        )}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {accounts.filter(a => !a.isDeleted).map(acc => {
                             const inst = activeInstitutions.find(i => i.id === acc.institutionId);
                             return (
-                                <div key={acc.id} className="p-4 border rounded-lg bg-white dark:bg-gray-950 flex flex-col gap-2 group hover:border-primary/50 transition-colors">
+                                <div key={acc.id} className="p-5 border rounded-xl bg-card shadow-sm flex flex-col gap-3 group hover:border-primary/50 hover:shadow-md transition-all">
                                     <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                                <CreditCard className="w-5 h-5" />
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                <CreditCard className="w-6 h-6" />
                                             </div>
                                             <div>
-                                                <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">{acc.name}</h3>
-                                                <p className="text-xs text-gray-500">
-                                                    {inst ? inst.name : 'Efectivo / Otro'}
-                                                </p>
+                                                <h3 className="font-semibold text-base text-card-foreground">{acc.name}</h3>
+                                                <p className="text-xs text-muted-foreground mt-0.5">{inst?.name || "Sin institución"}</p>
                                             </div>
                                         </div>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-500" onClick={() => handleOpenDialog(acc)}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10" onClick={() => handleOpenDialog(acc)}>
                                                 <Edit2 className="w-4 h-4" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-500" onClick={() => handleDelete(acc.id!)}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDelete(acc.id!)}>
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
                                     </div>
-                                    <div className="mt-2 text-xs font-medium px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md self-start text-gray-600 dark:text-gray-300">
-                                        {acc.accountType === 'CHECKING' ? 'Corriente' : acc.accountType === 'SAVINGS' ? 'Ahorros' : acc.accountType === 'CREDIT_CARD' ? 'Tarjeta' : acc.accountType === 'CASH' ? 'Efectivo' : acc.accountType || 'Cuenta'} • {acc.currency}
+                                    <div className="pt-3 mt-1 border-t flex justify-between items-end">
+                                        <div>
+                                            <p className="text-xs text-muted-foreground mb-1">Moneda</p>
+                                            <p className="font-medium text-sm">{acc.currency}</p>
+                                        </div>
+                                        <div className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium uppercase tracking-wide">
+                                            {acc.accountType === 'CHECKING' ? 'Corriente' : acc.accountType === 'SAVINGS' ? 'Ahorros' : acc.accountType === 'CREDIT_CARD' ? 'Tarjeta' : acc.accountType === 'CASH' ? 'Efectivo' : acc.accountType || 'Cuenta'}
+                                        </div>
                                     </div>
                                 </div>
                             );

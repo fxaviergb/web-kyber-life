@@ -6,6 +6,7 @@ import {
     FinancialScanExecution,
     FinancialScannerTransaction,
     FinancialInstitution,
+    FinancialInstitutionType,
     FinancialAccount,
     FinancialCategory,
     FinancialTransactionAuditLog
@@ -34,6 +35,10 @@ export interface IFinancialScannerTransactionRepository extends IRepository<Fina
     findUnprocessedByOwnerId(userId: UUID): Promise<FinancialScannerTransaction[]>;
 }
 
+
+export interface IFinancialInstitutionTypeRepository extends IRepository<FinancialInstitutionType> {
+    findAllGlobalAndUser(userId: UUID): Promise<FinancialInstitutionType[]>;
+}
 
 export interface IFinancialInstitutionRepository extends IRepository<FinancialInstitution> {
     findByOwnerId(userId: UUID): Promise<FinancialInstitution[]>;

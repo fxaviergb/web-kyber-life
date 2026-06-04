@@ -89,3 +89,52 @@ export async function getRecentTransactionsAction(limit: number = 5, startDate?:
         return { success: false, error: (error as Error).message };
     }
 }
+
+export async function getCategoryBreakdownAction(startDate?: string, endDate?: string) {
+    try {
+        const validated = dateFilterSchema.parse({ startDate, endDate });
+        const userId = await getAuthUserId();
+        
+        const sDate = validated.startDate ? new Date(validated.startDate) : undefined;
+        const eDate = validated.endDate ? new Date(validated.endDate) : undefined;
+        
+        const data = await financialDashboardService.getCategoryBreakdown(userId, sDate, eDate);
+        return { success: true, data };
+    } catch (error) {
+        console.error("Error fetching category breakdown:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function getInstitutionBreakdownAction(startDate?: string, endDate?: string) {
+    try {
+        const validated = dateFilterSchema.parse({ startDate, endDate });
+        const userId = await getAuthUserId();
+        
+        const sDate = validated.startDate ? new Date(validated.startDate) : undefined;
+        const eDate = validated.endDate ? new Date(validated.endDate) : undefined;
+        
+        const data = await financialDashboardService.getInstitutionBreakdown(userId, sDate, eDate);
+        return { success: true, data };
+    } catch (error) {
+        console.error("Error fetching institution breakdown:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function getDailyBreakdownAction(startDate?: string, endDate?: string) {
+    try {
+        const validated = dateFilterSchema.parse({ startDate, endDate });
+        const userId = await getAuthUserId();
+        
+        const sDate = validated.startDate ? new Date(validated.startDate) : undefined;
+        const eDate = validated.endDate ? new Date(validated.endDate) : undefined;
+        
+        const data = await financialDashboardService.getDailyBreakdown(userId, sDate, eDate);
+        return { success: true, data };
+    } catch (error) {
+        console.error("Error fetching daily breakdown:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+

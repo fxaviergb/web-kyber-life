@@ -50,16 +50,24 @@ export async function triggerFinancialScanAction(startDate: string, endDate: str
 
         revalidatePath("/financial/scanner");
         revalidatePath("/financial/scans");
-        
+
         return { success: true };
     } catch (error: any) {
         console.error("Error in triggerFinancialScanAction:", error);
-        return { success: false, error: error.message || "Error interno del servidor" };
+
+        let errorMessage = "Error interno del servidor";
+        if (error?.cause?.code === 'ECONNREFUSED' || error?.message === 'fetch failed') {
+            errorMessage = "No se pudo conectar con el escáner. Verifique que el servicio esté en línea.";
+        } else if (error?.message) {
+            errorMessage = error.message;
+        }
+
+        return { success: false, error: errorMessage };
     }
 }
 
 export async function getScanExecutionsAction(
-    page: number = 1, 
+    page: number = 1,
     limit: number = 10,
     dateFrom?: string,
     dateTo?: string
@@ -74,15 +82,24 @@ export async function getScanExecutionsAction(
 
         const dateFilter = dateFrom && dateTo ? { dateFrom, dateTo } : undefined;
 
-        const result = await financialScanExecutionRepository.findPaginatedByOwnerId(user.id, {
-            page,
-            pageSize: limit,
+        const result = await financialScanExecutionRepository.findPaginatedByOwnerId(
+            user.id,
+            { page, pageSize: limit },
             dateFilter
-        });
+        );
 
-        return { success: true, data: result };
-    } catch (error: any) {
+
+
+        // Force plain JSON round-trip to prevent RSC flight protocol from
+        // silently stripping optional/nested properties like requestPayload.
+        const safeResult = JSON.parse(JSON.stringify(result)) as typeof result;
+
+
+
+        return { success: true, data: safeResult };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error al obtener historial";
         console.error("Error in getScanExecutionsAction:", error);
-        return { success: false, error: error.message || "Error al obtener historial" };
+        return { success: false, error: message };
     }
 }

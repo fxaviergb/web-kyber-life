@@ -6,6 +6,7 @@ export type MenuItem = {
     href?: string;
     items?: MenuItem[];
     isSection?: boolean;
+    activeAliases?: string[];
 };
 
 export const MENU_ITEMS: MenuItem[] = [
@@ -16,7 +17,8 @@ export const MENU_ITEMS: MenuItem[] = [
         items: [
             { label: "Resumen", icon: Wallet, href: "/financial" },
             { label: "Transacciones", icon: Receipt, href: "/financial/transactions" },
-            { label: "Escaneos", icon: Inbox, href: "/financial/scans" },
+            { label: "Escaneos", icon: Inbox, href: "/financial/scans", activeAliases: ["/financial/scanner"] },
+            { label: "Configuración", icon: Settings, href: "/financial/settings" },
         ]
     },
     {

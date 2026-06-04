@@ -7,6 +7,7 @@ import {
     dismissInboxSchema,
 } from "@/lib/validators/financial-schemas";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 async function getAuthUserId(): Promise<string> {
     const supabase = await createClient();
@@ -64,6 +65,9 @@ export async function mapInboxTransactionAction(data: Record<string, unknown>) {
             ...stripNulls(validated),
             userId,
         });
+        
+        revalidatePath("/financial/scans");
+        
         return { success: true, data: result };
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -79,6 +83,9 @@ export async function dismissInboxTransactionAction(scannerTransactionId: string
         const validated = dismissInboxSchema.parse({ scannerTransactionId });
         const userId = await getAuthUserId();
         await financialInboxService.dismissTransaction(validated.scannerTransactionId, userId);
+        
+        revalidatePath("/financial/scans");
+        
         return { success: true };
     } catch (error) {
         if (error instanceof z.ZodError) {

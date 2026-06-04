@@ -18,3 +18,4 @@ export * from './supabase-financial-account-repository';
 export * from './supabase-financial-category-repository';
 export * from './supabase-financial-transaction-audit-log-repository';
 export * from './supabase-financial-scanner-transaction-repository';
+export * from './supabase-institution-type-repository';

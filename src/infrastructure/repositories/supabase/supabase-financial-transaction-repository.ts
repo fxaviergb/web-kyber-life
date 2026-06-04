@@ -12,6 +12,7 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
             id: entity.id,
             owner_user_id: entity.ownerUserId,
             account_id: entity.accountId,
+            institution_id: entity.institutionId,
             type: entity.type,
             status: entity.status,
             amount: entity.amount,
@@ -60,6 +61,7 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
         
         const updateData = {
             account_id: entity.accountId,
+            institution_id: entity.institutionId,
             type: entity.type,
             status: entity.status,
             amount: entity.amount,
@@ -232,6 +234,7 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
             id: row.id,
             ownerUserId: row.owner_user_id,
             accountId: row.account_id,
+            institutionId: row.institution_id,
             type: row.type,
             status: row.status,
             amount: row.amount,

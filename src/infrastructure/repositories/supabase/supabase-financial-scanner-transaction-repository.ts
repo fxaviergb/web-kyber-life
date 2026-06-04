@@ -133,7 +133,7 @@ export class SupabaseFinancialScannerTransactionRepository implements IFinancial
             .select("*")
             .eq("owner_user_id", userId)
             .eq("status", "DETECTED")
-            .order("created_at", { ascending: false });
+            .order("date", { ascending: false });
 
         if (error) {
             console.error("Error in findUnprocessedByOwnerId:", error);

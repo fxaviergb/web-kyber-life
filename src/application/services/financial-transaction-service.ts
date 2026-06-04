@@ -13,8 +13,11 @@ export interface CreateFinancialTransactionDTO {
     date: string; // ISODate
     merchant?: string | null;
     categoryId?: UUID | null;
+    categoryName?: string | null;
     institutionId?: UUID | null;
+    institutionName?: string | null;
     accountId?: UUID | null;
+    accountName?: string | null;
     tags?: string[] | null;
     notes?: string | null;
     executionId?: UUID | null;
@@ -53,7 +56,10 @@ function assertValidTransition(
 export class FinancialTransactionService {
     constructor(
         private transactionRepo: IFinancialTransactionRepository,
-        private auditLogRepo: IFinancialTransactionAuditLogRepository
+        private auditLogRepo: IFinancialTransactionAuditLogRepository,
+        private institutionRepo?: import("../../domain/repositories/financial").IFinancialInstitutionRepository,
+        private accountRepo?: import("../../domain/repositories/financial").IFinancialAccountRepository,
+        private categoryRepo?: import("../../domain/repositories/financial").IFinancialCategoryRepository
     ) {}
 
     // ── Create ───────────────────────────────────────────────
@@ -63,7 +69,50 @@ export class FinancialTransactionService {
         const duplicateIds = findDuplicates(dto, existingTransactions);
         const hasDuplicate = duplicateIds.length > 0;
 
+        let finalInstitutionId = dto.institutionId ?? null;
+        let finalAccountId = dto.accountId ?? null;
+        let finalCategoryId = dto.categoryId ?? null;
         const now = new Date().toISOString();
+
+        if (!finalInstitutionId && dto.institutionName && this.institutionRepo) {
+            const institutions = await this.institutionRepo.findByOwnerId(dto.ownerUserId);
+            const existing = institutions.find(i => i.name.toLowerCase() === dto.institutionName!.toLowerCase() && !i.isDeleted);
+            if (existing) {
+                finalInstitutionId = existing.id!;
+            } else {
+                const newInst = await this.institutionRepo.create({
+                    id: crypto.randomUUID(), ownerUserId: dto.ownerUserId, name: dto.institutionName, institutionTypeId: null, isDeleted: false, createdAt: now, updatedAt: now
+                });
+                finalInstitutionId = newInst.id!;
+            }
+        }
+
+        if (!finalAccountId && dto.accountName && this.accountRepo) {
+            const accounts = await this.accountRepo.findByOwnerId(dto.ownerUserId);
+            const existing = accounts.find(a => a.name.toLowerCase() === dto.accountName!.toLowerCase() && !a.isDeleted);
+            if (existing) {
+                finalAccountId = existing.id!;
+            } else {
+                const newAcc = await this.accountRepo.create({
+                    id: crypto.randomUUID(), ownerUserId: dto.ownerUserId, name: dto.accountName, accountType: 'CASH', currency: dto.currency, isDeleted: false, createdAt: now, updatedAt: now
+                });
+                finalAccountId = newAcc.id!;
+            }
+        }
+
+        if (!finalCategoryId && dto.categoryName && this.categoryRepo) {
+            const categories = await this.categoryRepo.findAllBaseAndUser(dto.ownerUserId);
+            const existing = categories.find(c => c.name.toLowerCase() === dto.categoryName!.toLowerCase() && !c.isDeleted);
+            if (existing) {
+                finalCategoryId = existing.id!;
+            } else {
+                const newCat = await this.categoryRepo.create({
+                    id: crypto.randomUUID(), ownerUserId: dto.ownerUserId, name: dto.categoryName, isDeleted: false, createdAt: now, updatedAt: now
+                });
+                finalCategoryId = newCat.id!;
+            }
+        }
+
         const transaction: FinancialTransaction = {
             id: crypto.randomUUID(),
             ownerUserId: dto.ownerUserId,
@@ -73,9 +122,9 @@ export class FinancialTransactionService {
             currency: dto.currency,
             date: dto.date,
             merchant: dto.merchant ?? null,
-            categoryId: dto.categoryId ?? null,
-            institutionId: dto.institutionId ?? null,
-            accountId: dto.accountId ?? null,
+            categoryId: finalCategoryId,
+            institutionId: finalInstitutionId,
+            accountId: finalAccountId,
             tags: dto.tags ?? null,
             notes: dto.notes ?? null,
             possibleDuplicate: hasDuplicate,
@@ -108,10 +157,57 @@ export class FinancialTransactionService {
         const tx = await this.findOwnedTransactionOrThrow(transactionId, userId);
         const previousState = { ...tx } as unknown as Record<string, unknown>;
 
+        let finalInstitutionId = data.institutionId !== undefined ? data.institutionId : tx.institutionId;
+        let finalAccountId = data.accountId !== undefined ? data.accountId : tx.accountId;
+        let finalCategoryId = data.categoryId !== undefined ? data.categoryId : tx.categoryId;
+        const now = new Date().toISOString();
+
+        if (!finalInstitutionId && data.institutionName && this.institutionRepo) {
+            const institutions = await this.institutionRepo.findByOwnerId(userId);
+            const existing = institutions.find(i => i.name.toLowerCase() === data.institutionName!.toLowerCase() && !i.isDeleted);
+            if (existing) {
+                finalInstitutionId = existing.id!;
+            } else {
+                const newInst = await this.institutionRepo.create({
+                    id: crypto.randomUUID(), ownerUserId: userId, name: data.institutionName, institutionTypeId: null, isDeleted: false, createdAt: now, updatedAt: now
+                });
+                finalInstitutionId = newInst.id!;
+            }
+        }
+
+        if (!finalAccountId && data.accountName && this.accountRepo) {
+            const accounts = await this.accountRepo.findByOwnerId(userId);
+            const existing = accounts.find(a => a.name.toLowerCase() === data.accountName!.toLowerCase() && !a.isDeleted);
+            if (existing) {
+                finalAccountId = existing.id!;
+            } else {
+                const newAcc = await this.accountRepo.create({
+                    id: crypto.randomUUID(), ownerUserId: userId, name: data.accountName, accountType: 'CASH', currency: data.currency || tx.currency, isDeleted: false, createdAt: now, updatedAt: now
+                });
+                finalAccountId = newAcc.id!;
+            }
+        }
+
+        if (!finalCategoryId && data.categoryName && this.categoryRepo) {
+            const categories = await this.categoryRepo.findAllBaseAndUser(userId);
+            const existing = categories.find(c => c.name.toLowerCase() === data.categoryName!.toLowerCase() && !c.isDeleted);
+            if (existing) {
+                finalCategoryId = existing.id!;
+            } else {
+                const newCat = await this.categoryRepo.create({
+                    id: crypto.randomUUID(), ownerUserId: userId, name: data.categoryName, isDeleted: false, createdAt: now, updatedAt: now
+                });
+                finalCategoryId = newCat.id!;
+            }
+        }
+
         const updatedTx: FinancialTransaction = {
             ...tx,
             ...data,
-            updatedAt: new Date().toISOString(),
+            institutionId: finalInstitutionId,
+            accountId: finalAccountId,
+            categoryId: finalCategoryId,
+            updatedAt: now,
         };
 
         const updated = await this.transactionRepo.update(updatedTx);

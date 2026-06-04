@@ -5,6 +5,7 @@ import { searchPaginatedTransactionsAction } from "@/app/actions/financial-trans
 import { Button } from "@/components/ui/button";
 import { Plus, Inbox as InboxIcon } from "lucide-react";
 import Link from "next/link";
+import { TransactionTabs } from "@/presentation/financial/components/TransactionTabs";
 
 export default async function TransactionsPage({
     searchParams,
@@ -64,15 +65,19 @@ export default async function TransactionsPage({
             </div>
 
             <Suspense fallback={<div className="h-10 animate-pulse bg-muted rounded-md" />}>
-                <TransactionFilters />
-            </Suspense>
+                <TransactionTabs>
+                    <Suspense fallback={<div className="h-10 animate-pulse bg-muted rounded-md" />}>
+                        <TransactionFilters />
+                    </Suspense>
 
-            <Suspense fallback={<div className="h-40 flex items-center justify-center">Cargando transacciones...</div>}>
-                <TransactionTimeline
-                    key={JSON.stringify(params)}
-                    initialTransactions={initialTransactions}
-                    searchFilters={searchFilters}
-                />
+                    <Suspense fallback={<div className="h-40 flex items-center justify-center">Cargando transacciones...</div>}>
+                        <TransactionTimeline
+                            key={JSON.stringify(params)}
+                            initialTransactions={initialTransactions}
+                            searchFilters={searchFilters}
+                        />
+                    </Suspense>
+                </TransactionTabs>
             </Suspense>
         </div>
     );

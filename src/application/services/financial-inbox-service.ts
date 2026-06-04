@@ -2,13 +2,24 @@ import { UUID } from "../../domain/core";
 import { FinancialScannerTransaction, FinancialTransaction } from "../../domain/entities/financial";
 import { IFinancialScannerTransactionRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialInstitutionRepository } from "../../domain/repositories/financial";
 
+export function normalizeForMatch(str?: string | null): string {
+    if (!str) return "";
+    return str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase();
+}
+
 export interface MapScannerTransactionDTO {
     scannerTransactionId: UUID;
     userId: UUID;
     categoryId?: UUID;
+    categoryName?: string;
     institutionId?: UUID;
     institutionName?: string;
     accountId?: UUID;
+    accountName?: string;
     type?: FinancialTransaction['type'];
     notes?: string;
     merchant?: string;
@@ -22,7 +33,9 @@ export class FinancialInboxService {
         private scannerRepo: IFinancialScannerTransactionRepository,
         private transactionRepo: IFinancialTransactionRepository,
         private auditLogRepo: IFinancialTransactionAuditLogRepository,
-        private institutionRepo: IFinancialInstitutionRepository
+        private institutionRepo: IFinancialInstitutionRepository,
+        private accountRepo?: import("../../domain/repositories/financial").IFinancialAccountRepository,
+        private categoryRepo?: import("../../domain/repositories/financial").IFinancialCategoryRepository
     ) {}
 
     async getUnprocessedTransactions(userId: UUID): Promise<FinancialScannerTransaction[]> {
@@ -61,11 +74,14 @@ export class FinancialInboxService {
         const validExecutionId = isValidUuid(scannerTx.executionId) ? scannerTx.executionId : undefined;
 
         let finalInstitutionId = dto.institutionId ?? null;
+        let finalAccountId = dto.accountId ?? null;
+        let finalCategoryId = dto.categoryId ?? null;
 
         // Auto-create or reuse institution if name is provided but no ID
         if (!finalInstitutionId && dto.institutionName) {
             const userInstitutions = await this.institutionRepo.findByOwnerId(dto.userId);
-            const existing = userInstitutions.find(inst => inst.name.toLowerCase() === dto.institutionName!.toLowerCase() && !inst.isDeleted);
+            const normalizedTarget = normalizeForMatch(dto.institutionName);
+            const existing = userInstitutions.find(inst => normalizeForMatch(inst.name) === normalizedTarget && !inst.isDeleted);
             
             if (existing && existing.id) {
                 finalInstitutionId = existing.id;
@@ -74,11 +90,40 @@ export class FinancialInboxService {
                     id: crypto.randomUUID(),
                     ownerUserId: dto.userId,
                     name: dto.institutionName,
+                    institutionTypeId: null,
                     isDeleted: false,
                     createdAt: now,
                     updatedAt: now
                 });
                 finalInstitutionId = newInstitution.id!;
+            }
+        }
+
+        if (!finalAccountId && dto.accountName && this.accountRepo) {
+            const accounts = await this.accountRepo.findByOwnerId(dto.userId);
+            const normalizedTarget = normalizeForMatch(dto.accountName);
+            const existing = accounts.find(a => normalizeForMatch(a.name) === normalizedTarget && !a.isDeleted);
+            if (existing && existing.id) {
+                finalAccountId = existing.id;
+            } else {
+                const newAcc = await this.accountRepo.create({
+                    id: crypto.randomUUID(), ownerUserId: dto.userId, name: dto.accountName, accountType: 'CASH', currency: scannerTx.currency || 'USD', isDeleted: false, createdAt: now, updatedAt: now
+                });
+                finalAccountId = newAcc.id!;
+            }
+        }
+
+        if (!finalCategoryId && dto.categoryName && this.categoryRepo) {
+            const categories = await this.categoryRepo.findAllBaseAndUser(dto.userId);
+            const normalizedTarget = normalizeForMatch(dto.categoryName);
+            const existing = categories.find(c => normalizeForMatch(c.name) === normalizedTarget && !c.isDeleted);
+            if (existing && existing.id) {
+                finalCategoryId = existing.id;
+            } else {
+                const newCat = await this.categoryRepo.create({
+                    id: crypto.randomUUID(), ownerUserId: dto.userId, name: dto.categoryName, isDeleted: false, createdAt: now, updatedAt: now
+                });
+                finalCategoryId = newCat.id!;
             }
         }
 
@@ -91,9 +136,9 @@ export class FinancialInboxService {
             originalAmount: scannerTx.amount,
             currency: scannerTx.currency || 'USD',
             merchant: dto.merchant ?? scannerTx.merchant ?? null,
-            categoryId: dto.categoryId ?? null,
+            categoryId: finalCategoryId,
             institutionId: finalInstitutionId,
-            accountId: dto.accountId ?? null,
+            accountId: finalAccountId,
             tags: dto.tags ?? [],
             notes: dto.notes ?? (scannerTx.originStats as Record<string, string>)?.emailBody ?? (scannerTx.originStats as Record<string, string>)?.snippet ?? scannerTx.description ?? null,
             possibleDuplicate: false,

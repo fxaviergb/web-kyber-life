@@ -25,43 +25,7 @@ import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/presentation/components/auth/logout-button";
 import { LucideIcon } from "lucide-react";
 
-type MenuItem = {
-    label: string;
-    icon?: LucideIcon;
-    href?: string;
-    items?: MenuItem[];
-    isSection?: boolean;
-};
-
-const MENU_ITEMS: MenuItem[] = [
-    { label: "Dashboard", icon: Home, href: "/dashboard" },
-    {
-        label: "Market",
-        isSection: true,
-        items: [
-            { label: "Compras", icon: ShoppingCart, href: "/market/purchases" },
-            { label: "Plantillas", icon: FileText, href: "/market/templates" },
-            { label: "Productos", icon: Package, href: "/market/items" },
-            {
-                label: "Configuración",
-                icon: Settings,
-                items: [
-                    { label: "Supermercados", icon: Store, href: "/market/supermarkets" },
-                    { label: "Categorías", icon: Tag, href: "/market/categories" },
-                    { label: "Unidades", icon: Scale, href: "/market/units" },
-                ]
-            },
-            { label: "Analítica", icon: BarChart2, href: "/market/analytics" },
-        ]
-    },
-    {
-        label: "Cuenta",
-        isSection: true,
-        items: [
-            { label: "Perfil", icon: User, href: "/profile" },
-        ]
-    }
-];
+import { MENU_ITEMS, MenuItem } from "@/config/menu-items";
 
 interface MobileDrawerProps {
     open: boolean;

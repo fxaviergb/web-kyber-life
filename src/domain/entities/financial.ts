@@ -4,10 +4,19 @@ export type FinancialTransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER' | 'SUBS
 export type FinancialTransactionStatus = 'DETECTED' | 'REVIEWED' | 'CONFIRMED' | 'REJECTED' | 'DUPLICATE' | 'ARCHIVED' | 'MANUAL' | 'DELETED';
 export type FinancialScanStatus = 'PROCESSING' | 'FAILED' | 'COMPLETED';
 
+export interface FinancialInstitutionType extends BaseEntity {
+    label: string;
+    iconName: string;
+    code: string;
+    ownerUserId?: UUID | null; // null for global types
+}
+
 export interface FinancialInstitution extends BaseEntity {
     ownerUserId: UUID;
     name: string;
     logoUrl?: string | null;
+    institutionTypeId?: UUID | null;
+    institutionTypeObj?: FinancialInstitutionType | null;
 }
 
 export interface FinancialAccount extends BaseEntity {
@@ -35,6 +44,7 @@ export interface FinancialScanExecution extends BaseEntity {
     startedAt: ISODate;
     completedAt?: ISODate | null;
     errorDetails?: string | null;
+    requestPayload?: Record<string, any> | null;
 }
 
 export interface FinancialTransaction extends BaseEntity {

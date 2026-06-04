@@ -5,9 +5,12 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyChart } from "./MonthlyChart";
 import { TypeBreakdownChart } from "./TypeBreakdownChart";
+import { CategoryPieChart } from "./CategoryPieChart";
+import { InstitutionBarChart } from "./InstitutionBarChart";
+import { DailySpendingChart } from "./DailySpendingChart";
 import { useFinancialDashboardOffline } from "../hooks/useFinancialDashboardOffline";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
-import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Radio } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,7 +64,7 @@ export function FinancialDashboard() {
         return {};
     }, [filterType, customStartDate, customEndDate]);
 
-    const { kpis, monthly, typeBreakdown, recent, loading, isStale, error, refresh } =
+    const { kpis, monthly, typeBreakdown, categoryBreakdown, institutionBreakdown, dailyBreakdown, recent, loading, isStale, error, refresh } =
         useFinancialDashboardOffline(startDate, endDate);
 
     // ── Realtime: auto-refresh dashboard when transactions change ──
@@ -91,10 +94,12 @@ export function FinancialDashboard() {
     if (loading && !kpis) {
         return (
             <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="h-28 rounded-lg bg-muted animate-pulse" />
-                    ))}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+                    <div className="col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
+                    <div className="col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
+                    <div className="col-span-2 sm:col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
+                    <div className="col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
+                    <div className="col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="h-96 rounded-lg bg-muted animate-pulse" />
@@ -108,31 +113,46 @@ export function FinancialDashboard() {
         <div className="space-y-6">
             {/* Filter Controls */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
-                <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden -mb-2 sm:mb-0">
-                    <div className="inline-flex items-center p-1 bg-muted/40 border border-border/40 rounded-xl">
-                        {(
-                            [
-                                { id: 'all', label: 'Todo el tiempo' },
-                                { id: 'today', label: 'Hoy' },
-                                { id: 'week', label: 'Semana' },
-                                { id: 'month', label: 'Mes' },
-                                { id: 'custom', label: 'Personalizado' }
-                            ] as const
-                        ).map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setFilterType(tab.id as any)}
-                                className={`
-                                    relative px-4 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg whitespace-nowrap
-                                    ${filterType === tab.id 
-                                        ? 'text-foreground bg-background shadow-sm ring-1 ring-border/50' 
-                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
-                                `}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                {/* Mobile Filter (Select) */}
+                <div className="w-full sm:hidden">
+                    <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
+                        <SelectTrigger className="w-full bg-muted/40 border-border/40 rounded-xl h-10 font-medium">
+                            <SelectValue placeholder="Seleccionar período" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todo el tiempo</SelectItem>
+                            <SelectItem value="today">Hoy</SelectItem>
+                            <SelectItem value="week">Semana</SelectItem>
+                            <SelectItem value="month">Mes</SelectItem>
+                            <SelectItem value="custom">Personalizado</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* Desktop Filter (Tabs) */}
+                <div className="hidden sm:inline-flex items-center p-1 bg-muted/40 border border-border/40 rounded-xl">
+                    {(
+                        [
+                            { id: 'all', label: 'Todo el tiempo' },
+                            { id: 'today', label: 'Hoy' },
+                            { id: 'week', label: 'Semana' },
+                            { id: 'month', label: 'Mes' },
+                            { id: 'custom', label: 'Personalizado' }
+                        ] as const
+                    ).map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setFilterType(tab.id as any)}
+                            className={`
+                                relative px-4 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg whitespace-nowrap
+                                ${filterType === tab.id 
+                                    ? 'text-foreground bg-background shadow-sm ring-1 ring-border/50' 
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
+                            `}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
 
                 {filterType === "custom" && (
@@ -178,42 +198,65 @@ export function FinancialDashboard() {
 
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
-                    title="Ingresos totales"
-                    value={formatCurrency(kpis?.totalIncome ?? 0)}
-                    icon={TrendingUp}
-                    iconClassName="text-green-500"
-                    description="Todos los ingresos confirmados"
-                    tooltipText="Suma de todas las transacciones positivas (ingresos, depósitos y devoluciones) dentro del rango de fechas seleccionado."
-                />
-                <StatCard
-                    title="Gastos totales"
-                    value={formatCurrency(kpis?.totalExpenses ?? 0)}
-                    icon={TrendingDown}
-                    iconClassName="text-red-500"
-                    description="Todos los gastos confirmados"
-                    tooltipText="Suma de todas las transacciones negativas (pagos, compras, retiros y comisiones) dentro del rango de fechas seleccionado."
-                />
-                <StatCard
-                    title="Balance neto"
-                    value={`${(kpis?.netBalance ?? 0) >= 0 ? "+" : "-"}${formatCurrency(kpis?.netBalance ?? 0)}`}
-                    icon={DollarSign}
-                    iconClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
-                    description="Ingresos menos gastos"
-                    tooltipText="Diferencia exacta entre tus ingresos totales y gastos totales. Un balance positivo indica superávit."
-                    trend={kpis ? {
-                        value: `${kpis.transactionCount} transacciones`,
-                        positive: kpis.netBalance >= 0,
-                    } : undefined}
-                />
-                <StatCard
-                    title="Prom. por transacción"
-                    value={formatCurrency(kpis?.avgTransactionAmount ?? 0)}
-                    icon={Activity}
-                    description="Monto promedio por transacción"
-                    tooltipText="Valor promedio general, calculado dividiendo el volumen total de dinero movido entre la cantidad de transacciones."
-                />
+            <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
+                    <StatCard
+                        title="Ingresos totales"
+                        value={formatCurrency(kpis?.totalIncome ?? 0)}
+                        icon={TrendingUp}
+                        iconClassName="text-green-500"
+                        description="Todos los ingresos confirmados"
+                        tooltipText="Suma de todas las transacciones positivas (ingresos, depósitos y devoluciones) dentro del rango de fechas seleccionado."
+                        className="flex-1"
+                    />
+                </div>
+                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
+                    <StatCard
+                        title="Gastos totales"
+                        value={formatCurrency(kpis?.totalExpenses ?? 0)}
+                        icon={TrendingDown}
+                        iconClassName="text-red-500"
+                        description="Todos los gastos confirmados"
+                        tooltipText="Suma de todas las transacciones negativas (pagos, compras, retiros y comisiones) dentro del rango de fechas seleccionado."
+                        className="flex-1"
+                    />
+                </div>
+                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-2 sm:row-start-2 lg:col-span-1 lg:row-start-1 flex flex-col items-stretch">
+                    <StatCard
+                        title="Balance neto"
+                        value={`${(kpis?.netBalance ?? 0) >= 0 ? "+" : "-"}${formatCurrency(kpis?.netBalance ?? 0)}`}
+                        icon={DollarSign}
+                        iconClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
+                        description="Ingresos menos gastos"
+                        tooltipText="Diferencia exacta entre tus ingresos totales y gastos totales. Un balance positivo indica superávit."
+                        trend={kpis ? {
+                            value: `${kpis.transactionCount} transacciones`,
+                            positive: kpis.netBalance >= 0,
+                        } : undefined}
+                        className="flex-1"
+                    />
+                </div>
+                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 sm:row-start-3 lg:col-span-1 lg:row-start-1 flex flex-col items-stretch">
+                    <StatCard
+                        title="Prom. transacc."
+                        value={formatCurrency(kpis?.avgTransactionAmount ?? 0)}
+                        icon={Activity}
+                        description="Promedio general"
+                        tooltipText="Valor promedio general, calculado dividiendo el volumen total de dinero movido entre la cantidad de transacciones."
+                        className="flex-1"
+                    />
+                </div>
+                <Link href="/financial/scans" className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 sm:row-start-3 lg:col-span-1 lg:row-start-1 flex flex-col items-stretch focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+                    <StatCard
+                        title="En revisión"
+                        value={kpis?.pendingTransactionsCount?.toString() ?? "0"}
+                        icon={Clock}
+                        iconClassName="text-amber-500"
+                        description="Pendientes"
+                        tooltipText="Transacciones que han sido escaneadas pero aún no se han clasificado o confirmado manualmente."
+                        className="flex-1 hover:bg-muted/50 transition-colors cursor-pointer"
+                    />
+                </Link>
             </div>
 
             {/* Charts Row */}
@@ -230,11 +273,31 @@ export function FinancialDashboard() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Por tipo de transacción</CardTitle>
-                        <CardDescription>Distribución del gasto por categoría</CardDescription>
+                        <CardTitle>Por categoría de gasto</CardTitle>
+                        <CardDescription>Distribución detallada de tus gastos</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <TypeBreakdownChart data={typeBreakdown} />
+                        <CategoryPieChart data={categoryBreakdown} />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Gasto diario</CardTitle>
+                        <CardDescription>Evolución de tus gastos día a día</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <DailySpendingChart data={dailyBreakdown} />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Por institución</CardTitle>
+                        <CardDescription>Volumen total movido por banco o institución</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <InstitutionBarChart data={institutionBreakdown} />
                     </CardContent>
                 </Card>
             </div>

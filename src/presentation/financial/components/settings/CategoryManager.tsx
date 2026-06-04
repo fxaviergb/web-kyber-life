@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FinancialCategory } from "@/domain/entities/financial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { UUID } from "@/domain/core";
+import * as Icons from "lucide-react";
 
 interface CategoryManagerProps {
     initialData: FinancialCategory[];
@@ -21,6 +22,10 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingId, setEditingId] = useState<UUID | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        setCategories(initialData);
+    }, [initialData]);
 
     // Form state
     const [name, setName] = useState("");
@@ -82,8 +87,8 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
     };
 
     return (
-        <Card className="border-none shadow-none">
-            <CardHeader className="px-0">
+        <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="px-0 pt-0">
                 <div className="flex justify-between items-center">
                     <div>
                         <CardTitle>Tus Categorías</CardTitle>
@@ -137,30 +142,33 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
             </CardHeader>
             <CardContent className="px-0">
                 {categories.filter(c => !c.isDeleted).length === 0 ? (
-                    <div className="text-center py-10 text-gray-500 border border-dashed rounded-lg bg-gray-50/50 dark:bg-gray-900/50">
-                        <Tags className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                        <p>No tienes categorías registradas.</p>
-                        <Button variant="link" onClick={() => handleOpenDialog()}>
+                    <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl bg-muted/30">
+                        <Tags className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                        <p className="font-medium text-foreground">No tienes categorías registradas</p>
+                        <p className="text-sm mt-1 mb-4">Añade categorías para organizar tus gastos.</p>
+                        <Button variant="outline" onClick={() => handleOpenDialog()}>
                             Añadir la primera
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {categories.filter(c => !c.isDeleted).map(cat => (
-                            <div key={cat.id} className="p-4 border rounded-lg bg-white dark:bg-gray-950 flex flex-col gap-2 group hover:border-primary/50 transition-colors">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {categories.filter(c => !c.isDeleted).map(cat => {
+                            const IconComponent = cat.icon && (Icons as any)[cat.icon] ? (Icons as any)[cat.icon] : Tags;
+                            return (
+                            <div key={cat.id} className="p-5 border rounded-xl bg-card shadow-sm flex flex-col gap-2 group hover:border-primary/50 hover:shadow-md transition-all">
                                 <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-4">
                                         <div 
-                                            className="w-10 h-10 rounded-full flex items-center justify-center opacity-80"
-                                            style={{ backgroundColor: `${cat.color || '#3b82f6'}20`, color: cat.color || '#3b82f6' }}
+                                            className="w-12 h-12 rounded-full flex items-center justify-center opacity-90 shadow-sm"
+                                            style={{ backgroundColor: `${cat.color || '#3b82f6'}25`, color: cat.color || '#3b82f6' }}
                                         >
-                                            <Tags className="w-5 h-5" />
+                                            <IconComponent className="w-6 h-6" />
                                         </div>
                                         <div>
-                                            <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <h3 className="font-semibold text-base text-card-foreground flex items-center gap-2">
                                                 {cat.name}
                                                 {cat.ownerUserId === null && (
-                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 uppercase tracking-wider">
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground uppercase tracking-wider font-medium">
                                                         Sistema
                                                     </span>
                                                 )}
@@ -170,10 +178,10 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         {cat.ownerUserId !== null && (
                                             <>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-500" onClick={() => handleOpenDialog(cat)}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10" onClick={() => handleOpenDialog(cat)}>
                                                     <Edit2 className="w-4 h-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-500" onClick={() => handleDelete(cat.id!)}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDelete(cat.id!)}>
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
                                             </>
@@ -181,7 +189,8 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </CardContent>

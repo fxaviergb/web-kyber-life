@@ -16,6 +16,7 @@ import {
     InMemoryFinancialScannerTransactionRepository,
     InMemoryFinancialScanExecutionRepository,
     InMemoryFinancialInstitutionRepository,
+    InMemoryFinancialInstitutionTypeRepository,
     InMemoryFinancialAccountRepository,
     InMemoryFinancialCategoryRepository
 } from "./repositories/implementations";
@@ -39,6 +40,7 @@ import {
     SupabaseFinancialTransactionAuditLogRepository,
     SupabaseFinancialScannerTransactionRepository,
     SupabaseFinancialScanExecutionRepository,
+    SupabaseInstitutionTypeRepository,
     SupabaseFinancialInstitutionRepository,
     SupabaseFinancialAccountRepository,
     SupabaseFinancialCategoryRepository
@@ -83,9 +85,10 @@ export const financialTransactionAuditLogRepository = singleton("financialTransa
 export const financialScannerTransactionRepository = singleton("financialScannerTransactionRepo", () => isSupabase ? new SupabaseFinancialScannerTransactionRepository() : new InMemoryFinancialScannerTransactionRepository());
 export const financialScanExecutionRepository = singleton("financialScanExecutionRepo", () => isSupabase ? new SupabaseFinancialScanExecutionRepository() : new InMemoryFinancialScanExecutionRepository());
 
-export const financialInstitutionRepository = singleton("financialInstitutionRepo", () => isSupabase ? new SupabaseFinancialInstitutionRepository() : new InMemoryFinancialInstitutionRepository());
-export const financialAccountRepository = singleton("financialAccountRepo", () => isSupabase ? new SupabaseFinancialAccountRepository() : new InMemoryFinancialAccountRepository());
-export const financialCategoryRepository = singleton("financialCategoryRepo", () => isSupabase ? new SupabaseFinancialCategoryRepository() : new InMemoryFinancialCategoryRepository());
+export const financialInstitutionTypeRepository = singleton("financialInstitutionTypeRepo_v4", () => isSupabase ? new SupabaseInstitutionTypeRepository() : new InMemoryFinancialInstitutionTypeRepository());
+export const financialInstitutionRepository = singleton("financialInstitutionRepo_v4", () => isSupabase ? new SupabaseFinancialInstitutionRepository() : new InMemoryFinancialInstitutionRepository());
+export const financialAccountRepository = singleton("financialAccountRepo_v4", () => isSupabase ? new SupabaseFinancialAccountRepository() : new InMemoryFinancialAccountRepository());
+export const financialCategoryRepository = singleton("financialCategoryRepo_v4", () => isSupabase ? new SupabaseFinancialCategoryRepository() : new InMemoryFinancialCategoryRepository());
 
 // Services
 import { AuthService } from "@/application/services/auth-service";
@@ -102,10 +105,23 @@ import { FinancialSettingsService } from "@/application/services/financial-setti
 
 export const authService = new AuthService(userRepository, passwordResetTokenRepository);
 export const userService = new UserService(userRepository);
-export const financialTransactionService = new FinancialTransactionService(financialTransactionRepository, financialTransactionAuditLogRepository);
-export const financialInboxService = new FinancialInboxService(financialScannerTransactionRepository, financialTransactionRepository, financialTransactionAuditLogRepository, financialInstitutionRepository);
-export const financialDashboardService = new FinancialDashboardService(financialTransactionRepository);
-export const financialSettingsService = new FinancialSettingsService(financialInstitutionRepository, financialAccountRepository, financialCategoryRepository);
+export const financialTransactionService = new FinancialTransactionService(
+    financialTransactionRepository, 
+    financialTransactionAuditLogRepository,
+    financialInstitutionRepository,
+    financialAccountRepository,
+    financialCategoryRepository
+);
+export const financialInboxService = new FinancialInboxService(
+    financialScannerTransactionRepository, 
+    financialTransactionRepository, 
+    financialTransactionAuditLogRepository, 
+    financialInstitutionRepository,
+    financialAccountRepository,
+    financialCategoryRepository
+);
+export const financialDashboardService = new FinancialDashboardService(financialTransactionRepository, financialCategoryRepository, financialInstitutionRepository);
+export const financialSettingsService = new FinancialSettingsService(financialInstitutionTypeRepository, financialInstitutionRepository, financialAccountRepository, financialCategoryRepository);
 export const masterDataService = new MasterDataService(supermarketRepository, categoryRepository, unitRepository);
 export const productService = new ProductService(genericItemRepository, brandProductRepository, priceObservationRepository);
 export const templateService = new TemplateService(templateRepository, templateItemRepository);

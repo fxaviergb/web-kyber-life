@@ -1,14 +1,38 @@
 import { UUID } from "../../domain/core";
 import { FinancialTransaction } from "../../domain/entities/financial";
-import { IFinancialTransactionRepository } from "../../domain/repositories/financial";
-
+import { IFinancialTransactionRepository, IFinancialCategoryRepository, IFinancialInstitutionRepository } from "../../domain/repositories/financial";
 export interface FinancialKPIs {
     totalIncome: number;
     totalExpenses: number;
     netBalance: number;
     transactionCount: number;
     avgTransactionAmount: number;
+    pendingTransactionsCount: number;
     currency: string;
+}
+
+export interface CategoryBreakdown {
+    categoryId: string | null;
+    categoryName: string;
+    total: number;
+    count: number;
+    percentage: number;
+    color?: string;
+}
+
+export interface InstitutionBreakdown {
+    institutionId: string | null;
+    institutionName: string;
+    total: number;
+    count: number;
+    percentage: number;
+}
+
+export interface DailyBreakdown {
+    date: string; // YYYY-MM-DD
+    income: number;
+    expenses: number;
+    net: number;
 }
 
 export interface MonthlyBreakdown {
@@ -27,12 +51,14 @@ export interface TypeBreakdown {
 
 export class FinancialDashboardService {
     constructor(
-        private transactionRepo: IFinancialTransactionRepository
+        private transactionRepo: IFinancialTransactionRepository,
+        private categoryRepo: IFinancialCategoryRepository,
+        private institutionRepo: IFinancialInstitutionRepository
     ) {}
-
     async getKPIs(userId: UUID, startDate?: Date, endDate?: Date): Promise<FinancialKPIs> {
         const transactions = await this.transactionRepo.findByOwnerId(userId);
         const confirmed = this.filterActive(transactions, startDate, endDate);
+        const pending = this.filterPending(transactions, startDate, endDate);
 
         const totalIncome = confirmed
             .filter(t => this.isIncomeType(t.type))
@@ -54,6 +80,7 @@ export class FinancialDashboardService {
             netBalance: Math.round(netBalance * 100) / 100,
             transactionCount,
             avgTransactionAmount: Math.round(avgTransactionAmount * 100) / 100,
+            pendingTransactionsCount: pending.length,
             currency: "USD",
         };
     }
@@ -159,6 +186,117 @@ export class FinancialDashboardService {
             .sort((a, b) => b.total - a.total);
     }
 
+    async getCategoryBreakdown(userId: UUID, startDate?: Date, endDate?: Date): Promise<CategoryBreakdown[]> {
+        const transactions = await this.transactionRepo.findByOwnerId(userId);
+        // Usually, category breakdown makes sense for expenses, but we can include all active
+        // Let's filter to expenses to be more useful, or return all grouped.
+        // We'll group expenses.
+        const confirmed = this.filterActive(transactions, startDate, endDate).filter(t => !this.isIncomeType(t.type));
+        const categories = await this.categoryRepo.findAllBaseAndUser(userId);
+        const catMap = new Map(categories.map(c => [c.id, c]));
+
+        const groups: Record<string, { total: number; count: number }> = {};
+        let grandTotal = 0;
+
+        for (const t of confirmed) {
+            const catId = t.categoryId || "UNNCATEGORIZED";
+            if (!groups[catId]) {
+                groups[catId] = { total: 0, count: 0 };
+            }
+            groups[catId].total += Number(t.amount);
+            groups[catId].count += 1;
+            grandTotal += Number(t.amount);
+        }
+
+        return Object.entries(groups)
+            .map(([catId, data]) => {
+                const category = catId !== "UNNCATEGORIZED" ? catMap.get(catId) : null;
+                return {
+                    categoryId: catId === "UNNCATEGORIZED" ? null : catId,
+                    categoryName: category?.name || "Uncategorized",
+                    total: Math.round(data.total * 100) / 100,
+                    count: data.count,
+                    percentage: grandTotal > 0
+                        ? Math.round((data.total / grandTotal) * 10000) / 100
+                        : 0,
+                    color: category?.color || undefined,
+                };
+            })
+            .sort((a, b) => b.total - a.total);
+    }
+
+    async getInstitutionBreakdown(userId: UUID, startDate?: Date, endDate?: Date): Promise<InstitutionBreakdown[]> {
+        const transactions = await this.transactionRepo.findByOwnerId(userId);
+        // Only active transactions, generally expenses and income. We use absolute amounts for total volume?
+        // Or we group expenses? Let's group all transaction counts/amounts as volume.
+        const confirmed = this.filterActive(transactions, startDate, endDate);
+        const institutions = await this.institutionRepo.findByOwnerId(userId);
+        const instMap = new Map(institutions.map(i => [i.id, i]));
+
+        const groups: Record<string, { total: number; count: number }> = {};
+        let grandTotal = 0;
+
+        for (const t of confirmed) {
+            const instId = t.institutionId || "UNKNOWN";
+            if (!groups[instId]) {
+                groups[instId] = { total: 0, count: 0 };
+            }
+            // Use absolute amount for institution volume
+            const absAmount = Math.abs(Number(t.amount));
+            groups[instId].total += absAmount;
+            groups[instId].count += 1;
+            grandTotal += absAmount;
+        }
+
+        return Object.entries(groups)
+            .map(([instId, data]) => {
+                const institution = instId !== "UNKNOWN" ? instMap.get(instId) : null;
+                return {
+                    institutionId: instId === "UNKNOWN" ? null : instId,
+                    institutionName: institution?.name || "Unknown",
+                    total: Math.round(data.total * 100) / 100,
+                    count: data.count,
+                    percentage: grandTotal > 0
+                        ? Math.round((data.total / grandTotal) * 10000) / 100
+                        : 0,
+                };
+            })
+            .sort((a, b) => b.total - a.total);
+    }
+
+    async getDailyBreakdown(userId: UUID, startDate?: Date, endDate?: Date): Promise<DailyBreakdown[]> {
+        const transactions = await this.transactionRepo.findByOwnerId(userId);
+        const confirmed = this.filterActive(transactions, startDate, endDate);
+
+        const groups: Record<string, DailyBreakdown> = {};
+
+        for (const t of confirmed) {
+            // Take just YYYY-MM-DD
+            const dateStr = t.date.split("T")[0];
+            if (!groups[dateStr]) {
+                groups[dateStr] = { date: dateStr, income: 0, expenses: 0, net: 0 };
+            }
+            const amount = Number(t.amount);
+            if (this.isIncomeType(t.type)) {
+                groups[dateStr].income += amount;
+                groups[dateStr].net += amount;
+            } else {
+                groups[dateStr].expenses += amount;
+                groups[dateStr].net -= amount;
+            }
+        }
+
+        return Object.values(groups)
+            .map(d => ({
+                date: d.date,
+                income: Math.round(d.income * 100) / 100,
+                expenses: Math.round(d.expenses * 100) / 100,
+                net: Math.round(d.net * 100) / 100,
+            }))
+            .sort((a, b) => a.date.localeCompare(b.date)); // Sort chronologically
+    }
+
+
     async getRecentTransactions(userId: UUID, limit: number = 5, startDate?: Date, endDate?: Date): Promise<FinancialTransaction[]> {
         let transactions = await this.transactionRepo.findRecent(userId, 1000); // Fetch a larger batch to filter
         
@@ -176,7 +314,7 @@ export class FinancialDashboardService {
 
     private filterActive(transactions: FinancialTransaction[], startDate?: Date, endDate?: Date): FinancialTransaction[] {
         return transactions.filter(t => {
-            if (t.status === "REJECTED" || t.status === "DELETED" || t.status === "DUPLICATE") {
+            if (t.status !== "CONFIRMED" && t.status !== "REVIEWED" && t.status !== "MANUAL") {
                 return false;
             }
             if (startDate || endDate) {
@@ -184,6 +322,20 @@ export class FinancialDashboardService {
                 // Zero out time components for consistent date-only comparison if needed,
                 // but since tDate is parsed from DB (usually midnight UTC if date only),
                 // we should just compare them. Assuming startDate/endDate are startOfDay/endOfDay.
+                if (startDate && tDate < startDate) return false;
+                if (endDate && tDate > endDate) return false;
+            }
+            return true;
+        });
+    }
+
+    private filterPending(transactions: FinancialTransaction[], startDate?: Date, endDate?: Date): FinancialTransaction[] {
+        return transactions.filter(t => {
+            if (t.status !== "DETECTED" && t.status !== "MANUAL") {
+                return false;
+            }
+            if (startDate || endDate) {
+                const tDate = new Date(t.date);
                 if (startDate && tDate < startDate) return false;
                 if (endDate && tDate > endDate) return false;
             }

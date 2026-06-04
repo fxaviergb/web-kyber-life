@@ -14,8 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { updateTransactionAction, getUniqueTagsAction } from "@/app/actions/financial-transactions";
+import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
 import { cn } from "@/lib/utils";
 import { TagInput } from "@/components/ui/tag-input";
+import { AutocompleteInput } from "@/components/ui/autocomplete-input";
+import { Landmark, FolderGit2 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────
 const TYPE_LABELS: Record<string, string> = {
@@ -90,6 +93,16 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
     const [isEditing, setIsEditing] = useState(false);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     
+    const [institutionsList, setInstitutionsList] = useState<string[]>([]);
+    const [accountsList, setAccountsList] = useState<string[]>([]);
+    const [categoriesList, setCategoriesList] = useState<string[]>([]);
+
+    const [displayNames, setDisplayNames] = useState({
+        institution: transaction.merchant || "",
+        account: "",
+        category: "",
+    });
+    
     useEffect(() => {
         const fetchTags = async () => {
             const res = await getUniqueTagsAction();
@@ -97,11 +110,48 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                 setSuggestions(res.data as string[]);
             }
         };
+        const fetchSettings = async () => {
+            try {
+                const [instRes, accRes, catRes] = await Promise.all([
+                    getInstitutionsAction(),
+                    getAccountsAction(),
+                    getCategoriesAction()
+                ]);
+
+                setInstitutionsList(instRes.map(i => i.name));
+                setAccountsList(accRes.map(a => a.name));
+                setCategoriesList(catRes.map(c => c.name));
+
+                const instName = instRes.find(i => i.id === transaction.institutionId)?.name || transaction.merchant || "";
+                const accName = accRes.find(a => a.id === transaction.accountId)?.name || "";
+                const catName = catRes.find(c => c.id === transaction.categoryId)?.name || "";
+
+                setDisplayNames({
+                    institution: instName,
+                    account: accName,
+                    category: catName,
+                });
+
+                setEditState(prev => ({
+                    ...prev,
+                    merchant: instName,
+                    institutionName: instName,
+                    accountName: accName,
+                    categoryName: catName,
+                }));
+            } catch (e) {
+                console.error("Failed to fetch settings", e);
+            }
+        };
         fetchTags();
-    }, []);
+        fetchSettings();
+    }, [transaction]);
 
     const [editState, setEditState] = useState({
         merchant: transaction.merchant || "",
+        institutionName: "",
+        accountName: "",
+        categoryName: "",
         type: transaction.type || "EXPENSE",
         amount: transaction.amount ?? null,
         date: transaction.date ? new Date(transaction.date).toISOString().slice(0, 16) : "",
@@ -120,7 +170,10 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
     const toggleEdit = () => {
         if (!isEditing) {
             setEditState({
-                merchant: transaction.merchant || "",
+                merchant: displayNames.institution,
+                institutionName: displayNames.institution,
+                accountName: displayNames.account,
+                categoryName: displayNames.category,
                 type: transaction.type || "EXPENSE",
                 amount: transaction.amount ?? null,
                 date: transaction.date ? new Date(transaction.date).toISOString().slice(0, 16) : "",
@@ -135,7 +188,13 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         setIsLoading(true);
         try {
             const res = await updateTransactionAction(transaction.id!, {
-                merchant: editState.merchant,
+                merchant: editState.merchant || editState.institutionName,
+                institutionId: null, // Force backend to resolve by name
+                institutionName: editState.institutionName || undefined,
+                accountId: null,
+                accountName: editState.accountName || undefined,
+                categoryId: null,
+                categoryName: editState.categoryName || undefined,
                 type: editState.type,
                 amount: editState.amount,
                 date: editState.date ? new Date(editState.date).toISOString() : undefined,
@@ -206,15 +265,20 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     <Building2 className="h-4 w-4" /> Comercio
                                 </div>
                                 {isEditing ? (
-                                    <Input
-                                        value={editState.merchant}
-                                        onChange={(e) => updateEditState("merchant", e.target.value)}
+                                    <AutocompleteInput
+                                        id="institutionName"
+                                        value={editState.institutionName}
+                                        onChange={(val) => {
+                                            updateEditState("institutionName", val);
+                                            updateEditState("merchant", val);
+                                        }}
+                                        options={institutionsList}
                                         className="h-10 text-xl font-bold border-border/50 bg-bg-primary"
                                         placeholder="Nombre del comercio"
                                     />
                                 ) : (
                                     <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                                        {transaction.merchant || typeLabel}
+                                        {displayNames.institution || typeLabel}
                                     </h2>
                                 )}
                             </div>
@@ -279,6 +343,42 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     <div>
                                         <Badge variant={typeBadgeVariant} className="text-sm px-3">{typeLabel}</Badge>
                                     </div>
+                                )}
+                            </div>
+                            
+                            <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                                    <Landmark className="h-4 w-4" /> Cuenta
+                                </div>
+                                {isEditing ? (
+                                    <AutocompleteInput
+                                        id="accountName"
+                                        value={editState.accountName}
+                                        onChange={(val) => updateEditState("accountName", val)}
+                                        options={accountsList}
+                                        className="h-9 text-sm border-border/50 bg-bg-secondary"
+                                        placeholder="Seleccionar cuenta..."
+                                    />
+                                ) : (
+                                    <div className="text-sm font-medium">{displayNames.account || "Sin cuenta"}</div>
+                                )}
+                            </div>
+                            
+                            <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                                    <FolderGit2 className="h-4 w-4" /> Categoría
+                                </div>
+                                {isEditing ? (
+                                    <AutocompleteInput
+                                        id="categoryName"
+                                        value={editState.categoryName}
+                                        onChange={(val) => updateEditState("categoryName", val)}
+                                        options={categoriesList}
+                                        className="h-9 text-sm border-border/50 bg-bg-secondary"
+                                        placeholder="Seleccionar categoría..."
+                                    />
+                                ) : (
+                                    <div className="text-sm font-medium">{displayNames.category || "Sin categoría"}</div>
                                 )}
                             </div>
                         </div>

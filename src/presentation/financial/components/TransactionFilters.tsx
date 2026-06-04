@@ -208,28 +208,35 @@ export function TransactionFilters() {
     const hasDateFilter = Boolean(dateFrom || dateTo);
 
     return (
-        <div className="flex flex-col gap-3 w-full">
+        <div className="flex flex-col gap-3 w-full mb-4">
             {/* ── Row 1: Search + Actions ───────────────── */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full items-center">
+            <div className="flex flex-col sm:flex-row gap-3 w-full items-center bg-background/40 backdrop-blur-md border border-white/5 p-2 rounded-2xl shadow-sm">
                 <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <Input
                         placeholder="Buscar transacciones, comercios o categorías..."
-                        className="pl-9 bg-background/50 backdrop-blur-sm"
+                        className="pl-9 bg-transparent border-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none hover:bg-white/5 transition-colors"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
 
-                <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                <div className="h-6 w-px bg-white/10 hidden sm:block shrink-0" />
+
+                <div className="flex gap-2 w-full sm:w-auto shrink-0 pl-1">
                     {/* Status Filter Dropdown */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-auto gap-2 bg-background/50 backdrop-blur-sm">
-                                <SlidersHorizontal className="h-4 w-4" />
-                                Filtros
+                            <Button variant="ghost" className="w-full sm:w-auto gap-2 hover:bg-white/5">
+                                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-muted-foreground">Filtros</span>
+                                {statusFilter.length > 0 && (
+                                    <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-primary/20 text-[10px] font-medium text-accent-primary">
+                                        {statusFilter.length}
+                                    </span>
+                                )}
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
@@ -251,13 +258,13 @@ export function TransactionFilters() {
                     <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                         <PopoverTrigger asChild>
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 className={cn(
-                                    "w-full sm:w-auto gap-2 bg-background/50 backdrop-blur-sm",
-                                    hasDateFilter && "border-accent-primary/50 text-accent-primary",
+                                    "w-full sm:w-auto gap-2 hover:bg-white/5",
+                                    hasDateFilter ? "text-accent-primary" : "text-muted-foreground",
                                 )}
                             >
-                                <CalendarDays className="h-4 w-4" />
+                                <CalendarDays className={cn("h-4 w-4", hasDateFilter ? "text-accent-primary" : "text-muted-foreground")} />
                                 <span className="truncate max-w-[160px]">{getDateButtonLabel()}</span>
                                 {hasDateFilter && (
                                     <button

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { Inbox as InboxIcon, Search } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
+import { TransactionTabs } from "@/presentation/financial/components/TransactionTabs";
 
 export const metadata: Metadata = {
     title: "Bandeja de escaneos financieros - KyberLife",
@@ -12,13 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default async function ScansInboxPage() {
-    // Obtener configuración para pasarla a la bandeja
-    const [institutions, accounts, categories] = await Promise.all([
-        getInstitutionsAction(),
-        getAccountsAction(),
-        getCategoriesAction()
-    ]);
-
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -40,13 +33,11 @@ export default async function ScansInboxPage() {
                 </Link>
             </div>
 
-            <div className="mt-8">
+            <div className="mb-6 mt-8">
                 <Suspense fallback={<div className="p-8 text-center animate-pulse">Cargando bandeja...</div>}>
-                    <FinancialInbox 
-                        institutions={institutions}
-                        accounts={accounts}
-                        categories={categories}
-                    />
+                    <TransactionTabs>
+                        <FinancialInbox />
+                    </TransactionTabs>
                 </Suspense>
             </div>
         </div>

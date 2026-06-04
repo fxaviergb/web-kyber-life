@@ -7,8 +7,11 @@ import {
     getMonthlyBreakdownAction,
     getTypeBreakdownAction,
     getRecentTransactionsAction,
+    getCategoryBreakdownAction,
+    getInstitutionBreakdownAction,
+    getDailyBreakdownAction,
 } from "@/app/actions/financial-dashboard";
-import type { FinancialKPIs, MonthlyBreakdown, TypeBreakdown } from "@/application/services/financial-dashboard-service";
+import type { FinancialKPIs, MonthlyBreakdown, TypeBreakdown, CategoryBreakdown, InstitutionBreakdown, DailyBreakdown } from "@/application/services/financial-dashboard-service";
 import type { FinancialTransaction } from "@/domain/entities/financial";
 
 /** Stable cache key — the auth check is done server-side in server actions. */
@@ -18,6 +21,9 @@ interface DashboardState {
     kpis: FinancialKPIs | null;
     monthly: MonthlyBreakdown[];
     typeBreakdown: TypeBreakdown[];
+    categoryBreakdown: CategoryBreakdown[];
+    institutionBreakdown: InstitutionBreakdown[];
+    dailyBreakdown: DailyBreakdown[];
     recent: FinancialTransaction[];
     loading: boolean;
     isStale: boolean;
@@ -28,6 +34,9 @@ const INITIAL_STATE: DashboardState = {
     kpis: null,
     monthly: [],
     typeBreakdown: [],
+    categoryBreakdown: [],
+    institutionBreakdown: [],
+    dailyBreakdown: [],
     recent: [],
     loading: true,
     isStale: false,
@@ -56,10 +65,13 @@ export function useFinancialDashboardOffline(startDate?: string, endDate?: strin
     const loadCachedData = useCallback(async () => {
         try {
             const key = getCacheKey();
-            const [cachedKpis, cachedMonthly, cachedType, cachedTransactions] = await Promise.all([
+            const [cachedKpis, cachedMonthly, cachedType, cachedCategory, cachedInstitution, cachedDaily, cachedTransactions] = await Promise.all([
                 financialOfflineStore.kpi.get(key),
                 financialOfflineStore.monthly.get(key),
                 financialOfflineStore.typeBreakdown.get(key),
+                financialOfflineStore.categoryBreakdown.get(key),
+                financialOfflineStore.institutionBreakdown.get(key),
+                financialOfflineStore.dailyBreakdown.get(key),
                 financialOfflineStore.transactions.get(key), // Use .get(key) instead of .getAll() for specific filter cache
             ]);
 
@@ -67,6 +79,9 @@ export function useFinancialDashboardOffline(startDate?: string, endDate?: strin
             let kpis = cachedKpis as FinancialKPIs;
             let monthly = (cachedMonthly as MonthlyBreakdown[]) ?? [];
             let typeBreakdown = (cachedType as TypeBreakdown[]) ?? [];
+            let categoryBreakdown = (cachedCategory as CategoryBreakdown[]) ?? [];
+            let institutionBreakdown = (cachedInstitution as InstitutionBreakdown[]) ?? [];
+            let dailyBreakdown = (cachedDaily as DailyBreakdown[]) ?? [];
             let recent = (cachedTransactions as FinancialTransaction[]) ?? [];
             let usingFallbackCache = false;
 
@@ -76,6 +91,9 @@ export function useFinancialDashboardOffline(startDate?: string, endDate?: strin
                 if (fallbackKpis) {
                     const fallbackMonthly = await financialOfflineStore.monthly.get(CACHE_KEY);
                     const fallbackType = await financialOfflineStore.typeBreakdown.get(CACHE_KEY);
+                    const fallbackCategory = await financialOfflineStore.categoryBreakdown.get(CACHE_KEY);
+                    const fallbackInstitution = await financialOfflineStore.institutionBreakdown.get(CACHE_KEY);
+                    const fallbackDaily = await financialOfflineStore.dailyBreakdown.get(CACHE_KEY);
                     const fallbackTransactions = await financialOfflineStore.transactions.get(CACHE_KEY);
                     
                     hasCachedData = true;
@@ -83,6 +101,9 @@ export function useFinancialDashboardOffline(startDate?: string, endDate?: strin
                     kpis = fallbackKpis as FinancialKPIs;
                     monthly = (fallbackMonthly as MonthlyBreakdown[]) ?? [];
                     typeBreakdown = (fallbackType as TypeBreakdown[]) ?? [];
+                    categoryBreakdown = (fallbackCategory as CategoryBreakdown[]) ?? [];
+                    institutionBreakdown = (fallbackInstitution as InstitutionBreakdown[]) ?? [];
+                    dailyBreakdown = (fallbackDaily as DailyBreakdown[]) ?? [];
                     recent = (fallbackTransactions as FinancialTransaction[]) ?? [];
                 }
             }
@@ -93,6 +114,9 @@ export function useFinancialDashboardOffline(startDate?: string, endDate?: strin
                     kpis,
                     monthly,
                     typeBreakdown,
+                    categoryBreakdown,
+                    institutionBreakdown,
+                    dailyBreakdown,
                     recent,
                     loading: false,
                     isStale: true,
@@ -111,22 +135,31 @@ export function useFinancialDashboardOffline(startDate?: string, endDate?: strin
     const fetchFreshData = useCallback(async () => {
         setState(prev => ({ ...prev, loading: true }));
         try {
-            const [kpiRes, monthlyRes, typeRes, recentRes] = await Promise.all([
+            const [kpiRes, monthlyRes, typeRes, categoryRes, institutionRes, dailyRes, recentRes] = await Promise.all([
                 getFinancialKPIsAction(startDate, endDate),
                 getMonthlyBreakdownAction(6, startDate, endDate),
                 getTypeBreakdownAction(startDate, endDate),
+                getCategoryBreakdownAction(startDate, endDate),
+                getInstitutionBreakdownAction(startDate, endDate),
+                getDailyBreakdownAction(startDate, endDate),
                 getRecentTransactionsAction(5, startDate, endDate),
             ]);
 
             const freshKpis = kpiRes.success && kpiRes.data ? kpiRes.data : null;
             const freshMonthly = monthlyRes.success && monthlyRes.data ? monthlyRes.data : [];
             const freshType = typeRes.success && typeRes.data ? typeRes.data : [];
+            const freshCategory = categoryRes.success && categoryRes.data ? categoryRes.data : [];
+            const freshInstitution = institutionRes.success && institutionRes.data ? institutionRes.data : [];
+            const freshDaily = dailyRes.success && dailyRes.data ? dailyRes.data : [];
             const freshRecent = recentRes.success && recentRes.data ? recentRes.data : [];
 
             setState({
                 kpis: freshKpis,
                 monthly: freshMonthly,
                 typeBreakdown: freshType,
+                categoryBreakdown: freshCategory,
+                institutionBreakdown: freshInstitution,
+                dailyBreakdown: freshDaily,
                 recent: freshRecent,
                 loading: false,
                 isStale: false,
@@ -139,6 +172,9 @@ export function useFinancialDashboardOffline(startDate?: string, endDate?: strin
                 freshKpis ? financialOfflineStore.kpi.set(key, freshKpis) : Promise.resolve(),
                 financialOfflineStore.monthly.set(key, freshMonthly),
                 financialOfflineStore.typeBreakdown.set(key, freshType),
+                financialOfflineStore.categoryBreakdown.set(key, freshCategory),
+                financialOfflineStore.institutionBreakdown.set(key, freshInstitution),
+                financialOfflineStore.dailyBreakdown.set(key, freshDaily),
                 financialOfflineStore.transactions.set(key, freshRecent),
             ]);
         } catch (err) {

@@ -2,12 +2,15 @@ import { FINANCIAL_FLAGS } from "@/lib/feature-flags";
 
 
 const DB_NAME = "kyberlife_financial";
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 const STORES = {
     DASHBOARD_KPI: "dashboard_kpi",
     DASHBOARD_MONTHLY: "dashboard_monthly",
     DASHBOARD_TYPE: "dashboard_type",
+    DASHBOARD_CATEGORY: "dashboard_category",
+    DASHBOARD_INSTITUTION: "dashboard_institution",
+    DASHBOARD_DAILY: "dashboard_daily",
     TRANSACTIONS: "transactions",
     DRAFTS: "drafts",
     SETTINGS_QUEUE: "settings_queue",
@@ -124,6 +127,30 @@ export const financialOfflineStore = {
             isAvailable() ? getEntry(STORES.DASHBOARD_TYPE, userId).then(e => e?.data ?? null) : Promise.resolve(null),
         set: <T>(userId: string, data: T) =>
             isAvailable() ? putEntry(STORES.DASHBOARD_TYPE, userId, data) : Promise.resolve(),
+    },
+
+    /** Category breakdown cache. */
+    categoryBreakdown: {
+        get: (userId: string) =>
+            isAvailable() ? getEntry(STORES.DASHBOARD_CATEGORY, userId).then(e => e?.data ?? null) : Promise.resolve(null),
+        set: <T>(userId: string, data: T) =>
+            isAvailable() ? putEntry(STORES.DASHBOARD_CATEGORY, userId, data) : Promise.resolve(),
+    },
+
+    /** Institution breakdown cache. */
+    institutionBreakdown: {
+        get: (userId: string) =>
+            isAvailable() ? getEntry(STORES.DASHBOARD_INSTITUTION, userId).then(e => e?.data ?? null) : Promise.resolve(null),
+        set: <T>(userId: string, data: T) =>
+            isAvailable() ? putEntry(STORES.DASHBOARD_INSTITUTION, userId, data) : Promise.resolve(),
+    },
+
+    /** Daily breakdown cache. */
+    dailyBreakdown: {
+        get: (userId: string) =>
+            isAvailable() ? getEntry(STORES.DASHBOARD_DAILY, userId).then(e => e?.data ?? null) : Promise.resolve(null),
+        set: <T>(userId: string, data: T) =>
+            isAvailable() ? putEntry(STORES.DASHBOARD_DAILY, userId, data) : Promise.resolve(),
     },
 
     /** Recent transactions for offline viewing. */

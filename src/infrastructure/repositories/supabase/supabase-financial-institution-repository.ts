@@ -12,6 +12,7 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
             owner_user_id: entity.ownerUserId,
             name: entity.name,
             logo_url: entity.logoUrl,
+            institution_type_id: entity.institutionTypeId ?? null,
             created_at: entity.createdAt,
             updated_at: entity.updatedAt
         };
@@ -19,7 +20,7 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
         const { data, error } = await supabase
             .from('financial_institutions')
             .insert(insertData)
-            .select()
+            .select('*, type:financial_institution_types(*)')
             .single();
 
         if (error) throw new Error(`Error creating financial institution: ${error.message}`);
@@ -31,7 +32,7 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('financial_institutions')
-            .select('*')
+            .select('*, type:financial_institution_types(*)')
             .eq('id', id)
             .single();
 
@@ -49,6 +50,7 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
         const updateData = {
             name: entity.name,
             logo_url: entity.logoUrl,
+            institution_type_id: entity.institutionTypeId ? entity.institutionTypeId : null,
             updated_at: new Date().toISOString()
         };
 
@@ -56,7 +58,7 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
             .from('financial_institutions')
             .update(updateData)
             .eq('id', entity.id)
-            .select()
+            .select('*, type:financial_institution_types(*)')
             .single();
 
         if (error) throw new Error(`Error updating financial institution: ${error.message}`);
@@ -77,7 +79,7 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('financial_institutions')
-            .select('*')
+            .select('*, type:financial_institution_types(*)')
             .eq('owner_user_id', userId)
             .order('name', { ascending: true });
 
@@ -87,11 +89,24 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private mapToEntity(row: any): FinancialInstitution {
+        const typeObj = row.type ? {
+            id: row.type.id,
+            label: row.type.label,
+            iconName: row.type.icon_name,
+            code: row.type.code,
+            ownerUserId: row.type.owner_user_id ?? null,
+            createdAt: row.type.created_at,
+            updatedAt: row.type.updated_at,
+            isDeleted: false,
+        } : null;
+
         return {
             id: row.id,
             ownerUserId: row.owner_user_id,
             name: row.name,
             logoUrl: row.logo_url,
+            institutionTypeId: row.institution_type_id ?? null,
+            institutionTypeObj: typeObj,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
             isDeleted: false,

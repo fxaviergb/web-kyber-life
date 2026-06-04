@@ -8,14 +8,14 @@ interface TypeBreakdownChartProps {
 }
 
 const COLORS = [
-    "hsl(221, 83%, 53%)",   // Blue
-    "hsl(0, 84%, 60%)",     // Red
-    "hsl(142, 71%, 45%)",   // Green
-    "hsl(38, 92%, 50%)",    // Amber
-    "hsl(262, 83%, 58%)",   // Purple
-    "hsl(174, 72%, 44%)",   // Teal
-    "hsl(333, 71%, 51%)",   // Pink
-    "hsl(24, 94%, 50%)",    // Orange
+    "var(--color-chart-1)",
+    "var(--color-chart-2)",
+    "var(--color-chart-3)",
+    "var(--color-chart-4)",
+    "var(--color-chart-5)",
+    "var(--color-accent-info)",
+    "var(--color-accent-success)",
+    "var(--color-accent-warning)",
 ];
 
 function formatCurrency(value: number): string {
@@ -44,7 +44,7 @@ export function TypeBreakdownChart({ data }: TypeBreakdownChartProps) {
                     nameKey="type"
                     paddingAngle={2}
                     strokeWidth={2}
-                    stroke="hsl(var(--background))"
+                    stroke="var(--color-bg-primary)"
                 >
                     {data.map((_, index) => (
                         <Cell
@@ -56,10 +56,10 @@ export function TypeBreakdownChart({ data }: TypeBreakdownChartProps) {
                 <Tooltip
                     formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
                     contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        borderColor: "hsl(var(--border))",
+                        backgroundColor: "var(--color-bg-secondary)",
+                        borderColor: "var(--color-border-base)",
                         borderRadius: "8px",
-                        color: "hsl(var(--foreground))",
+                        color: "var(--color-text-primary)",
                     }}
                 />
                 <Legend

@@ -16,6 +16,7 @@ interface StatCardProps {
     className?: string;
     iconClassName?: string;
     tooltipText?: string;
+    compact?: boolean;
 }
 
 export function StatCard({
@@ -27,10 +28,11 @@ export function StatCard({
     className,
     iconClassName,
     tooltipText,
+    compact,
 }: StatCardProps) {
     return (
-        <Card className={cn("hover:shadow-xl transition-all duration-200", className)}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className={cn("hover:shadow-xl transition-all duration-200 flex flex-col h-full", className)}>
+            <CardHeader className={cn("flex flex-row items-center justify-between space-y-0", compact ? "p-3 pb-1" : "pb-2")}>
                 <div className="flex items-center gap-2">
                     <CardTitle className="text-sm font-medium text-text-secondary">
                         {title}
@@ -50,12 +52,12 @@ export function StatCard({
                         </TooltipProvider>
                     )}
                 </div>
-                <Icon className={cn("h-4 w-4 text-text-tertiary", iconClassName)} />
+                <Icon className={cn(compact ? "h-3.5 w-3.5" : "h-4 w-4", "text-text-tertiary", iconClassName)} />
             </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold text-text-primary">{value}</div>
+            <CardContent className={cn("flex-1 flex flex-col justify-end", compact ? "p-3 pt-0" : "")}>
+                <div className={cn("font-bold text-text-primary", compact ? "text-lg" : "text-2xl")}>{value}</div>
                 {(description || trend) && (
-                    <p className="text-xs text-text-tertiary mt-1">
+                    <p className={cn("text-text-tertiary mt-1", compact ? "text-[10px]" : "text-xs")}>
                         {trend && (
                             <span
                                 className={cn(

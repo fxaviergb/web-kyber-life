@@ -40,7 +40,11 @@ export function Sidebar({ isOpen = true }: { isOpen?: boolean }) {
         let longestMatch = "";
         const checkItems = (items: MenuItem[]) => {
             for (const item of items) {
-                if (item.href && (pathname === item.href || pathname.startsWith(item.href + "/"))) {
+                // Check if the current pathname matches the item's href or its active aliases
+                const matchesHref = item.href && (pathname === item.href || pathname.startsWith(item.href + "/"));
+                const matchesAlias = item.activeAliases?.some(alias => pathname === alias || pathname.startsWith(alias + "/"));
+
+                if (item.href && (matchesHref || matchesAlias)) {
                     if (item.href.length > longestMatch.length) {
                         longestMatch = item.href;
                     }

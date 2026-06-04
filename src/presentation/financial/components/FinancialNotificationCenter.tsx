@@ -112,8 +112,8 @@ export function FinancialNotificationCenter({
                 });
                 onDataChange?.();
             } else if (record.status === "FAILED") {
-                toast.error("El escaneo fallo", {
-                    description: record.error_message ?? "Ocurrio un error desconocido durante el escaneo.",
+                toast.error("El escaneo falló", {
+                    description: record.error_message ?? "Ocurrió un error desconocido durante el escaneo.",
                     duration: 8_000,
                 });
             }

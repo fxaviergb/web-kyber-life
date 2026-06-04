@@ -1,6 +1,6 @@
 import { InMemoryRepository } from "./in-memory-repository";
-import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution, FinancialAccount, FinancialCategory } from "@/domain/entities";
-import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionRepository, IFinancialAccountRepository, IFinancialCategoryRepository } from "@/domain/repositories";
+import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution, FinancialInstitutionType, FinancialAccount, FinancialCategory } from "@/domain/entities";
+import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionTypeRepository, IFinancialInstitutionRepository, IFinancialAccountRepository, IFinancialCategoryRepository } from "@/domain/repositories";
 import { UUID } from "@/domain/core";
 import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
 
@@ -54,6 +54,12 @@ export class InMemoryFinancialScanExecutionRepository extends InMemoryRepository
                 hasPreviousPage: page > 1,
             },
         };
+    }
+}
+
+export class InMemoryFinancialInstitutionTypeRepository extends InMemoryRepository<FinancialInstitutionType> implements IFinancialInstitutionTypeRepository {
+    async findAllGlobalAndUser(userId: UUID): Promise<FinancialInstitutionType[]> {
+        return (await this.findAll()).filter(t => t.ownerUserId === null || t.ownerUserId === userId);
     }
 }
 

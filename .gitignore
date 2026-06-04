@@ -51,5 +51,8 @@ supabase/.temp/
 # AI agent cache
 .gemini/
 
+# Temporary agent scratch files
+/scratch/
+
 # SWC compiler cache
 .swc/

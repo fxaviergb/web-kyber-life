@@ -9,12 +9,31 @@ export class SupabaseFinancialScanExecutionRepository implements IFinancialScanE
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private mapToEntity(data: any): FinancialScanExecution {
+
+        let parsedPayload = null;
+        if (data.request_payload) {
+            try {
+                parsedPayload = data.request_payload;
+                while (typeof parsedPayload === 'string') {
+                    parsedPayload = JSON.parse(parsedPayload);
+                }
+            } catch (e) {
+                console.error("Error parsing request_payload", e);
+            }
+        }
+        
+        const stats: Record<string, any> = {};
+        if (data.total_transactions != null) stats.totalTransactionsFound = data.total_transactions;
+        if (parsedPayload?.startDate) stats.startDate = parsedPayload.startDate;
+        if (parsedPayload?.endDate) stats.endDate = parsedPayload.endDate;
+
         return {
             id: data.id,
             ownerUserId: data.owner_user_id,
             status: data.status,
             source: data.source || 'GMAIL_N8N_WEBHOOK',
-            stats: data.total_transactions != null ? { totalTransactionsFound: data.total_transactions } : undefined,
+            stats: Object.keys(stats).length > 0 ? stats : undefined,
+            requestPayload: parsedPayload,
             startedAt: data.started_at || data.created_at,
             completedAt: data.finished_at,
             errorDetails: data.error_message,
@@ -34,6 +53,7 @@ export class SupabaseFinancialScanExecutionRepository implements IFinancialScanE
             started_at: entity.startedAt,
             finished_at: entity.completedAt,
             error_message: entity.errorDetails,
+            request_payload: entity.requestPayload,
             created_at: entity.createdAt,
             updated_at: entity.updatedAt,
         };
@@ -148,10 +168,10 @@ export class SupabaseFinancialScanExecutionRepository implements IFinancialScanE
         const buildQuery = (query: any) => {
             query = query.eq('owner_user_id', userId);
             if (dateFilter?.dateFrom) {
-                query = query.gte('started_at', `${dateFilter.dateFrom}T00:00:00`);
+                query = query.gte('created_at', `${dateFilter.dateFrom}T00:00:00`);
             }
             if (dateFilter?.dateTo) {
-                query = query.lte('started_at', `${dateFilter.dateTo}T23:59:59`);
+                query = query.lte('created_at', `${dateFilter.dateTo}T23:59:59`);
             }
             return query;
         };

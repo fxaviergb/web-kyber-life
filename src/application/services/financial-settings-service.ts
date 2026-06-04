@@ -2,6 +2,7 @@ import { UUID } from "@/domain/core";
 import { FinancialInstitution, FinancialAccount, FinancialCategory } from "@/domain/entities/financial";
 import { 
     IFinancialInstitutionRepository, 
+    IFinancialInstitutionTypeRepository,
     IFinancialAccountRepository, 
     IFinancialCategoryRepository 
 } from "@/domain/repositories/financial";
@@ -9,10 +10,29 @@ import { randomUUID } from "crypto";
 
 export class FinancialSettingsService {
     constructor(
+        private institutionTypeRepo: IFinancialInstitutionTypeRepository,
         private institutionRepo: IFinancialInstitutionRepository,
         private accountRepo: IFinancialAccountRepository,
         private categoryRepo: IFinancialCategoryRepository
     ) {}
+
+    // --- Institution Types ---
+    
+    async getInstitutionTypes(userId: UUID) {
+        return this.institutionTypeRepo.findAllGlobalAndUser(userId);
+    }
+    
+    async createInstitutionType(userId: UUID, data: any) {
+        return this.institutionTypeRepo.create({
+            id: randomUUID(),
+            ownerUserId: userId,
+            code: data.code,
+            label: data.label,
+            iconName: data.iconName || 'Tag',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        } as any);
+    }
 
     // --- Institutions ---
 
@@ -26,6 +46,7 @@ export class FinancialSettingsService {
             ownerUserId: userId,
             name: data.name!,
             logoUrl: data.logoUrl || null,
+            institutionTypeId: data.institutionTypeId || null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isDeleted: false
@@ -45,7 +66,7 @@ export class FinancialSettingsService {
             updatedAt: new Date().toISOString()
         };
         
-        return this.institutionRepo.update(institutionId, updated);
+        return this.institutionRepo.update(updated);
     }
 
     async deleteInstitution(userId: UUID, institutionId: UUID): Promise<void> {
@@ -60,7 +81,7 @@ export class FinancialSettingsService {
             isDeleted: true,
             updatedAt: new Date().toISOString()
         };
-        await this.institutionRepo.update(institutionId, updated);
+        await this.institutionRepo.update(updated);
     }
 
     // --- Accounts ---
@@ -75,6 +96,9 @@ export class FinancialSettingsService {
             const institution = await this.institutionRepo.findById(data.institutionId);
             if (!institution || institution.ownerUserId !== userId || institution.isDeleted) {
                  throw new Error("Invalid institution");
+            }
+            if (institution.institutionTypeObj && !['FINANCIAL', 'DIGITAL_WALLET'].includes(institution.institutionTypeObj.code)) {
+                 throw new Error("Accounts can only be associated with FINANCIAL or DIGITAL_WALLET institutions");
             }
         }
 
@@ -104,6 +128,9 @@ export class FinancialSettingsService {
             if (!institution || institution.ownerUserId !== userId || institution.isDeleted) {
                  throw new Error("Invalid institution");
             }
+            if (institution.institutionTypeObj && !['FINANCIAL', 'DIGITAL_WALLET'].includes(institution.institutionTypeObj.code)) {
+                 throw new Error("Accounts can only be associated with FINANCIAL or DIGITAL_WALLET institutions");
+            }
         }
         
         const updated: FinancialAccount = {
@@ -112,7 +139,7 @@ export class FinancialSettingsService {
             updatedAt: new Date().toISOString()
         };
         
-        return this.accountRepo.update(accountId, updated);
+        return this.accountRepo.update(updated);
     }
 
     async deleteAccount(userId: UUID, accountId: UUID): Promise<void> {
@@ -127,7 +154,7 @@ export class FinancialSettingsService {
             isDeleted: true,
             updatedAt: new Date().toISOString()
         };
-        await this.accountRepo.update(accountId, updated);
+        await this.accountRepo.update(updated);
     }
 
     // --- Categories ---
@@ -168,7 +195,7 @@ export class FinancialSettingsService {
             updatedAt: new Date().toISOString()
         };
         
-        return this.categoryRepo.update(categoryId, updated);
+        return this.categoryRepo.update(updated);
     }
 
     async deleteCategory(userId: UUID, categoryId: UUID): Promise<void> {
@@ -188,6 +215,6 @@ export class FinancialSettingsService {
             isDeleted: true,
             updatedAt: new Date().toISOString()
         };
-        await this.categoryRepo.update(categoryId, updated);
+        await this.categoryRepo.update(updated);
     }
 }

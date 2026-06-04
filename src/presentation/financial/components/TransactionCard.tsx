@@ -153,74 +153,74 @@ export function TransactionCard({
             />
 
             {/* ── Header ───────────────────────────────────── */}
-            <CardHeader className="gap-3 border-b border-border/50 px-5 py-3 sm:px-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    {/* Left: Info */}
-                    <div className="space-y-2 min-w-0 flex-1">
-                        {/* Top row: Checkbox + Status badge + Actions */}
-                        <div className="flex flex-wrap items-center gap-2">
-
+            <CardHeader className="gap-3 border-b border-border/50 px-4 py-3 sm:px-6">
+                <div className="flex flex-col gap-3">
+                    {/* Top row: Checkbox + Status badge + Actions */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                            variant={statusCfg.variant}
+                            className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.14em] shrink-0"
+                        >
+                            {statusCfg.label}
+                        </Badge>
+                        {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
                             <Badge
-                                variant={statusCfg.variant}
-                                className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.14em] shrink-0"
+                                variant="warning"
+                                className="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] shrink-0 gap-1"
                             >
-                                {statusCfg.label}
+                                <AlertCircle className="h-3 w-3" />
+                                Posible Duplicado
                             </Badge>
-
-                            {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
-                                <Badge
-                                    variant="warning"
-                                    className="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] shrink-0 gap-1"
-                                >
-                                    <AlertCircle className="h-3 w-3" />
-                                    Posible Duplicado
-                                </Badge>
-                            )}
-                        </div>
-
-                        {/* Merchant name */}
-                        <div className="space-y-1 mt-1">
-                            <CardTitle className="text-lg tracking-tight sm:text-xl truncate">
-                                {transaction.merchant || typeLabel}
-                            </CardTitle>
-                        </div>
-
-                        {/* Date + Type badges */}
-                        <CardDescription className="flex flex-col gap-2 text-xs sm:text-sm pt-1">
-                            <div className="flex items-center gap-1.5 w-full max-w-[240px]">
-                                <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                <span>{formatDate(transaction.date)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 w-full max-w-[240px]">
-                                <Wallet className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                <span className="text-muted-foreground shrink-0">Tipo:</span>
-                                <Badge
-                                    variant={typeBadgeVariant}
-                                    className="text-xs px-2.5 py-0.5 shrink-0"
-                                >
-                                    {typeLabel}
-                                </Badge>
-                            </div>
-                        </CardDescription>
+                        )}
                     </div>
 
-                    {/* Right: Amount pill */}
-                    <div className="flex min-w-[110px] shrink-0 flex-col rounded-2xl bg-bg-primary/50 px-3 py-2.5 text-left sm:text-right border-none justify-center">
-                        <div className="flex items-center justify-between sm:justify-end gap-3">
-                            <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                                Monto
-                            </span>
+                    <div className="flex flex-row items-start justify-between gap-3">
+                        {/* Left: Info */}
+                        <div className="space-y-2 min-w-0 flex-1">
+                            {/* Merchant name */}
+                            <div className="space-y-1">
+                                <CardTitle className="text-lg tracking-tight sm:text-xl truncate">
+                                    {transaction.merchant || typeLabel}
+                                </CardTitle>
+                            </div>
+
+                            {/* Date + Type badges */}
+                            <CardDescription className="flex flex-col gap-1.5 text-xs sm:text-sm pt-1">
+                                <div className="flex items-center gap-1.5 w-full">
+                                    <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                    <span className="truncate">{formatDate(transaction.date)}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 w-full">
+                                    <Wallet className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                    <span className="text-muted-foreground shrink-0">Tipo:</span>
+                                    <Badge
+                                        variant={typeBadgeVariant}
+                                        className="text-[10px] sm:text-xs px-2 py-0.5 shrink-0 truncate max-w-[120px]"
+                                    >
+                                        {typeLabel}
+                                    </Badge>
+                                </div>
+                            </CardDescription>
                         </div>
-                        <div className="mt-1 flex items-center sm:justify-end gap-1">
-                            <span
-                                className={cn(
-                                    "text-lg font-semibold tracking-tight",
-                                    isIncome && "text-emerald-500",
-                                )}
-                            >
-                                {isIncome ? "+" : ""}
-                                {formatAmount(transaction.amount, transaction.currency)}
-                            </span>
+
+                        {/* Right: Amount pill */}
+                        <div className="flex min-w-[90px] shrink-0 flex-col rounded-2xl bg-bg-primary/50 px-3 py-2.5 text-right border-none justify-center">
+                            <div className="flex items-center justify-end gap-3">
+                                <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                                    Monto
+                                </span>
+                            </div>
+                            <div className="mt-1 flex items-center justify-end gap-1">
+                                <span
+                                    className={cn(
+                                        "text-base sm:text-lg font-semibold tracking-tight",
+                                        isIncome && "text-emerald-500",
+                                    )}
+                                >
+                                    {isIncome ? "+" : ""}
+                                    {formatAmount(transaction.amount, transaction.currency)}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -255,73 +255,73 @@ export function TransactionCard({
             </CardContent>
 
             {/* ── Footer ───────────────────────────────────── */}
-            <CardFooter className="flex flex-col gap-2 border-t border-border/50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <NextLink
-                    href={`/financial/transactions/${transaction.id}`}
-                    className="w-full sm:w-auto"
+            <CardFooter className="flex flex-row items-center w-full gap-1.5 sm:gap-2 border-t border-border/50 px-3 py-3 sm:px-6">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 shrink text-muted-foreground hover:text-foreground px-1 h-8 sm:h-9 text-[10px] sm:text-sm"
+                    disabled={isLoading}
+                    asChild
                 >
-                    <Button
-                        variant="ghost"
-                        className="w-full text-muted-foreground hover:text-foreground"
-                        disabled={isLoading}
-                    >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver detalles
-                    </Button>
-                </NextLink>
+                    <NextLink href={`/financial/transactions/${transaction.id}`}>
+                        <Eye className="h-3.5 w-3.5 mr-1" />
+                        <span className="truncate">Detalles</span>
+                    </NextLink>
+                </Button>
 
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                    {transaction.status === "DETECTED" && (
-                        <Button
-                            variant="outline"
-                            className="w-full rounded-xl sm:w-auto border-border/50 hover:bg-bg-primary"
-                            onClick={() =>
-                                handleAction(
-                                    reviewTransactionAction,
-                                    "Transacción marcada como revisada",
-                                    "REVIEWED",
-                                )
-                            }
-                            disabled={isLoading}
-                        >
-                            <CheckCircle2 className="h-4 w-4 mr-1.5 text-muted-foreground" />
-                            Revisar
-                        </Button>
-                    )}
-                    {transaction.status !== "ARCHIVED" && (
-                        <Button
-                            variant="outline"
-                            className="w-full rounded-xl sm:w-auto border-border/50 hover:bg-bg-primary"
-                            onClick={() =>
-                                handleAction(
-                                    archiveTransactionAction,
-                                    "Transacción archivada",
-                                    "ARCHIVED",
-                                )
-                            }
-                            disabled={isLoading}
-                        >
-                            <Archive className="h-4 w-4 mr-1.5 text-muted-foreground" />
-                            Archivar
-                        </Button>
-                    )}
+                {transaction.status === "DETECTED" && (
                     <Button
-                        variant="ghost"
-                        className="w-full rounded-xl sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 shrink rounded-xl border-border/50 hover:bg-bg-primary px-1 h-8 sm:h-9 text-[10px] sm:text-sm"
                         onClick={() =>
                             handleAction(
-                                softDeleteTransactionAction,
-                                "Transacción eliminada",
-                                "DELETED",
-                                true,
+                                reviewTransactionAction,
+                                "Transacción marcada como revisada",
+                                "REVIEWED",
                             )
                         }
                         disabled={isLoading}
                     >
-                        <Trash2 className="h-4 w-4 mr-1.5" />
-                        Eliminar
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                        <span className="truncate">Revisar</span>
                     </Button>
-                </div>
+                )}
+                {transaction.status !== "ARCHIVED" && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 shrink rounded-xl border-border/50 hover:bg-bg-primary px-1 h-8 sm:h-9 text-[10px] sm:text-sm"
+                        onClick={() =>
+                            handleAction(
+                                archiveTransactionAction,
+                                "Transacción archivada",
+                                "ARCHIVED",
+                            )
+                        }
+                        disabled={isLoading}
+                    >
+                        <Archive className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                        <span className="truncate">Archivar</span>
+                    </Button>
+                )}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 shrink rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive px-1 h-8 sm:h-9 text-[10px] sm:text-sm"
+                    onClick={() =>
+                        handleAction(
+                            softDeleteTransactionAction,
+                            "Transacción eliminada",
+                            "DELETED",
+                            true,
+                        )
+                    }
+                    disabled={isLoading}
+                >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    <span className="truncate">Eliminar</span>
+                </Button>
             </CardFooter>
         </Card>
     );
