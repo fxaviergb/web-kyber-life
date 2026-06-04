@@ -10,3 +10,12 @@ export * from './supabase-template-item-repository';
 export * from './supabase-purchase-repository';
 export * from './supabase-purchase-line-repository';
 export * from './supabase-price-observation-repository';
+export * from './supabase-financial-transaction-repository';
+// TODO: Create these Supabase repositories when needed
+export * from './supabase-financial-scan-execution-repository';
+export * from './supabase-financial-institution-repository';
+export * from './supabase-financial-account-repository';
+export * from './supabase-financial-category-repository';
+export * from './supabase-financial-transaction-audit-log-repository';
+export * from './supabase-financial-scanner-transaction-repository';
+export * from './supabase-institution-type-repository';

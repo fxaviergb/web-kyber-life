@@ -1,7 +1,168 @@
 import { InMemoryRepository } from "./in-memory-repository";
-import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken } from "@/domain/entities";
-import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository } from "@/domain/repositories";
+import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution, FinancialInstitutionType, FinancialAccount, FinancialCategory } from "@/domain/entities";
+import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionTypeRepository, IFinancialInstitutionRepository, IFinancialAccountRepository, IFinancialCategoryRepository } from "@/domain/repositories";
 import { UUID } from "@/domain/core";
+import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
+
+export class InMemoryFinancialTransactionAuditLogRepository extends InMemoryRepository<FinancialTransactionAuditLog> implements IFinancialTransactionAuditLogRepository {
+    async findByTransactionId(transactionId: UUID): Promise<FinancialTransactionAuditLog[]> {
+        return (await this.findAll()).filter(l => l.transactionId === transactionId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }
+}
+
+export class InMemoryFinancialScannerTransactionRepository extends InMemoryRepository<FinancialScannerTransaction> implements IFinancialScannerTransactionRepository {
+    async findUnprocessedByOwnerId(userId: UUID): Promise<FinancialScannerTransaction[]> {
+        return (await this.findAll()).filter(t => t.ownerUserId === userId && t.status === 'DETECTED');
+    }
+}
+
+export class InMemoryFinancialScanExecutionRepository extends InMemoryRepository<FinancialScanExecution> implements IFinancialScanExecutionRepository {
+    async findByOwnerId(userId: UUID): Promise<FinancialScanExecution[]> {
+        return (await this.findAll()).filter(e => e.ownerUserId === userId);
+    }
+    async findLatestBySource(userId: UUID, source: string): Promise<FinancialScanExecution | null> {
+        const results = (await this.findByOwnerId(userId)).filter(e => e.source === source);
+        return results.length > 0 ? results[0] : null;
+    }
+    async findPaginatedByOwnerId(userId: UUID, pagination: PaginationParams, dateFilter?: import('@/domain/repositories/financial').ScanExecutionDateFilter): Promise<PaginatedResult<FinancialScanExecution>> {
+        let all = (await this.findByOwnerId(userId));
+        
+        if (dateFilter?.dateFrom) {
+            const fromDate = new Date(`${dateFilter.dateFrom}T00:00:00`).getTime();
+            all = all.filter(e => new Date(e.startedAt).getTime() >= fromDate);
+        }
+        if (dateFilter?.dateTo) {
+            const toDate = new Date(`${dateFilter.dateTo}T23:59:59.999`).getTime();
+            all = all.filter(e => new Date(e.startedAt).getTime() <= toDate);
+        }
+
+        all = all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        const totalItems = all.length;
+        const { page, pageSize } = pagination;
+        const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+        const from = (page - 1) * pageSize;
+        const data = all.slice(from, from + pageSize);
+
+        return {
+            data,
+            pagination: {
+                page,
+                pageSize,
+                totalItems,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        };
+    }
+}
+
+export class InMemoryFinancialInstitutionTypeRepository extends InMemoryRepository<FinancialInstitutionType> implements IFinancialInstitutionTypeRepository {
+    async findAllGlobalAndUser(userId: UUID): Promise<FinancialInstitutionType[]> {
+        return (await this.findAll()).filter(t => t.ownerUserId === null || t.ownerUserId === userId);
+    }
+}
+
+export class InMemoryFinancialInstitutionRepository extends InMemoryRepository<FinancialInstitution> implements IFinancialInstitutionRepository {
+    async findByOwnerId(userId: UUID): Promise<FinancialInstitution[]> {
+        return (await this.findAll()).filter(i => i.ownerUserId === userId);
+    }
+}
+
+export class InMemoryFinancialAccountRepository extends InMemoryRepository<FinancialAccount> implements IFinancialAccountRepository {
+    async findByOwnerId(userId: UUID): Promise<FinancialAccount[]> {
+        return (await this.findAll()).filter(a => a.ownerUserId === userId);
+    }
+    async findByInstitutionId(institutionId: UUID): Promise<FinancialAccount[]> {
+        return (await this.findAll()).filter(a => a.institutionId === institutionId);
+    }
+}
+
+export class InMemoryFinancialCategoryRepository extends InMemoryRepository<FinancialCategory> implements IFinancialCategoryRepository {
+    async findAllBaseAndUser(userId: UUID): Promise<FinancialCategory[]> {
+        return (await this.findAll()).filter(c => c.ownerUserId === null || c.ownerUserId === userId);
+    }
+}
+
+export class InMemoryFinancialTransactionRepository extends InMemoryRepository<FinancialTransaction> implements IFinancialTransactionRepository {
+    async findByOwnerId(userId: UUID): Promise<FinancialTransaction[]> {
+        return (await this.findAll()).filter(t => t.ownerUserId === userId).sort((a, b) => b.date.localeCompare(a.date));
+    }
+    async findRecent(userId: UUID, limit: number): Promise<FinancialTransaction[]> {
+        return (await this.findByOwnerId(userId)).slice(0, limit);
+    }
+    async search(userId: UUID, query: string, filters?: TransactionSearchFilters): Promise<FinancialTransaction[]> {
+        return this.applyFilters(await this.findByOwnerId(userId), query, filters);
+    }
+    async findPaginated(
+        userId: UUID,
+        filters: TransactionSearchFilters,
+        pagination: PaginationParams,
+    ): Promise<PaginatedResult<FinancialTransaction>> {
+        const all = this.applyFilters(await this.findByOwnerId(userId), filters.query, filters);
+        const totalItems = all.length;
+        const { page, pageSize } = pagination;
+        const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+        const from = (page - 1) * pageSize;
+        const data = all.slice(from, from + pageSize);
+
+        return {
+            data,
+            pagination: {
+                page,
+                pageSize,
+                totalItems,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        };
+    }
+
+    private applyFilters(
+        results: FinancialTransaction[],
+        query?: string,
+        filters?: TransactionSearchFilters,
+    ): FinancialTransaction[] {
+        let filtered = results;
+        if (query) {
+            const q = query.toLowerCase();
+            filtered = filtered.filter(t => t.merchant?.toLowerCase().includes(q));
+        }
+        if (filters?.status) {
+            filtered = filtered.filter(t => t.status === filters.status);
+        } else {
+            filtered = filtered.filter(t => t.status !== 'DELETED' && t.status !== 'ARCHIVED');
+        }
+
+        if (!filters) return filtered;
+        if (filters.type) filtered = filtered.filter(t => t.type === filters.type);
+        if (filters.categoryId) filtered = filtered.filter(t => t.categoryId === filters.categoryId);
+        if (filters.institutionId) filtered = filtered.filter(t => t.institutionId === filters.institutionId);
+        if (filters.accountId) filtered = filtered.filter(t => t.accountId === filters.accountId);
+        if (filters.dateFrom) filtered = filtered.filter(t => t.date >= filters.dateFrom!);
+        if (filters.dateTo) filtered = filtered.filter(t => t.date <= filters.dateTo!);
+        if (filters.amountMin !== undefined) filtered = filtered.filter(t => t.amount >= filters.amountMin!);
+        if (filters.amountMax !== undefined) filtered = filtered.filter(t => t.amount <= filters.amountMax!);
+        if (filters.tags && filters.tags.length > 0) {
+            filtered = filtered.filter(t => filters.tags!.some(tag => t.tags?.includes(tag)));
+        }
+        return filtered;
+    }
+
+    async getUniqueTags(userId: UUID): Promise<string[]> {
+        const transactions = await this.findByOwnerId(userId);
+        const tagsSet = new Set<string>();
+        for (const t of transactions) {
+            if (t.tags) {
+                for (const tag of t.tags) {
+                    tagsSet.add(tag);
+                }
+            }
+        }
+        return Array.from(tagsSet);
+    }
+}
 
 export class InMemoryUserRepository extends InMemoryRepository<User> implements IUserRepository {
     async findByEmail(email: string): Promise<User | null> {

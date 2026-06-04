@@ -1,0 +1,255 @@
+import type { IFinancialTransactionRepository } from "@/domain/repositories/financial";
+import type { FinancialTransaction } from "@/domain/entities/financial";
+import type { UUID } from "@/domain/core";
+import type { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
+import { createClient } from "@/infrastructure/supabase/server";
+
+export class SupabaseFinancialTransactionRepository implements IFinancialTransactionRepository {
+    async create(entity: FinancialTransaction): Promise<FinancialTransaction> {
+        const supabase = await createClient();
+        
+        const insertData = {
+            id: entity.id,
+            owner_user_id: entity.ownerUserId,
+            account_id: entity.accountId,
+            institution_id: entity.institutionId,
+            type: entity.type,
+            status: entity.status,
+            amount: entity.amount,
+            currency: entity.currency,
+            date: entity.date,
+            merchant: entity.merchant,
+            category_id: entity.categoryId,
+            tags: entity.tags || [],
+            notes: entity.notes,
+            possible_duplicate: entity.possibleDuplicate,
+            execution_id: entity.executionId,
+            origin_stats: entity.originStats,
+            created_at: entity.createdAt,
+            updated_at: entity.updatedAt
+        };
+
+        const { data, error } = await supabase
+            .from('financial_transactions')
+            .insert(insertData)
+            .select()
+            .single();
+
+        if (error) throw new Error(`Error creating financial transaction: ${error.message}`);
+        
+        return this.mapToEntity(data);
+    }
+
+    async findById(id: UUID): Promise<FinancialTransaction | null> {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('financial_transactions')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error || !data) return null;
+        return this.mapToEntity(data);
+    }
+
+    async findAll(): Promise<FinancialTransaction[]> {
+        throw new Error("findAll not implemented for financial_transactions. Use findByOwnerId.");
+    }
+
+    async update(entity: FinancialTransaction): Promise<FinancialTransaction> {
+        const supabase = await createClient();
+        
+        const updateData = {
+            account_id: entity.accountId,
+            institution_id: entity.institutionId,
+            type: entity.type,
+            status: entity.status,
+            amount: entity.amount,
+            currency: entity.currency,
+            date: entity.date,
+            merchant: entity.merchant,
+            category_id: entity.categoryId,
+            tags: entity.tags || [],
+            notes: entity.notes,
+            possible_duplicate: entity.possibleDuplicate,
+            updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+            .from('financial_transactions')
+            .update(updateData)
+            .eq('id', entity.id)
+            .select()
+            .single();
+
+        if (error) throw new Error(`Error updating financial transaction: ${error.message}`);
+        return this.mapToEntity(data);
+    }
+
+    async delete(id: UUID): Promise<void> {
+        const supabase = await createClient();
+        // Since we don't have is_deleted for transactions, we use hard delete or rely on RLS/status.
+        // If hard delete is expected:
+        const { error } = await supabase
+            .from('financial_transactions')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw new Error(`Error deleting financial transaction: ${error.message}`);
+    }
+
+    async findByOwnerId(userId: UUID): Promise<FinancialTransaction[]> {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('financial_transactions')
+            .select('*')
+            .eq('owner_user_id', userId)
+            .order('date', { ascending: false });
+
+        if (error || !data) return [];
+        return data.map(row => this.mapToEntity(row));
+    }
+
+    async findRecent(userId: UUID, limit: number): Promise<FinancialTransaction[]> {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('financial_transactions')
+            .select('*')
+            .eq('owner_user_id', userId)
+            .order('date', { ascending: false })
+            .limit(limit);
+
+        if (error || !data) return [];
+        return data.map(row => this.mapToEntity(row));
+    }
+
+    async search(userId: UUID, query: string, filters?: TransactionSearchFilters): Promise<FinancialTransaction[]> {
+        const supabase = await createClient();
+        let qb = supabase
+            .from('financial_transactions')
+            .select('*')
+            .eq('owner_user_id', userId);
+
+        qb = this.applyFilters(qb, query, filters);
+
+        const { data, error } = await qb.order('date', { ascending: false });
+        if (error || !data) return [];
+        return data.map(row => this.mapToEntity(row));
+    }
+
+    async findPaginated(
+        userId: UUID,
+        filters: TransactionSearchFilters,
+        pagination: PaginationParams,
+    ): Promise<PaginatedResult<FinancialTransaction>> {
+        const supabase = await createClient();
+        const { page, pageSize } = pagination;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        // Count query — exact count via header
+        let countQb = supabase
+            .from('financial_transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('owner_user_id', userId);
+        countQb = this.applyFilters(countQb, filters.query, filters);
+        const { count: totalItems, error: countError } = await countQb;
+
+        if (countError) throw new Error(`Pagination count error: ${countError.message}`);
+
+        const total = totalItems ?? 0;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+        // Data query
+        let dataQb = supabase
+            .from('financial_transactions')
+            .select('*')
+            .eq('owner_user_id', userId);
+        dataQb = this.applyFilters(dataQb, filters.query, filters);
+        dataQb = dataQb.order('date', { ascending: false }).range(from, to);
+
+        const { data, error } = await dataQb;
+        if (error) throw new Error(`Pagination data error: ${error.message}`);
+
+        return {
+            data: (data ?? []).map(row => this.mapToEntity(row)),
+            pagination: {
+                page,
+                pageSize,
+                totalItems: total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        };
+    }
+
+    async getUniqueTags(userId: UUID): Promise<string[]> {
+        const supabase = await createClient();
+        const { data, error } = await supabase.rpc('get_unique_financial_tags', {
+            p_user_id: userId
+        });
+
+        if (error) {
+            console.error('Error fetching unique tags:', error);
+            return [];
+        }
+
+        // data should be an array of objects like { tag: 'FOOD' }
+        return (data || []).map((item: any) => item.tag);
+    }
+
+    /**
+     * Shared filter builder used by both `search` and `findPaginated`.
+     * Keeps all SQL-level filtering in a single place.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private applyFilters(qb: any, query?: string, filters?: TransactionSearchFilters) {
+        if (query) {
+            qb = qb.ilike('merchant', `%${query}%`);
+        }
+        if (filters?.status) {
+            qb = qb.eq('status', filters.status);
+        } else {
+            qb = qb.neq('status', 'DELETED').neq('status', 'ARCHIVED');
+        }
+
+        if (!filters) return qb;
+        if (filters.type) qb = qb.eq('type', filters.type);
+        if (filters.categoryId) qb = qb.eq('category_id', filters.categoryId);
+        if (filters.institutionId) qb = qb.eq('institution_id', filters.institutionId);
+        if (filters.accountId) qb = qb.eq('account_id', filters.accountId);
+        if (filters.currency) qb = qb.eq('currency', filters.currency);
+        if (filters.dateFrom) qb = qb.gte('date', filters.dateFrom);
+        if (filters.dateTo) qb = qb.lte('date', filters.dateTo);
+        if (filters.amountMin !== undefined) qb = qb.gte('amount', filters.amountMin);
+        if (filters.amountMax !== undefined) qb = qb.lte('amount', filters.amountMax);
+        if (filters.tags && filters.tags.length > 0) qb = qb.overlaps('tags', filters.tags);
+
+        return qb;
+    }
+
+    private mapToEntity(row: any): FinancialTransaction {
+        return {
+            id: row.id,
+            ownerUserId: row.owner_user_id,
+            accountId: row.account_id,
+            institutionId: row.institution_id,
+            type: row.type,
+            status: row.status,
+            amount: row.amount,
+            currency: row.currency,
+            date: row.date,
+            merchant: row.merchant,
+            categoryId: row.category_id,
+            tags: row.tags || [],
+            notes: row.notes,
+            possibleDuplicate: row.possible_duplicate,
+            executionId: row.execution_id,
+            originStats: row.origin_stats,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+            isDeleted: false,
+        };
+    }
+}

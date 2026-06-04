@@ -126,3 +126,5 @@ export interface PriceObservation extends BaseEntity {
     observedAt: ISODate; // ISO Date string
     sourcePurchaseId: UUID | null; // Null if manually entered
 }
+
+export * from './financial';

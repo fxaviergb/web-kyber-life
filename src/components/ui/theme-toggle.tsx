@@ -8,6 +8,26 @@ import { Button } from "@/components/ui/button"
 
 export function ThemeToggle({ className }: { className?: string }) {
     const { theme, setTheme } = useTheme()
+    const [mounted, setMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        // Render placeholder with same dimensions to prevent layout shift
+        return (
+            <Button
+                variant="ghost"
+                size="icon"
+                className={`rounded-full ${className}`}
+                disabled
+            >
+                <Sun className="h-[1.2rem] w-[1.2rem] text-gray-500" />
+                <span className="sr-only">Toggle theme</span>
+            </Button>
+        )
+    }
 
     return (
         <Button

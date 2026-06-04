@@ -1,4 +1,4 @@
-import { Home, ShoppingCart, FileText, BarChart2, Settings, Store, Package, Tag, Scale, User, LucideIcon } from "lucide-react";
+import { Home, ShoppingCart, FileText, BarChart2, Settings, Store, Package, Tag, Scale, User, Wallet, Receipt, Inbox, LucideIcon } from "lucide-react";
 
 export type MenuItem = {
     label: string;
@@ -6,10 +6,21 @@ export type MenuItem = {
     href?: string;
     items?: MenuItem[];
     isSection?: boolean;
+    activeAliases?: string[];
 };
 
 export const MENU_ITEMS: MenuItem[] = [
     { label: "Dashboard", icon: Home, href: "/dashboard" },
+    {
+        label: "Finanzas",
+        isSection: true,
+        items: [
+            { label: "Resumen", icon: Wallet, href: "/financial" },
+            { label: "Transacciones", icon: Receipt, href: "/financial/transactions" },
+            { label: "Escaneos", icon: Inbox, href: "/financial/scans", activeAliases: ["/financial/scanner"] },
+            { label: "Configuración", icon: Settings, href: "/financial/settings" },
+        ]
+    },
     {
         label: "Market",
         isSection: true,

@@ -1,0 +1,237 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { FinancialInstitution, FinancialInstitutionType } from "@/domain/entities/financial";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus, Edit2, Trash2, Building2 } from "lucide-react";
+import { createInstitutionAction, updateInstitutionAction, deleteInstitutionAction, createInstitutionTypeAction } from "@/app/actions/financial-settings";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { UUID } from "@/domain/core";
+import * as Icons from "lucide-react";
+
+interface InstitutionManagerProps {
+    initialData: FinancialInstitution[];
+    institutionTypes: FinancialInstitutionType[];
+}
+
+export function InstitutionManager({ initialData, institutionTypes }: InstitutionManagerProps) {
+    const [institutions, setInstitutions] = useState<FinancialInstitution[]>(initialData);
+    const [types, setTypes] = useState<FinancialInstitutionType[]>(institutionTypes);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingId, setEditingId] = useState<UUID | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        setInstitutions(initialData);
+    }, [initialData]);
+
+    useEffect(() => {
+        setTypes(institutionTypes);
+    }, [institutionTypes]);
+
+    // Form state
+    const [name, setName] = useState("");
+    const [institutionTypeId, setInstitutionTypeId] = useState<string>("");
+    const [customType, setCustomType] = useState("");
+
+    const handleOpenDialog = (inst?: FinancialInstitution) => {
+        if (inst) {
+            setEditingId(inst.id!);
+            setName(inst.name);
+            if (inst.institutionTypeId) {
+                const isKnownType = types.some(t => t.id === inst.institutionTypeId);
+                if (isKnownType) {
+                    setInstitutionTypeId(inst.institutionTypeId);
+                    setCustomType("");
+                } else {
+                    setInstitutionTypeId(types[0]?.id || "");
+                    setCustomType("");
+                }
+            } else {
+                setInstitutionTypeId(types[0]?.id || "");
+                setCustomType("");
+            }
+        } else {
+            setEditingId(null);
+            setName("");
+            setInstitutionTypeId(types[0]?.id || "");
+            setCustomType("");
+        }
+        setIsDialogOpen(true);
+    };
+
+    const handleSave = async () => {
+        if (!name.trim()) {
+            toast.error("El nombre es requerido");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            let finalTypeId = institutionTypeId;
+
+            if (institutionTypeId === 'CUSTOM') {
+                if (!customType.trim()) {
+                    toast.error("El tipo de institución es requerido");
+                    setIsSubmitting(false);
+                    return;
+                }
+                
+                const generatedCode = customType.trim().toUpperCase().replace(/\s+/g, '_');
+                
+                const newType = await createInstitutionTypeAction({
+                    code: generatedCode,
+                    label: customType.trim(),
+                    iconName: 'Tag'
+                });
+                
+                setTypes([...types, newType]);
+                finalTypeId = newType.id;
+            }
+            
+            if (editingId) {
+                const updatedInst = await updateInstitutionAction(editingId, { name, institutionTypeId: finalTypeId });
+                setInstitutions(institutions.map(i => i.id === editingId ? updatedInst : i));
+                toast.success("Institución actualizada");
+            } else {
+                const newInst = await createInstitutionAction({ name, institutionTypeId: finalTypeId });
+                setInstitutions([...institutions, newInst]);
+                toast.success("Institución creada");
+            }
+            setIsDialogOpen(false);
+        } catch (error: any) {
+            toast.error(error.message || "Error al guardar");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDelete = async (id: UUID) => {
+        if (!confirm("¿Seguro que deseas eliminar esta institución?")) return;
+        
+        try {
+            await deleteInstitutionAction(id);
+            setInstitutions(institutions.filter(i => i.id !== id));
+            toast.success("Institución eliminada");
+        } catch (error: any) {
+            toast.error("Error al eliminar");
+        }
+    };
+
+    return (
+        <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="px-0 pt-0">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Tus Instituciones</CardTitle>
+                        <CardDescription>Instituciones, comercios y otras entidades vinculadas a tus transacciones.</CardDescription>
+                    </div>
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button onClick={() => handleOpenDialog()} className="gap-2">
+                                <Plus className="w-4 h-4" />
+                                <span className="hidden sm:inline">Nueva Institución</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>{editingId ? "Editar Institución" : "Nueva Institución"}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="inst-name">Nombre</Label>
+                                    <Input 
+                                        id="inst-name" 
+                                        value={name} 
+                                        onChange={(e) => setName(e.target.value)}
+                                        placeholder="Ej. Banco Pichincha"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Tipo de Institución</Label>
+                                    <Select value={institutionTypeId} onValueChange={setInstitutionTypeId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecciona un tipo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {types.map(type => (
+                                                <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>
+                                            ))}
+                                            <SelectItem value="CUSTOM">Otro (Personalizado)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {institutionTypeId === 'CUSTOM' && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="inst-custom-type">Especificar Tipo</Label>
+                                        <Input 
+                                            id="inst-custom-type" 
+                                            value={customType} 
+                                            onChange={(e) => setCustomType(e.target.value)}
+                                            placeholder="Ej. Proveedor de Internet"
+                                        />
+                                    </div>
+                                )}
+                                <Button 
+                                    className="w-full" 
+                                    onClick={handleSave} 
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? "Guardando..." : "Guardar"}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+            </CardHeader>
+            <CardContent className="px-0">
+                {institutions.filter(i => !i.isDeleted).length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl bg-muted/30">
+                        <Building2 className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                        <p className="font-medium text-foreground">No tienes instituciones registradas</p>
+                        <p className="text-sm mt-1 mb-4">Empieza añadiendo tu banco principal.</p>
+                        <Button variant="outline" onClick={() => handleOpenDialog()}>
+                            Añadir la primera
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {institutions.filter(i => !i.isDeleted).map(inst => {
+                            // If institutionTypeObj is missing in local state but we have an ID, try to find it
+                            const typeObj = inst.institutionTypeObj || types.find(t => t.id === inst.institutionTypeId);
+                            const label = typeObj ? typeObj.label : 'Sin clasificar';
+                            const IconComponent = typeObj && (Icons as any)[typeObj.iconName] ? (Icons as any)[typeObj.iconName] : Icons.HelpCircle;
+                            
+                            return (
+                                <div key={inst.id} className="p-5 border rounded-xl bg-card shadow-sm flex items-center justify-between group hover:border-primary/50 hover:shadow-md transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <IconComponent className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-base text-card-foreground">{inst.name}</h3>
+                                            <p className="text-xs text-muted-foreground mt-0.5 capitalize">{label}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10" onClick={() => handleOpenDialog(inst)}>
+                                            <Edit2 className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDelete(inst.id!)}>
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}

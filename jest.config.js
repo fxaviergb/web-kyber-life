@@ -11,8 +11,8 @@ const customJestConfig = {
         '^@/(.*)$': '<rootDir>/src/$1',
         '^uuid$': '<rootDir>/src/__mocks__/uuid.js',
     },
-    testPathIgnorePatterns: ['<rootDir>/.agent/', '<rootDir>/.next/'],
-    modulePathIgnorePatterns: ['<rootDir>/.agent/', '<rootDir>/.next/'],
+    testPathIgnorePatterns: ['<rootDir>/.agent/', '<rootDir>/.next/', '<rootDir>/scratch/'],
+    modulePathIgnorePatterns: ['<rootDir>/.agent/', '<rootDir>/.next/', '<rootDir>/scratch/'],
 }
 
 module.exports = createJestConfig(customJestConfig)

@@ -73,3 +73,5 @@ export interface IPriceObservationRepository extends IRepository<PriceObservatio
     findLatestByProductAndSupermarket(brandProductId: UUID, supermarketId: UUID): Promise<PriceObservation | null>;
     findByOwnerId(userId: UUID): Promise<PriceObservation[]>;
 }
+
+export * from './financial';

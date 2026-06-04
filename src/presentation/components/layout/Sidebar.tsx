@@ -36,6 +36,28 @@ export function Sidebar({ isOpen = true }: { isOpen?: boolean }) {
         setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
     };
 
+    const activeHref = (() => {
+        let longestMatch = "";
+        const checkItems = (items: MenuItem[]) => {
+            for (const item of items) {
+                // Check if the current pathname matches the item's href or its active aliases
+                const matchesHref = item.href && (pathname === item.href || pathname.startsWith(item.href + "/"));
+                const matchesAlias = item.activeAliases?.some(alias => pathname === alias || pathname.startsWith(alias + "/"));
+
+                if (item.href && (matchesHref || matchesAlias)) {
+                    if (item.href.length > longestMatch.length) {
+                        longestMatch = item.href;
+                    }
+                }
+                if (item.items) {
+                    checkItems(item.items);
+                }
+            }
+        };
+        checkItems(MENU_ITEMS);
+        return longestMatch;
+    })();
+
     const renderMenuItem = (item: MenuItem, level = 0) => {
         // Section Header
         if (item.isSection) {
@@ -82,7 +104,7 @@ export function Sidebar({ isOpen = true }: { isOpen?: boolean }) {
         }
 
         // Leaf Link
-        const isActive = item.href ? pathname.startsWith(item.href) : false;
+        const isActive = item.href ? item.href === activeHref : false;
 
         return (
             <Link

@@ -36,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased text-sm font-normal`}>
+      <body className={`${inter.className} antialiased text-sm font-normal`} suppressHydrationWarning>
         <ThemeProvider>
           {children}
           <PwaInstallPrompt />

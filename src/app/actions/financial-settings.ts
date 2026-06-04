@@ -1,0 +1,108 @@
+"use server";
+
+import { financialSettingsService } from "@/infrastructure/container";
+import { FinancialInstitution, FinancialAccount, FinancialCategory } from "@/domain/entities/financial";
+import { createClient } from "@/infrastructure/supabase/server";
+import { revalidatePath } from "next/cache";
+import { UUID } from "@/domain/core";
+
+async function getRequiredUser(): Promise<{ id: string }> {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user?.id) throw new Error("Unauthorized");
+    return { id: user.id };
+}
+
+export async function getInstitutionTypesAction() {
+    const user = await getRequiredUser();
+    return financialSettingsService.getInstitutionTypes(user.id);
+}
+
+export async function createInstitutionTypeAction(data: any) {
+    const user = await getRequiredUser();
+    const result = await financialSettingsService.createInstitutionType(user.id, data);
+    revalidatePath("/financial/settings");
+    return result;
+}
+
+export async function getInstitutionsAction() {
+    const user = await getRequiredUser();
+    return financialSettingsService.getInstitutions(user.id);
+}
+
+export async function createInstitutionAction(data: Partial<FinancialInstitution>) {
+    const user = await getRequiredUser();
+    const result = await financialSettingsService.createInstitution(user.id, data);
+    revalidatePath("/financial/settings");
+    return result;
+}
+
+export async function updateInstitutionAction(id: UUID, data: Partial<FinancialInstitution>) {
+    console.log("UPDATE INSTITUTION ACTION CALLED:", { id, data });
+    const user = await getRequiredUser();
+    try {
+        const result = await financialSettingsService.updateInstitution(user.id, id, data);
+        console.log("UPDATE RESULT:", result);
+        revalidatePath("/financial/settings");
+        return result;
+    } catch (error) {
+        console.error("UPDATE ERROR:", error);
+        throw error;
+    }
+}
+
+export async function deleteInstitutionAction(id: UUID) {
+    const user = await getRequiredUser();
+    await financialSettingsService.deleteInstitution(user.id, id);
+    revalidatePath("/financial/settings");
+}
+
+export async function getAccountsAction() {
+    const user = await getRequiredUser();
+    return financialSettingsService.getAccounts(user.id);
+}
+
+export async function createAccountAction(data: Partial<FinancialAccount>) {
+    const user = await getRequiredUser();
+    const result = await financialSettingsService.createAccount(user.id, data);
+    revalidatePath("/financial/settings");
+    return result;
+}
+
+export async function updateAccountAction(id: UUID, data: Partial<FinancialAccount>) {
+    const user = await getRequiredUser();
+    const result = await financialSettingsService.updateAccount(user.id, id, data);
+    revalidatePath("/financial/settings");
+    return result;
+}
+
+export async function deleteAccountAction(id: UUID) {
+    const user = await getRequiredUser();
+    await financialSettingsService.deleteAccount(user.id, id);
+    revalidatePath("/financial/settings");
+}
+
+export async function getCategoriesAction() {
+    const user = await getRequiredUser();
+    return financialSettingsService.getCategories(user.id);
+}
+
+export async function createCategoryAction(data: Partial<FinancialCategory>) {
+    const user = await getRequiredUser();
+    const result = await financialSettingsService.createCategory(user.id, data);
+    revalidatePath("/financial/settings");
+    return result;
+}
+
+export async function updateCategoryAction(id: UUID, data: Partial<FinancialCategory>) {
+    const user = await getRequiredUser();
+    const result = await financialSettingsService.updateCategory(user.id, id, data);
+    revalidatePath("/financial/settings");
+    return result;
+}
+
+export async function deleteCategoryAction(id: UUID) {
+    const user = await getRequiredUser();
+    await financialSettingsService.deleteCategory(user.id, id);
+    revalidatePath("/financial/settings");
+}
