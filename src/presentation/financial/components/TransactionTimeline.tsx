@@ -372,7 +372,7 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                         <h3 className="text-sm font-medium text-muted-foreground tracking-tight sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10">
                             {dateLabel}
                         </h3>
-                        <div className="grid gap-4 xl:grid-cols-2">
+                        <div className="grid gap-4 items-start sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                             {items.map(t => (
                                 <TransactionCard 
                                     key={t.id} 
