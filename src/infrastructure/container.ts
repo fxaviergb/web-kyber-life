@@ -120,7 +120,7 @@ export const financialInboxService = new FinancialInboxService(
     financialAccountRepository,
     financialCategoryRepository
 );
-export const financialDashboardService = new FinancialDashboardService(financialTransactionRepository, financialCategoryRepository, financialInstitutionRepository);
+export const financialDashboardService = new FinancialDashboardService(financialTransactionRepository, financialCategoryRepository, financialInstitutionRepository, financialScannerTransactionRepository);
 export const financialSettingsService = new FinancialSettingsService(financialInstitutionTypeRepository, financialInstitutionRepository, financialAccountRepository, financialCategoryRepository);
 export const masterDataService = new MasterDataService(supermarketRepository, categoryRepository, unitRepository);
 export const productService = new ProductService(genericItemRepository, brandProductRepository, priceObservationRepository);

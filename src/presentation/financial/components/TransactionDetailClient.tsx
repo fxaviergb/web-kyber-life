@@ -92,7 +92,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
     const [isLoading, setIsLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [suggestions, setSuggestions] = useState<string[]>([]);
-    
+
     const [institutionsList, setInstitutionsList] = useState<string[]>([]);
     const [accountsList, setAccountsList] = useState<string[]>([]);
     const [categoriesList, setCategoriesList] = useState<string[]>([]);
@@ -102,7 +102,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         account: "",
         category: "",
     });
-    
+
     useEffect(() => {
         const fetchTags = async () => {
             const res = await getUniqueTagsAction();
@@ -230,7 +230,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-                
+
                 <DuplicateResolver
                     transactionId={transaction.id!}
                     isPossibleDuplicate={transaction.possibleDuplicate && transaction.status !== 'DUPLICATE'}
@@ -258,11 +258,11 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                 </Button>
                             )}
                         </div>
-                        
+
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-2">
                             <div className="space-y-1 flex-1">
                                 <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                    <Building2 className="h-4 w-4" /> Comercio
+                                    <Building2 className="h-4 w-4" /> Institución
                                 </div>
                                 {isEditing ? (
                                     <AutocompleteInput
@@ -274,7 +274,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                         }}
                                         options={institutionsList}
                                         className="h-10 text-xl font-bold border-border/50 bg-bg-primary"
-                                        placeholder="Nombre del comercio"
+                                        placeholder="Nombre de la institución"
                                     />
                                 ) : (
                                     <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
@@ -282,7 +282,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     </h2>
                                 )}
                             </div>
-                            
+
                             <div className="shrink-0 text-left md:text-right">
                                 <div className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-1">
                                     Monto ({transaction.currency})
@@ -306,7 +306,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
                                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
@@ -323,7 +323,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     <div className="text-sm font-medium">{formatDate(transaction.date)}</div>
                                 )}
                             </div>
-                            
+
                             <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
                                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
                                     <Wallet className="h-4 w-4" /> Tipo de Operación
@@ -345,7 +345,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     </div>
                                 )}
                             </div>
-                            
+
                             <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
                                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
                                     <Landmark className="h-4 w-4" /> Cuenta
@@ -363,7 +363,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     <div className="text-sm font-medium">{displayNames.account || "Sin cuenta"}</div>
                                 )}
                             </div>
-                            
+
                             <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
                                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
                                     <FolderGit2 className="h-4 w-4" /> Categoría
@@ -395,9 +395,11 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     placeholder="Agrega notas o contexto..."
                                 />
                             ) : (
-                                <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
-                                    {displayContext || "No hay notas o contexto disponible para esta transacción."}
-                                </p>
+                                <div className="w-full max-w-full overflow-hidden">
+                                    <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap break-words [word-break:break-word]">
+                                        {displayContext || "No hay notas o contexto disponible para esta transacción."}
+                                    </p>
+                                </div>
                             )}
                         </div>
 

@@ -428,18 +428,20 @@ export function ScannerManager() {
                             )}
 
                             {range === 'recommended' && recommendedRanges.length > 0 && (
-                                <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full">
+                                <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:flex-nowrap">
                                     {recommendedRanges.map((r, i) => (
                                         <button
                                             key={i}
                                             onClick={() => setSelectedRecommendedIndex(i)}
-                                            className={`flex flex-col items-center justify-center px-4 py-3 rounded-xl border transition-all flex-1 min-w-[130px] ${selectedRecommendedIndex === i
+                                            className={`flex flex-col items-center justify-center px-3 py-2 sm:px-4 sm:py-3 rounded-xl border transition-all sm:flex-1 sm:min-w-[130px] ${
+                                                i === 2 && recommendedRanges.length === 3 ? 'col-span-2 sm:col-span-1' : ''
+                                            } ${selectedRecommendedIndex === i
                                                 ? 'bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20'
                                                 : 'bg-bg-secondary border-border/40 text-text-secondary hover:bg-bg-primary/60 hover:border-border/60 hover:text-text-primary'
                                                 }`}
                                         >
                                             <span className="text-sm font-bold">{r.start}</span>
-                                            <span className="text-[10px] uppercase tracking-wider opacity-70 my-1">hasta</span>
+                                            <span className="text-[10px] uppercase tracking-wider opacity-70 my-0.5 sm:my-1">hasta</span>
                                             <span className="text-sm font-bold">{r.end}</span>
                                         </button>
                                     ))}
@@ -548,16 +550,16 @@ export function ScannerManager() {
                             );
 
                             return (
-                                <div key={exec.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border border-border/40 bg-gradient-to-br from-bg-primary/50 to-bg-primary/30 hover:from-bg-primary hover:to-bg-primary/80 hover:border-border/60 transition-all shadow-sm">
+                                <div key={exec.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-5 rounded-2xl border border-border/40 bg-gradient-to-br from-bg-primary/50 to-bg-primary/30 hover:from-bg-primary hover:to-bg-primary/80 hover:border-border/60 transition-all shadow-sm">
                                     <div className="flex items-start gap-3 sm:gap-4 w-full min-w-0">
-                                        <div className="p-2 sm:p-2.5 rounded-xl bg-bg-secondary shadow-inner border border-border/50 shrink-0 mt-0.5">
+                                        <div className="p-2 rounded-xl bg-bg-secondary shadow-inner border border-border/50 shrink-0 mt-0.5">
                                             <StatusIcon status={exec.status} />
                                         </div>
                                         <div className="flex flex-col gap-2 min-w-0 flex-1">
                                             <div className="flex items-start sm:items-center justify-between gap-2 w-full">
-                                                <span className="text-sm sm:text-lg font-bold text-text-primary flex items-center gap-1.5 sm:gap-2 capitalize truncate">
+                                                <span className="text-sm sm:text-lg font-bold text-text-primary flex items-center gap-1.5 sm:gap-2 capitalize">
                                                     <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary shrink-0" />
-                                                    <span className="truncate">
+                                                    <span className="break-words">
                                                         {(() => {
                                                             const payload = parsePayload(exec.requestPayload);
                                                             const sDate = payload?.startDate || exec.stats?.startDate;
@@ -587,7 +589,7 @@ export function ScannerManager() {
                                                     {statusBadge}
                                                 </div>
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-2 mt-0.5">
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-0.5">
                                                 <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
                                                     <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
                                                     Ejecución: {format(new Date(exec.startedAt), "dd/MM/yyyy")}
@@ -612,17 +614,16 @@ export function ScannerManager() {
                                                 )}
 
                                                 {exec.stats && exec.stats.totalTransactionsFound !== undefined && (
-                                                    <span className="text-[11px] sm:text-xs font-medium text-text-secondary bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30 flex items-center gap-1 sm:gap-1.5">
+                                                    <span className="text-[11px] sm:text-xs font-medium text-text-secondary bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30 flex items-center gap-1 sm:gap-1.5 mt-0.5 w-full sm:w-auto">
                                                         <span className="text-text-primary font-bold">{exec.stats.totalTransactionsFound}</span>
-                                                        <span className="hidden sm:inline">trx detectadas</span>
-                                                        <span className="sm:hidden">trx</span>
+                                                        <span>trx detectadas</span>
                                                         {exec.source === 'GMAIL_N8N_WEBHOOK' ? (
-                                                            <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1 rounded-sm ml-1">
+                                                            <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded ml-auto sm:ml-1">
                                                                 <Mail className="w-2.5 h-2.5 text-accent-primary shrink-0" />
                                                                 GMAIL
                                                             </span>
                                                         ) : exec.source ? (
-                                                            <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1 rounded-sm ml-1">
+                                                            <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded ml-auto sm:ml-1">
                                                                 {exec.source}
                                                             </span>
                                                         ) : null}

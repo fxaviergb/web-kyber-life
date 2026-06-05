@@ -11,7 +11,7 @@ describe("FinancialDashboardService", () => {
     const mockUserId = "user-123";
 
     const baseTransaction: Omit<FinancialTransaction, "id"> = {
-        ownerId: mockUserId,
+        ownerUserId: mockUserId,
         amount: 100,
         currency: "USD",
         date: "2026-05-15T10:00:00Z",
@@ -21,10 +21,12 @@ describe("FinancialDashboardService", () => {
         institutionId: null,
         accountId: null,
         merchant: "Test Merchant",
-        description: "Test Description",
+        notes: "Test Description",
+        possibleDuplicate: false,
+        isDeleted: false,
         tags: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     };
 
     beforeEach(() => {
@@ -152,7 +154,7 @@ describe("FinancialDashboardService", () => {
             ];
             transactionRepo.findByOwnerId.mockResolvedValue(transactions);
             categoryRepo.findAllBaseAndUser.mockResolvedValue([
-                { id: "cat-1", name: "Food", color: "#FF0000", type: "EXPENSE", isBase: true, createdAt: new Date(), updatedAt: new Date() } as FinancialCategory
+                { id: "cat-1", name: "Food", color: "#FF0000", type: "EXPENSE", isBase: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), isDeleted: false } as FinancialCategory
             ]);
 
             const breakdown = await service.getCategoryBreakdown(mockUserId);
@@ -166,7 +168,7 @@ describe("FinancialDashboardService", () => {
 
             const uncat = breakdown.find(b => b.categoryId === null);
             expect(uncat!.total).toBe(100);
-            expect(uncat!.categoryName).toBe("Uncategorized");
+            expect(uncat!.categoryName).toBe("Sin categoría");
         });
     });
 
@@ -179,7 +181,7 @@ describe("FinancialDashboardService", () => {
             ];
             transactionRepo.findByOwnerId.mockResolvedValue(transactions);
             institutionRepo.findByOwnerId.mockResolvedValue([
-                { id: "inst-1", name: "Bank A", ownerId: mockUserId, status: "ACTIVE", createdAt: new Date(), updatedAt: new Date() } as FinancialInstitution
+                { id: "inst-1", name: "Bank A", ownerUserId: mockUserId, status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), isDeleted: false } as FinancialInstitution
             ]);
 
             const breakdown = await service.getInstitutionBreakdown(mockUserId);

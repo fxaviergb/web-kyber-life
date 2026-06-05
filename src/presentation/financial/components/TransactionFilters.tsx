@@ -216,7 +216,7 @@ export function TransactionFilters() {
                         <Search className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <Input
-                        placeholder="Buscar transacciones, comercios o categorías..."
+                        placeholder="Buscar transacciones, instituciones o categorías..."
                         className="pl-9 bg-transparent border-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none hover:bg-white/5 transition-colors"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -225,13 +225,13 @@ export function TransactionFilters() {
 
                 <div className="h-6 w-px bg-white/10 hidden sm:block shrink-0" />
 
-                <div className="flex gap-2 w-full sm:w-auto shrink-0 pl-1">
+                <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto shrink-0 pl-0 sm:pl-1 mt-2 sm:mt-0">
                     {/* Status Filter Dropdown */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="w-full sm:w-auto gap-2 hover:bg-white/5">
-                                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-muted-foreground">Filtros</span>
+                            <Button variant="ghost" className="w-full sm:w-auto gap-2 hover:bg-white/5 justify-start sm:justify-center">
+                                <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span className="text-muted-foreground truncate">Filtros</span>
                                 {statusFilter.length > 0 && (
                                     <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-primary/20 text-[10px] font-medium text-accent-primary">
                                         {statusFilter.length}
@@ -260,12 +260,12 @@ export function TransactionFilters() {
                             <Button
                                 variant="ghost"
                                 className={cn(
-                                    "w-full sm:w-auto gap-2 hover:bg-white/5",
+                                    "w-full sm:w-auto gap-2 hover:bg-white/5 justify-start sm:justify-center",
                                     hasDateFilter ? "text-accent-primary" : "text-muted-foreground",
                                 )}
                             >
-                                <CalendarDays className={cn("h-4 w-4", hasDateFilter ? "text-accent-primary" : "text-muted-foreground")} />
-                                <span className="truncate max-w-[160px]">{getDateButtonLabel()}</span>
+                                <CalendarDays className={cn("h-4 w-4 shrink-0", hasDateFilter ? "text-accent-primary" : "text-muted-foreground")} />
+                                <span className="truncate max-w-[120px] sm:max-w-[160px]">{getDateButtonLabel()}</span>
                                 {hasDateFilter && (
                                     <button
                                         type="button"
@@ -359,7 +359,7 @@ export function TransactionFilters() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-xs text-muted-foreground hover:text-foreground"
+                            className="col-span-2 sm:col-span-1 text-xs text-muted-foreground hover:text-foreground w-full sm:w-auto mt-1 sm:mt-0"
                             onClick={clearAllFilters}
                         >
                             Limpiar filtros

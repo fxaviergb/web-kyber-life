@@ -48,17 +48,17 @@ export default async function TransactionsPage({
                         Revisa y gestiona tus transacciones financieras.
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" asChild>
+                <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 mt-4 sm:mt-0">
+                    <Button variant="outline" asChild className="w-full sm:w-auto">
                         <Link href="/financial/scans">
-                            <InboxIcon className="mr-2 h-4 w-4" />
-                            Bandeja de escaneos
+                            <InboxIcon className="mr-2 h-4 w-4 shrink-0" />
+                            <span className="truncate">Bandeja de escaneos</span>
                         </Link>
                     </Button>
-                    <Button asChild>
+                    <Button asChild className="w-full sm:w-auto">
                         <Link href="/financial/transactions/new">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Agregar transacción
+                            <Plus className="mr-2 h-4 w-4 shrink-0" />
+                            <span className="truncate">Agregar transacción</span>
                         </Link>
                     </Button>
                 </div>

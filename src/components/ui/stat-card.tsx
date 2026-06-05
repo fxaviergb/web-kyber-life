@@ -54,10 +54,10 @@ export function StatCard({
                 </div>
                 <Icon className={cn(compact ? "h-3.5 w-3.5" : "h-4 w-4", "text-text-tertiary", iconClassName)} />
             </CardHeader>
-            <CardContent className={cn("flex-1 flex flex-col justify-end", compact ? "p-3 pt-0" : "")}>
-                <div className={cn("font-bold text-text-primary", compact ? "text-lg" : "text-2xl")}>{value}</div>
+            <CardContent className={cn("flex-1 flex flex-col", compact ? "p-3 pt-0" : "")}>
+                <div className={cn("font-bold text-text-primary tabular-nums tracking-tight", compact ? "text-lg" : "text-2xl")}>{value}</div>
                 {(description || trend) && (
-                    <p className={cn("text-text-tertiary mt-1", compact ? "text-[10px]" : "text-xs")}>
+                    <p className={cn("text-text-tertiary mt-auto pt-1", compact ? "text-[10px]" : "text-xs")}>
                         {trend && (
                             <span
                                 className={cn(

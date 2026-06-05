@@ -64,20 +64,22 @@ describe("Financial UI Components", () => {
             expect(handleChange).toHaveBeenCalledWith("B");
         });
 
-        it("renders the datalist with options", () => {
+        it("renders the options when focused", () => {
             const handleChange = jest.fn();
             render(
                 <AutocompleteInput
                     value=""
                     onChange={handleChange}
                     options={["Banco Pichincha", "Banco Guayaquil"]}
+                    placeholder="Select institution"
                 />
             );
 
-            const options = document.querySelectorAll("option");
-            expect(options).toHaveLength(2);
-            expect(options[0].value).toBe("Banco Pichincha");
-            expect(options[1].value).toBe("Banco Guayaquil");
+            const input = screen.getByPlaceholderText("Select institution");
+            fireEvent.focus(input);
+
+            expect(screen.getByText("Banco Pichincha")).toBeInTheDocument();
+            expect(screen.getByText("Banco Guayaquil")).toBeInTheDocument();
         });
     });
 

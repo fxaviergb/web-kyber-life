@@ -94,10 +94,10 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
                     if (initialData.merchant) {
                         const normalizedMerchant = normalizeForMatch(initialData.merchant);
-                        
+
                         // Try exact match first
                         let matched = instNames.find(name => normalizeForMatch(name) === normalizedMerchant);
-                        
+
                         // Fallback to fuzzy match (contains)
                         if (!matched) {
                             matched = instNames.find(name => {
@@ -131,7 +131,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
     const handleConfirm = async (e: React.MouseEvent) => {
         e.preventDefault();
-        
+
         if (!formData.type) {
             toast.error("El tipo de transacción es requerido");
             return;
@@ -150,7 +150,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
         try {
             setIsProcessing(true);
-            
+
             const result = await mapInboxTransactionAction({
                 scannerTransactionId: initialData.id,
                 type: formData.type,
@@ -164,14 +164,14 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
             });
 
             if (!result.success) {
-                toast.error("Error al confirmar la transacción", { description: result.error });
+                toast.error("Error al confirmar la transacción", { description: result.error, id: `scan-confirm-error-${initialData.id}` });
                 return;
             }
 
-            toast.success("Transacción guardada exitosamente");
+            toast.success("Transacción guardada exitosamente", { id: `scan-confirm-success-${initialData.id}` });
             router.replace("/financial/scans");
         } catch (error) {
-            toast.error("Ocurrió un error inesperado");
+            toast.error("Ocurrió un error inesperado", { id: `scan-confirm-unexpected-${initialData.id}` });
         } finally {
             setIsProcessing(false);
         }
@@ -180,19 +180,19 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
     const handleDismiss = async (e: React.MouseEvent) => {
         e.preventDefault();
         if (!window.confirm("¿Estás seguro de que deseas descartar este registro?")) return;
-        
+
         try {
             setIsProcessing(true);
             const result = await dismissInboxTransactionAction(initialData.id!);
             if (!result.success) {
-                toast.error("Error al descartar la transacción", { description: result.error });
+                toast.error("Error al descartar la transacción", { description: result.error, id: `scan-dismiss-error-${initialData.id}` });
                 return;
             }
 
-            toast.success("Transacción descartada");
+            toast.success("Transacción descartada", { id: `scan-dismiss-success-${initialData.id}` });
             router.replace("/financial/scans");
         } catch (error) {
-            toast.error("Ocurrió un error inesperado");
+            toast.error("Ocurrió un error inesperado", { id: `scan-dismiss-unexpected-${initialData.id}` });
         } finally {
             setIsProcessing(false);
         }
@@ -200,89 +200,94 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
     return (
         <Card className="w-full border-border/50 shadow-sm transition-all duration-200 bg-card">
-            <CardHeader className="border-b border-border/50 pb-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <CardTitle className="text-xl flex items-center gap-2">
+            <CardHeader className="border-b border-border/50 pb-3 sm:pb-4 px-4 sm:px-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">
+                    <div className="w-full flex flex-wrap items-center justify-between sm:justify-start gap-2">
+                        <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
                             Registro de Escaneo
-                            <Badge variant="outline" className="ml-2 font-mono text-xs">
-                                {initialData.id?.slice(0, 8)}...
-                            </Badge>
                         </CardTitle>
-                        <CardDescription className="mt-1.5 flex items-center gap-2">
-                            Estado actual: <Badge variant="outline" className="uppercase text-[10px] tracking-wider">{initialData.status}</Badge>
-                        </CardDescription>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-[10px] sm:text-xs">
+                                ID: {initialData.id?.slice(0, 8)}...
+                            </Badge>
+                            <Badge variant="outline" className="uppercase text-[10px] tracking-wider shrink-0">
+                                {initialData.status}
+                            </Badge>
+                        </div>
                     </div>
                 </div>
             </CardHeader>
 
-            <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <CardContent className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                     {/* Columna Izquierda: Datos Editables */}
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                         <div>
-                            <h3 className="text-lg font-medium border-b border-border pb-2 mb-4 flex items-center gap-2 text-foreground/90">
+                            <h3 className="text-lg font-medium border-b border-border pb-2 mb-3 sm:mb-4 flex items-center gap-2 text-foreground/90">
                                 <Pencil className="h-4 w-4 text-primary" />
                                 Datos a Confirmar
                             </h3>
-                            
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="institutionName" className="flex items-center gap-1.5 text-muted-foreground">
-                                        <Building2 className="h-3.5 w-3.5" />
-                                        Institución (Comercio / Origen) <span className="text-destructive">*</span>
-                                    </Label>
-                                    <AutocompleteInput
-                                        id="institutionName"
-                                        value={formData.institutionName}
-                                        onChange={(val) => handleChange("institutionName", val)}
-                                        options={institutions}
-                                        className="bg-background border-border/50"
-                                        placeholder="Ej. Banco de Chile, Sodexo..."
-                                    />
-                                </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="type" className="flex items-center gap-1.5 text-muted-foreground">
-                                        <Tag className="h-3.5 w-3.5" />
+                            <div className="space-y-4">
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                    <Label htmlFor="type" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <Tag className="h-4 w-4 text-purple-500" />
                                         Tipo de Transacción <span className="text-destructive">*</span>
                                     </Label>
-                                    <Select value={formData.type} onValueChange={(val) => handleChange("type", val)}>
-                                        <SelectTrigger className="w-full bg-background border-border/50">
-                                            <SelectValue />
+                                    <Select
+                                        value={formData.type}
+                                        onValueChange={(val) => handleChange("type", val)}
+                                    >
+                                        <SelectTrigger className="h-9 bg-background border-border/50">
+                                            <SelectValue placeholder="Seleccione un tipo" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {TYPE_OPTIONS.map((opt) => (
                                                 <SelectItem key={opt.value} value={opt.value}>
-                                                    <div className="flex items-center gap-2">
-                                                        <Badge variant={getBadgeVariant(opt.value)} className="w-2 h-2 rounded-full p-0" />
-                                                        {opt.label}
-                                                    </div>
+                                                    {opt.label}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="amount" className="flex items-center gap-1.5 text-muted-foreground">
-                                        <DollarSign className="h-3.5 w-3.5" />
-                                        Monto ({initialData.currency || "USD"}) <span className="text-destructive">*</span>
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                    <Label htmlFor="amount" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <DollarSign className="h-4 w-4 text-green-500" />
+                                        Monto <span className="text-destructive">*</span>
                                     </Label>
-                                    <Input
-                                        id="amount"
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.amount}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("amount", e.target.value)}
-                                        className="bg-background border-border/50 font-mono"
-                                        placeholder="0.00"
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50">$</span>
+                                        <Input
+                                            id="amount"
+                                            type="number"
+                                            value={formData.amount}
+                                            onChange={(e) => handleChange("amount", e.target.value)}
+                                            className="h-9 bg-background border-border/50 pl-7"
+                                            placeholder="0.00"
+                                            step="0.01"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                    <Label htmlFor="institutionName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <Building2 className="h-4 w-4 text-blue-500" />
+                                        Institución <span className="text-destructive">*</span>
+                                    </Label>
+                                    <AutocompleteInput
+                                        id="institutionName"
+                                        value={formData.institutionName}
+                                        onChange={(val) => handleChange("institutionName", val)}
+                                        options={institutions}
+                                        className="h-9 text-sm bg-background border-border/50"
+                                        placeholder="Ej. Banco de Chile, Sodexo..."
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="accountName" className="flex items-center gap-1.5 text-muted-foreground">
-                                        <Landmark className="h-3.5 w-3.5" />
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                    <Label htmlFor="accountName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <Landmark className="h-4 w-4 text-emerald-500" />
                                         Cuenta
                                     </Label>
                                     <AutocompleteInput
@@ -290,14 +295,14 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                         value={formData.accountName}
                                         onChange={(val) => handleChange("accountName", val)}
                                         options={accounts}
-                                        className="bg-background border-border/50"
+                                        className="h-9 text-sm bg-background border-border/50"
                                         placeholder="Ej. Cuenta Corriente, Tarjeta de Crédito..."
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="categoryName" className="flex items-center gap-1.5 text-muted-foreground">
-                                        <FolderGit2 className="h-3.5 w-3.5" />
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                    <Label htmlFor="categoryName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <FolderGit2 className="h-4 w-4 text-amber-500" />
                                         Categoría
                                     </Label>
                                     <AutocompleteInput
@@ -305,7 +310,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                         value={formData.categoryName}
                                         onChange={(val) => handleChange("categoryName", val)}
                                         options={categories}
-                                        className="bg-background border-border/50"
+                                        className="h-9 text-sm bg-background border-border/50"
                                         placeholder="Ej. Supermercado, Transporte..."
                                     />
                                 </div>
@@ -344,13 +349,13 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                     </div>
 
                     {/* Columna Derecha: Datos Originales (Solo Lectura) */}
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                         <div>
-                            <h3 className="text-lg font-medium border-b border-border pb-2 mb-4 flex items-center gap-2 text-foreground/90">
+                            <h3 className="text-lg font-medium border-b border-border pb-2 mb-3 sm:mb-4 flex items-center gap-2 text-foreground/90">
                                 <FileJson className="h-4 w-4 text-primary" />
                                 Datos Originales Extraídos
                             </h3>
-                            
+
                             <div className="rounded-xl bg-bg-primary/30 border border-border/50 p-4 space-y-4">
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
@@ -370,7 +375,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                         <span className="font-mono text-xs break-all text-muted-foreground">{initialData.executionId || 'N/A'}</span>
                                     </div>
                                 </div>
-                                
+
                                 {initialData.originStats?.origin === "email" && (
                                     <div className="pt-2 border-t border-border/50 space-y-3">
                                         <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Detalles del Correo</span>
@@ -427,7 +432,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                         disabled={isProcessing}
                     >
                         <X className="mr-1.5 h-4 w-4" />
-                        Descartar Registro
+                        Descartar
                     </Button>
                     <Button
                         type="button"
@@ -436,7 +441,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                         disabled={isProcessing}
                     >
                         <Check className="mr-1.5 h-4 w-4" />
-                        {isProcessing ? "Procesando..." : "Confirmar y Guardar"}
+                        {isProcessing ? "Procesando..." : "Confirmar"}
                     </Button>
                 </div>
             </CardFooter>

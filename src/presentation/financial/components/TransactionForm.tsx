@@ -50,7 +50,7 @@ export function TransactionForm() {
                 // Load draft
                 const drafts = await financialOfflineStore.drafts.getAll();
                 const latestDraft = drafts.length > 0 ? drafts[drafts.length - 1] : null;
-                
+
                 if (latestDraft) {
                     const data = latestDraft.data as any;
                     if (data.type) setType(data.type);
@@ -93,7 +93,7 @@ export function TransactionForm() {
                 console.error("Failed to save draft to offline store", e);
             }
         };
-        
+
         // Use a small timeout to debounce saving
         const timeoutId = setTimeout(saveDraft, 500);
         return () => clearTimeout(timeoutId);
@@ -101,9 +101,9 @@ export function TransactionForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!institutionName || institutionName.trim() === "") {
-            toast.error("El comercio / institución es requerido");
+            toast.error("La institución es requerida");
             return;
         }
 
@@ -123,7 +123,7 @@ export function TransactionForm() {
         }
 
         setIsSubmitting(true);
-        
+
         const transactionData = {
             type,
             status: "MANUAL" as const,
@@ -139,11 +139,11 @@ export function TransactionForm() {
         if (!navigator.onLine) {
             try {
                 await financialOfflineStore.drafts.add(`draft_${Date.now()}`, transactionData);
-                toast.success("Guardado localmente. Se sincronizará cuando tengas conexión.");
+                toast.success("Guardado localmente. Se sincronizará cuando tengas conexión.", { id: "tx-offline-success" });
                 router.push("/financial/transactions");
                 router.refresh();
             } catch (error) {
-                toast.error("Error al guardar localmente");
+                toast.error("Error al guardar localmente", { id: "tx-offline-error" });
             } finally {
                 setIsSubmitting(false);
             }
@@ -154,22 +154,22 @@ export function TransactionForm() {
             const result = await createTransactionAction(transactionData);
 
             if (result.success) {
-                toast.success("Transacción creada correctamente");
+                toast.success("Transacción creada correctamente", { id: "tx-create-success" });
                 await financialOfflineStore.drafts.clear();
                 router.push("/financial/transactions");
                 router.refresh();
             } else {
-                toast.error(result.error || "No se pudo crear la transacción");
+                toast.error(result.error || "No se pudo crear la transacción", { id: "tx-create-error" });
             }
         } catch (error) {
             // Handle network errors even if navigator.onLine was true
             try {
                 await financialOfflineStore.drafts.add(`draft_${Date.now()}`, transactionData);
-                toast.success("Error de red. Guardado localmente para sincronización futura.");
+                toast.success("Error de red. Guardado localmente para sincronización futura.", { id: "tx-network-fallback-success" });
                 router.push("/financial/transactions");
                 router.refresh();
             } catch (e) {
-                toast.error("Ocurrió un error inesperado y no se pudo guardar localmente.");
+                toast.error("Ocurrió un error inesperado y no se pudo guardar localmente.", { id: "tx-network-fallback-error" });
             }
         } finally {
             setIsSubmitting(false);
@@ -187,7 +187,7 @@ export function TransactionForm() {
                     <div className="space-y-2">
                         <Label htmlFor="institutionName" className="flex items-center gap-2">
                             <Building2 className="w-4 h-4 text-blue-500" />
-                            Institución / Comercio
+                            Institución
                         </Label>
                         <AutocompleteInput
                             id="institutionName"
@@ -247,13 +247,13 @@ export function TransactionForm() {
 
                         <div className="space-y-2">
                             <Label htmlFor="amount">Monto (USD)</Label>
-                            <Input 
-                                id="amount" 
+                            <Input
+                                id="amount"
                                 name="amount"
-                                type="number" 
-                                step="0.01" 
-                                min="0.01" 
-                                placeholder="0.00" 
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="0.00"
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 required
@@ -263,10 +263,10 @@ export function TransactionForm() {
 
                         <div className="space-y-2">
                             <Label htmlFor="date">Fecha</Label>
-                            <Input 
-                                id="date" 
+                            <Input
+                                id="date"
                                 name="date"
-                                type="date" 
+                                type="date"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
                                 required
@@ -278,11 +278,11 @@ export function TransactionForm() {
 
                         <div className="space-y-2">
                             <Label htmlFor="notes">Notas (opcional)</Label>
-                            <Input 
-                                id="notes" 
+                            <Input
+                                id="notes"
                                 name="notes"
-                                type="text" 
-                                placeholder="Detalles adicionales..." 
+                                type="text"
+                                placeholder="Detalles adicionales..."
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 autoComplete="off"

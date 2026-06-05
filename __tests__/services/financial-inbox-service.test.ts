@@ -164,7 +164,7 @@ describe("FinancialInboxService", () => {
         it("should reuse an existing institution if institutionName is provided and matches", async () => {
             scannerRepo.findById.mockResolvedValue({ ...baseScannerTx });
             institutionRepo.findByOwnerId.mockResolvedValue([
-                { id: "existing-inst-id", name: "Existing Bank", ownerUserId: mockUserId, status: "ACTIVE", isDeleted: false } as FinancialInstitution
+                { id: "existing-inst-id", name: "Existing Bank", ownerUserId: mockUserId, status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), isDeleted: false } as FinancialInstitution
             ]);
             transactionRepo.create.mockImplementation(async (tx) => tx as any);
 
