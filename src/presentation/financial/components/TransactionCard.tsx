@@ -126,14 +126,14 @@ export function TransactionCard({
         try {
             const res = await actionFn(transaction.id!);
             if (res.success) {
-                toast.success(successMessage);
+                toast.success(successMessage, { id: `tx-action-success-${transaction.id}` });
                 if (statusUpdate && onStatusChange) onStatusChange(statusUpdate);
                 if (isDelete && onDeleted) onDeleted();
             } else {
-                toast.error(res.error || "Ocurrió un error");
+                toast.error(res.error || "Ocurrió un error", { id: `tx-action-error-${transaction.id}` });
             }
         } catch {
-            toast.error("Error inesperado");
+            toast.error("Error inesperado", { id: `tx-action-unexpected-${transaction.id}` });
         } finally {
             setIsLoading(false);
         }
@@ -204,18 +204,19 @@ export function TransactionCard({
                         </div>
 
                         {/* Right: Amount pill */}
-                        <div className="flex min-w-[90px] shrink-0 flex-col rounded-2xl bg-bg-primary/50 px-3 py-2.5 text-right border-none justify-center">
+                        <div className="flex min-w-[90px] max-w-[45%] shrink-0 flex-col rounded-2xl bg-bg-primary/50 px-3 py-2.5 text-right border-none justify-center overflow-hidden">
                             <div className="flex items-center justify-end gap-3">
                                 <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                                     Monto
                                 </span>
                             </div>
-                            <div className="mt-1 flex items-center justify-end gap-1">
+                            <div className="mt-1 flex items-center justify-end gap-1 overflow-hidden">
                                 <span
                                     className={cn(
-                                        "text-base sm:text-lg font-semibold tracking-tight",
+                                        "text-sm sm:text-lg font-semibold tracking-tight truncate",
                                         isIncome && "text-emerald-500",
                                     )}
+                                    title={formatAmount(transaction.amount, transaction.currency)}
                                 >
                                     {isIncome ? "+" : ""}
                                     {formatAmount(transaction.amount, transaction.currency)}
@@ -230,12 +231,14 @@ export function TransactionCard({
             <CardContent className="space-y-4 px-5 py-3 sm:px-6">
                 <div className="rounded-[1.35rem] bg-bg-primary/50 p-4 border-none">
                     <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                        <Sparkles className="h-3.5 w-3.5 text-accent-primary" />
+                        <Sparkles className="h-3.5 w-3.5 text-accent-primary shrink-0" />
                         Contexto extraído
                     </div>
-                    <p className="text-sm leading-6 text-muted-foreground whitespace-pre-wrap">
-                        {displayContext || "Sin contexto disponible para esta transacción."}
-                    </p>
+                    <div className="w-full max-w-full overflow-hidden">
+                        <p className="text-sm leading-6 text-muted-foreground whitespace-pre-wrap break-words [word-break:break-word]">
+                            {displayContext || "Sin contexto disponible para esta transacción."}
+                        </p>
+                    </div>
                 </div>
 
                 {/* Tags */}

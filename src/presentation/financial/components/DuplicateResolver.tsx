@@ -50,7 +50,7 @@ export function DuplicateResolver({ transactionId, isPossibleDuplicate, onResolv
                 </p>
             </div>
             <p className="text-xs text-muted-foreground">
-                Esta transacción tiene el mismo monto, fecha, comercio y tipo que otra transacción existente.
+                Esta transacción tiene el mismo monto, fecha, institución y tipo que otra transacción existente.
             </p>
             <div className="flex gap-2">
                 <Button

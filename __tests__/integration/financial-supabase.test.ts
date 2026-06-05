@@ -147,7 +147,6 @@ describe("SupabaseFinancialTransactionRepository", () => {
                 institutionId: null,
                 accountId: null,
                 merchant: null,
-                description: null,
                 notes: null,
                 originStats: null,
             };

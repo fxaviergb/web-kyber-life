@@ -7,12 +7,20 @@ interface CategoryPieChartProps {
     data: CategoryBreakdown[];
 }
 
-const FALLBACK_COLORS = [
-    "var(--color-chart-1)",
-    "var(--color-chart-2)",
-    "var(--color-chart-3)",
-    "var(--color-chart-4)",
-    "var(--color-chart-5)",
+const DISTINCT_COLORS = [
+    "#3b82f6", // Blue
+    "#ef4444", // Red
+    "#22c55e", // Green
+    "#eab308", // Yellow
+    "#a855f7", // Purple
+    "#f97316", // Orange
+    "#06b6d4", // Cyan
+    "#ec4899", // Pink
+    "#84cc16", // Lime
+    "#6366f1", // Indigo
+    "#14b8a6", // Teal
+    "#f43f5e", // Rose
+    "#10b981", // Emerald
 ];
 
 function formatCurrency(value: number): string {
@@ -29,34 +37,44 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
     }
 
     return (
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer width="100%" height={400}>
             <PieChart>
                 <Pie
                     data={data}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    dataKey="amount"
+                    innerRadius={100}
+                    outerRadius={140}
+                    dataKey="total"
                     nameKey="categoryName"
                     paddingAngle={5}
-                    strokeWidth={2}
-                    stroke="var(--color-bg-primary)"
+                    stroke="none"
                 >
                     {data.map((entry, index) => (
                         <Cell
                             key={`cell-${index}`}
-                            fill={entry.color || FALLBACK_COLORS[index % FALLBACK_COLORS.length]}
+                            fill={DISTINCT_COLORS[index % DISTINCT_COLORS.length]}
                         />
                     ))}
                 </Pie>
                 <Tooltip
-                    formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
-                    contentStyle={{
-                        backgroundColor: "var(--color-bg-secondary)",
-                        borderColor: "var(--color-border-base)",
-                        borderRadius: "8px",
-                        color: "var(--color-text-primary)",
+                    content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                            return (
+                                <div className="bg-bg-secondary/95 border border-border-base shadow-xl rounded-xl p-4 backdrop-blur-md min-w-[150px]">
+                                    <p className="text-sm font-medium text-text-secondary mb-1">
+                                        {payload[0].name}
+                                    </p>
+                                    <p 
+                                        className="text-2xl font-bold tracking-tight" 
+                                        style={{ color: payload[0].payload.fill }}
+                                    >
+                                        {formatCurrency(payload[0].value as number)}
+                                    </p>
+                                </div>
+                            );
+                        }
+                        return null;
                     }}
                 />
                 <Legend

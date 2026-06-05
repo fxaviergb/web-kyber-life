@@ -3,7 +3,7 @@
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { DailyBreakdown } from "@/application/services/financial-dashboard-service";
 
-interface DailySpendingChartProps {
+interface DailyIncomeChartProps {
     data: DailyBreakdown[];
 }
 
@@ -16,7 +16,7 @@ function formatDate(dateStr: string): string {
     return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 }
 
-export function DailySpendingChart({ data }: DailySpendingChartProps) {
+export function DailyIncomeChart({ data }: DailyIncomeChartProps) {
     if (data.length === 0) {
         return (
             <div className="flex items-center justify-center h-[320px] text-muted-foreground">
@@ -34,9 +34,9 @@ export function DailySpendingChart({ data }: DailySpendingChartProps) {
         <ResponsiveContainer width="100%" height={320}>
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
-                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--color-accent-primary)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="var(--color-accent-primary)" stopOpacity={0} />
+                    <linearGradient id="colorIncomeTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                     </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
@@ -55,7 +55,7 @@ export function DailySpendingChart({ data }: DailySpendingChartProps) {
                 />
                 <Tooltip
                     labelFormatter={(label) => label}
-                    formatter={(value: number | undefined) => [formatCurrency(value ?? 0), "Gasto Diario"]}
+                    formatter={(value: number | undefined) => [formatCurrency(value ?? 0), "Ingreso Diario"]}
                     contentStyle={{
                         backgroundColor: "var(--color-bg-secondary)",
                         borderColor: "var(--color-border-base)",
@@ -65,10 +65,10 @@ export function DailySpendingChart({ data }: DailySpendingChartProps) {
                 />
                 <Area
                     type="monotone"
-                    dataKey="expenses"
-                    stroke="var(--color-accent-primary)"
+                    dataKey="income"
+                    stroke="#22c55e"
                     fillOpacity={1}
-                    fill="url(#colorTotal)"
+                    fill="url(#colorIncomeTotal)"
                     strokeWidth={2}
                 />
             </AreaChart>

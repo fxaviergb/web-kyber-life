@@ -1,6 +1,6 @@
 import { UUID } from "../../domain/core";
 import { FinancialTransaction } from "../../domain/entities/financial";
-import { IFinancialTransactionRepository, IFinancialCategoryRepository, IFinancialInstitutionRepository } from "../../domain/repositories/financial";
+import { IFinancialTransactionRepository, IFinancialCategoryRepository, IFinancialInstitutionRepository, IFinancialScannerTransactionRepository } from "../../domain/repositories/financial";
 export interface FinancialKPIs {
     totalIncome: number;
     totalExpenses: number;
@@ -53,12 +53,37 @@ export class FinancialDashboardService {
     constructor(
         private transactionRepo: IFinancialTransactionRepository,
         private categoryRepo: IFinancialCategoryRepository,
-        private institutionRepo: IFinancialInstitutionRepository
+        private institutionRepo: IFinancialInstitutionRepository,
+        private scannerRepo?: IFinancialScannerTransactionRepository
     ) {}
     async getKPIs(userId: UUID, startDate?: Date, endDate?: Date): Promise<FinancialKPIs> {
         const transactions = await this.transactionRepo.findByOwnerId(userId);
         const confirmed = this.filterActive(transactions, startDate, endDate);
-        const pending = this.filterPending(transactions, startDate, endDate);
+        let pendingCount = 0;
+        if (this.scannerRepo) {
+            let pendingScannerTxs = await this.scannerRepo.findUnprocessedByOwnerId(userId);
+            if (startDate || endDate) {
+                pendingScannerTxs = pendingScannerTxs.filter(t => {
+                    if (!t.date) return true;
+                    const tDate = new Date(t.date);
+                    if (startDate && tDate < startDate) return false;
+                    if (endDate && tDate > endDate) return false;
+                    return true;
+                });
+            }
+            pendingCount = pendingScannerTxs.length;
+        } else {
+            let pending = this.filterPending(transactions);
+            if (startDate || endDate) {
+                pending = pending.filter(t => {
+                    const tDate = new Date(t.date);
+                    if (startDate && tDate < startDate) return false;
+                    if (endDate && tDate > endDate) return false;
+                    return true;
+                });
+            }
+            pendingCount = pending.length;
+        }
 
         const totalIncome = confirmed
             .filter(t => this.isIncomeType(t.type))
@@ -80,7 +105,7 @@ export class FinancialDashboardService {
             netBalance: Math.round(netBalance * 100) / 100,
             transactionCount,
             avgTransactionAmount: Math.round(avgTransactionAmount * 100) / 100,
-            pendingTransactionsCount: pending.length,
+            pendingTransactionsCount: pendingCount,
             currency: "USD",
         };
     }
@@ -199,7 +224,7 @@ export class FinancialDashboardService {
         let grandTotal = 0;
 
         for (const t of confirmed) {
-            const catId = t.categoryId || "UNNCATEGORIZED";
+            const catId = t.categoryId || "UNCATEGORIZED";
             if (!groups[catId]) {
                 groups[catId] = { total: 0, count: 0 };
             }
@@ -210,10 +235,10 @@ export class FinancialDashboardService {
 
         return Object.entries(groups)
             .map(([catId, data]) => {
-                const category = catId !== "UNNCATEGORIZED" ? catMap.get(catId) : null;
+                const category = catId !== "UNCATEGORIZED" ? catMap.get(catId) : null;
                 return {
-                    categoryId: catId === "UNNCATEGORIZED" ? null : catId,
-                    categoryName: category?.name || "Uncategorized",
+                    categoryId: catId === "UNCATEGORIZED" ? null : catId,
+                    categoryName: category?.name || "Sin categoría",
                     total: Math.round(data.total * 100) / 100,
                     count: data.count,
                     percentage: grandTotal > 0
@@ -329,18 +354,8 @@ export class FinancialDashboardService {
         });
     }
 
-    private filterPending(transactions: FinancialTransaction[], startDate?: Date, endDate?: Date): FinancialTransaction[] {
-        return transactions.filter(t => {
-            if (t.status !== "DETECTED" && t.status !== "MANUAL") {
-                return false;
-            }
-            if (startDate || endDate) {
-                const tDate = new Date(t.date);
-                if (startDate && tDate < startDate) return false;
-                if (endDate && tDate > endDate) return false;
-            }
-            return true;
-        });
+    private filterPending(transactions: FinancialTransaction[]): FinancialTransaction[] {
+        return transactions.filter(t => t.status === "DETECTED");
     }
 
     private isIncomeType(type: string): boolean {

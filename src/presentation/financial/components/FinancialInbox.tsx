@@ -356,17 +356,17 @@ export function FinancialInbox() {
         return [...filtered].sort((a, b) => {
             const dateA = editStates[a.id!]?.date || a.date || a.createdAt;
             const dateB = editStates[b.id!]?.date || b.date || b.createdAt;
-            
+
             const timeA = dateA ? new Date(dateA).getTime() : 0;
             const timeB = dateB ? new Date(dateB).getTime() : 0;
-            
+
             if (timeA !== timeB) {
                 return timeB - timeA;
             }
-            
+
             const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            
+
             return createdB - createdA;
         });
     }, [transactions, typeFilter, editStates]);
@@ -389,7 +389,7 @@ export function FinancialInbox() {
                             aparecerán aquí listos para confirmar y clasificar.
                         </p>
                     </div>
-                    
+
                     <Button className="mt-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium" asChild>
                         <Link href="/financial/scanner" className="gap-2">
                             <Search className="w-4 h-4" />
@@ -404,7 +404,7 @@ export function FinancialInbox() {
     if (filteredTransactions.length === 0) {
         return (
             <Card className="overflow-hidden rounded-[2rem] border-border/60 bg-bg-secondary py-0 shadow-lg shadow-black/5">
-                 <CardContent className="flex flex-col items-center gap-4 px-8 py-16 text-center">
+                <CardContent className="flex flex-col items-center gap-4 px-8 py-16 text-center">
                     <div className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-3xl bg-accent-primary/10 text-accent-primary">
                         <InboxIcon className="h-9 w-9" />
                     </div>
@@ -422,37 +422,44 @@ export function FinancialInbox() {
     return (
         <div className="space-y-5">
             <Card className="rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5">
-                <CardContent className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(110px,1fr))] sm:items-center sm:px-5">
-                    <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="success" className="gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]">
-                                <Sparkles className="h-3 w-3" />
-                                Revisión
-                            </Badge>
-                            {isPollingFallback && showPollingNotice && (
+                <CardContent className="flex flex-col sm:flex-row sm:items-center gap-4 px-4 py-4 sm:px-5">
+                    <div className="space-y-1 flex-1">
+                        {isPollingFallback && showPollingNotice && (
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
                                 <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/5 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
                                     <RefreshCw className="h-3 w-3 animate-spin" />
                                     ACTUALIZANDO
                                 </span>
-                            )}
-                        </div>
+                            </div>
+                        )}
                         <h3 className="text-base font-semibold tracking-tight sm:text-lg">Escaneos por confirmar</h3>
                         <p className="max-w-md text-xs text-muted-foreground sm:text-sm">
-                            Prioriza monto, comercio y fecha para revisar más rápido.
+                            Prioriza monto, institución y fecha para revisar más rápido.
                         </p>
                     </div>
 
-                    <div className="rounded-2xl border border-border/50 bg-bg-primary px-4 py-3">
-                        <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Pendientes</div>
-                        <div className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{filteredTransactions.length}</div>
-                    </div>
-                    <div className="rounded-2xl border border-border/50 bg-bg-primary px-4 py-3">
-                        <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Con comercio</div>
-                        <div className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{filteredTransactions.filter((tx) => tx.merchant).length}</div>
-                    </div>
-                    <div className="rounded-2xl border border-border/50 bg-bg-primary px-4 py-3">
-                        <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Con monto</div>
-                        <div className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{filteredTransactions.filter((tx) => tx.amount != null).length}</div>
+                    <div className="flex flex-col gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+                        <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
+                            <div className="flex flex-col justify-between rounded-2xl border border-border/50 bg-bg-primary px-3 py-3 text-center sm:text-left">
+                                <div className="text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground break-words leading-tight">Pendientes</div>
+                                <div className="mt-1 text-lg sm:text-xl font-semibold tracking-tight">{filteredTransactions.length}</div>
+                            </div>
+                            <div className="flex flex-col justify-between rounded-2xl border border-border/50 bg-bg-primary px-3 py-3 text-center sm:text-left">
+                                <div className="text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground break-words leading-tight">Con comercio</div>
+                                <div className="mt-1 text-lg sm:text-xl font-semibold tracking-tight">{filteredTransactions.filter((tx) => tx.merchant).length}</div>
+                            </div>
+                            <div className="flex flex-col justify-between rounded-2xl border border-border/50 bg-bg-primary px-3 py-3 text-center sm:text-left">
+                                <div className="text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground break-words leading-tight">Con monto</div>
+                                <div className="mt-1 text-lg sm:text-xl font-semibold tracking-tight">{filteredTransactions.filter((tx) => tx.amount != null).length}</div>
+                            </div>
+                        </div>
+
+                        <Link href="/financial/scanner" className="sm:hidden w-full">
+                            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-medium shadow-sm transition-all h-10">
+                                <Search className="w-4 h-4" />
+                                Iniciar Escaneo
+                            </Button>
+                        </Link>
                     </div>
                 </CardContent>
             </Card>
@@ -524,35 +531,37 @@ export function FinancialInbox() {
 
                                     {/* Bottom row: Info and Amount */}
                                     <div className="flex flex-row items-start justify-between gap-3">
-                                        <div className="space-y-1 min-w-0 flex-1">
+                                        <div className="space-y-2 min-w-0 flex-1">
                                             {editing ? (
                                                 <Input
                                                     value={editStates[tx.id!]?.merchant || ""}
                                                     onChange={(event) => updateEditState(tx.id!, "merchant", event.target.value)}
-                                                    placeholder="Ingresa el nombre del comercio"
-                                                    className="h-9 font-semibold text-lg border-border/50 bg-bg-primary"
+                                                    placeholder="Ingresa el nombre de la institución"
+                                                    className="h-9 font-semibold text-base sm:text-lg border-border/50 bg-bg-primary w-full"
                                                 />
                                             ) : (
-                                                <CardTitle className="text-lg tracking-tight sm:text-xl truncate">
-                                                    {editStates[tx.id!]?.merchant || tx.merchant || "Comercio por confirmar"}
-                                                </CardTitle>
+                                                <div className="space-y-1">
+                                                    <CardTitle className="text-lg tracking-tight sm:text-xl truncate">
+                                                        {editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}
+                                                    </CardTitle>
+                                                </div>
                                             )}
 
-                                            <CardDescription className="flex flex-col gap-2 text-xs sm:text-sm pt-1">
-                                                <div className="flex items-center gap-1.5 w-full max-w-[240px]">
+                                            <CardDescription className="flex flex-col gap-1.5 text-xs sm:text-sm pt-1">
+                                                <div className="flex items-center gap-1.5 w-full">
                                                     <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                                     {editing ? (
                                                         <Input
                                                             type="datetime-local"
                                                             value={editStates[tx.id!]?.date || ""}
                                                             onChange={(e) => updateEditState(tx.id!, "date", e.target.value)}
-                                                            className="h-8 text-xs py-1 px-2 border-border/50 bg-bg-primary"
+                                                            className="h-8 text-[10px] sm:text-xs py-1 px-2 border-border/50 bg-bg-primary w-full"
                                                         />
                                                     ) : (
-                                                        <span>{editStates[tx.id!]?.date ? formatDate(editStates[tx.id!]!.date) : "Fecha no detectada"}</span>
+                                                        <span className="truncate">{editStates[tx.id!]?.date ? formatDate(editStates[tx.id!]!.date) : "Fecha no detectada"}</span>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-1.5 w-full max-w-[240px]">
+                                                <div className="flex items-center gap-1.5 w-full">
                                                     <Wallet className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                                     <span className="text-muted-foreground shrink-0">Tipo:</span>
                                                     {editing ? (
@@ -560,7 +569,7 @@ export function FinancialInbox() {
                                                             value={editStates[tx.id!]?.type || DEFAULT_TRANSACTION_TYPE}
                                                             onValueChange={(value) => updateEditState(tx.id!, "type", value)}
                                                         >
-                                                            <SelectTrigger className="h-8 text-xs py-1 px-2 border-border/50 bg-bg-primary shadow-none flex-1">
+                                                            <SelectTrigger className="h-8 text-[10px] sm:text-xs py-1 px-2 border-border/50 bg-bg-primary shadow-none flex-1 truncate">
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -579,7 +588,7 @@ export function FinancialInbox() {
                                                                         editStates[tx.id!]?.type === "TRANSFER" ? "warning" :
                                                                             "outline"
                                                             }
-                                                            className="text-xs px-2.5 py-0.5 shrink-0"
+                                                            className="text-[10px] sm:text-xs px-2 py-0.5 shrink-0 truncate max-w-[120px]"
                                                         >
                                                             {TYPE_OPTIONS.find(o => o.value === editStates[tx.id!]?.type)?.label || "Gasto"}
                                                         </Badge>
@@ -588,24 +597,29 @@ export function FinancialInbox() {
                                             </CardDescription>
                                         </div>
 
-                                        <div className="flex min-w-[100px] shrink-0 flex-col rounded-2xl bg-bg-primary/50 px-3 py-2.5 text-right border-none justify-center">
+                                        <div className="flex min-w-[90px] max-w-[45%] shrink-0 flex-col rounded-2xl bg-bg-primary/50 px-3 py-2.5 text-right border-none justify-center overflow-hidden">
                                             <div className="flex items-center justify-end gap-3">
                                                 <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Monto</span>
                                             </div>
-                                            <div className="mt-1 flex items-center justify-end gap-1">
+                                            <div className="mt-1 flex items-center justify-end gap-1 overflow-hidden">
                                                 {editing ? (
-                                                    <div className="flex items-center gap-1">
+                                                    <div className="flex items-center justify-end gap-1 w-full overflow-hidden">
                                                         <Input
                                                             type="number"
                                                             step="0.01"
                                                             value={editStates[tx.id!]?.amount ?? ""}
                                                             onChange={(e) => updateEditState(tx.id!, "amount", e.target.value ? parseFloat(e.target.value) : null)}
-                                                            className="h-7 w-20 text-right font-semibold text-sm border-border/50 bg-bg-secondary px-2"
+                                                            className="h-7 w-full min-w-[50px] text-right font-semibold text-xs sm:text-sm border-border/50 bg-bg-secondary px-2"
                                                         />
-                                                        <span className="text-xs text-muted-foreground font-medium">{tx.currency || "USD"}</span>
+                                                        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium shrink-0">{tx.currency || "USD"}</span>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-base sm:text-lg font-semibold tracking-tight">{formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}</span>
+                                                    <span
+                                                        className="text-sm sm:text-lg font-semibold tracking-tight truncate"
+                                                        title={formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
+                                                    >
+                                                        {formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>

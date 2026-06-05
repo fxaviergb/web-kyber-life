@@ -124,23 +124,23 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 sm:p-6 flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center">
 
             {/* ── LEFT SIDE: BALANCE NETO ── */}
-            <div className="relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left gap-2 lg:w-1/3 lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8">
+            <div className="relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left gap-3 lg:w-1/3 lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8">
                 <div className="flex items-center gap-2 justify-center lg:justify-start">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-brand/10 text-accent-brand">
-                        <Wallet className="w-3.5 h-3.5" />
+                    <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-accent-brand/20 to-accent-brand/5 border border-accent-brand/20 text-accent-brand shadow-inner">
+                        <Wallet className="w-4 h-4" />
                     </div>
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <span className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                         Balance Neto
                     </span>
-                    <span className="px-2 py-0.5 rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
+                    <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-medium text-muted-foreground">
                         {transactions.length} reg.
                     </span>
                 </div>
                 
-                <div className="mt-1 flex items-baseline justify-center lg:justify-start gap-1">
+                <div className="flex items-baseline justify-center lg:justify-start gap-1">
                     <span className={cn(
-                        "text-3xl sm:text-4xl font-light tracking-tight",
-                        balance > 0 ? "text-accent-success" : (balance < 0 ? "text-accent-danger" : "text-muted-foreground")
+                        "text-4xl sm:text-5xl font-bold tracking-tighter drop-shadow-sm",
+                        balance > 0 ? "bg-gradient-to-br from-emerald-400 to-emerald-600 bg-clip-text text-transparent" : (balance < 0 ? "bg-gradient-to-br from-red-400 to-red-600 bg-clip-text text-transparent" : "text-muted-foreground")
                     )}>
                         {balance > 0 ? "+" : balance < 0 ? "-" : ""}
                         {formatCurrency(Math.abs(balance), primaryCurrency)}

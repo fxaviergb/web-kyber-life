@@ -85,15 +85,8 @@ export function FinancialNotificationCenter({
             const record = payload.new;
             if (!record || typeof record !== "object" || !("id" in record)) return;
 
-            // Only notify on status transitions
-            const oldRecord = payload.old as Partial<TransactionPayload> | undefined;
-            if (oldRecord && oldRecord.status !== record.status) {
-                toast.info(`Transaccion ${record.status.toLowerCase()}`, {
-                    description: `${record.merchant ?? "Transaccion"} — ${formatAmount(record.amount)}`,
-                    duration: 4_000,
-                });
-            }
-
+            // Silently notify the app that data changed without popping a toast.
+            // Local components (e.g. TransactionDetailClient) already show success toasts.
             onDataChange?.();
         },
         [onDataChange],
