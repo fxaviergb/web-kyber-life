@@ -142,20 +142,20 @@ export function TransactionCard({
             />
 
             {/* ── Nivel 1: Resumen (Siempre visible) ───────────────── */}
-            <CardHeader 
+            <CardHeader
                 className={cn(
                     "flex-row w-full items-center !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
                     isExpanded && "border-b border-border/50",
                     hasContext && "cursor-pointer hover:bg-bg-secondary"
-                )} 
+                )}
                 onClick={() => hasContext && setIsExpanded(!isExpanded)}
             >
                 {/* Mobile: List Row (Entity/Time on left, Amount on right) */}
                 <div className="flex w-full items-center justify-between gap-3 min-w-0">
                     <div className="flex flex-col flex-1 min-w-0 gap-1.5">
                         <div className="flex items-center gap-2 min-w-0">
-                            <CardTitle 
-                                className="text-base sm:text-lg tracking-tight truncate font-semibold" 
+                            <CardTitle
+                                className="text-base sm:text-lg tracking-tight truncate font-semibold"
                                 title={transaction.merchant || typeLabel}
                             >
                                 {transaction.merchant || typeLabel}
@@ -164,7 +164,7 @@ export function TransactionCard({
                                 <AlertCircle className="h-3.5 w-3.5 text-warning-text shrink-0" />
                             )}
                         </div>
-                        
+
                         <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
                             <span className="flex items-center gap-1 shrink-0">
                                 <Clock className="h-3 w-3 opacity-70" />
@@ -176,9 +176,9 @@ export function TransactionCard({
                                     <span className="w-1 h-1 rounded-full bg-border shrink-0" />
                                     <span className="flex items-center gap-1 font-medium hover:text-foreground transition-colors truncate">
                                         {isExpanded ? (
-                                            <><ChevronUp className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Ocultar contexto</span></>
+                                            <><ChevronUp className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Ocultar</span></>
                                         ) : (
-                                            <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Ver contexto</span></>
+                                            <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Contexto</span></>
                                         )}
                                     </span>
                                 </>
@@ -197,7 +197,7 @@ export function TransactionCard({
                             {isIncome ? "+" : isExpense ? "-" : ""}
                             {formatAmount(transaction.amount, transaction.currency)}
                         </span>
-                        
+
                         {/* Actions */}
                         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <Button

@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { triggerFinancialScanAction, getScanExecutionsAction } from '@/app/actions/financial-scanner';
-import { Calendar, Search, RefreshCw, CheckCircle2, XCircle, Clock, ChevronLeft, Mail, AlertCircle, Timer } from 'lucide-react';
+import { Calendar, Search, RefreshCw, CheckCircle2, XCircle, Clock, ChevronLeft, Mail, AlertCircle, Timer, ChevronDown, ChevronUp } from 'lucide-react';
 import { FinancialScanExecution } from '@/domain/entities/financial';
 import { format, isAfter, isBefore, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useFinancialRealtime } from '../hooks/useFinancialRealtime';
 
 type ScanRange = 'today' | 'week' | 'custom' | 'recommended';
@@ -78,6 +79,146 @@ function parsePayload(payload: any) {
     }
 
     return typeof parsed === 'object' ? parsed : null;
+}
+
+const StatusIcon = ({ status }: { status: string }) => {
+    switch (status) {
+        case 'COMPLETED': return <CheckCircle2 className="w-5 h-5 text-accent-success" />;
+        case 'FAILED': return <XCircle className="w-5 h-5 text-accent-danger" />;
+        case 'PROCESSING': return <RefreshCw className="w-5 h-5 text-accent-info animate-spin" />;
+        default: return <Clock className="w-5 h-5 text-text-tertiary" />;
+    }
+};
+
+function ExecutionHistoryCard({ exec }: { exec: FinancialScanExecution }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    let statusStyles = '';
+    switch (exec.status) {
+        case 'COMPLETED':
+            statusStyles = 'bg-success-bg border-accent-success/20 text-success-text';
+            break;
+        case 'FAILED':
+            statusStyles = 'bg-danger-bg border-accent-danger/20 text-danger-text';
+            break;
+        default:
+            statusStyles = 'bg-info-bg border-accent-info/20 text-info-text';
+    }
+
+    const statusBadge = exec.status === 'FAILED' ? (
+        <Popover>
+            <PopoverTrigger asChild>
+                <div
+                    onClick={(e) => { e.stopPropagation(); }}
+                    className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold tracking-wide border ${statusStyles} hover:bg-opacity-80 transition-colors shadow-sm cursor-pointer shrink-0 w-fit`}
+                >
+                    <span>FALLIDO</span>
+                    <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-80" />
+                </div>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="max-w-xs bg-bg-secondary border border-accent-danger/20 text-danger-text p-4 shadow-xl rounded-xl z-50 relative">
+                <p className="text-xs font-medium leading-relaxed whitespace-pre-wrap">
+                    {exec.errorDetails || "La ejecución falló sin reportar un mensaje de error detallado."}
+                </p>
+            </PopoverContent>
+        </Popover>
+    ) : (
+        <div className={`inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold tracking-wide border ${statusStyles} shadow-sm shrink-0 w-fit`}>
+            {exec.status === 'COMPLETED' ? 'COMPLETADO' : exec.status === 'PROCESSING' ? 'PROCESANDO' : exec.status}
+        </div>
+    );
+
+    const payload = parsePayload(exec.requestPayload);
+    const sDate = payload?.startDate || exec.stats?.startDate;
+    const eDate = payload?.endDate || exec.stats?.endDate;
+
+    let dateRangeDisplay = <span className="text-text-tertiary text-sm font-medium italic normal-case">No se pudo determinar el rango de fechas</span>;
+    if (sDate && eDate) {
+        const parseSafe = (d: string) => {
+            const datePart = d.split('T')[0];
+            return new Date(`${datePart}T12:00:00`);
+        };
+        const startFmt = format(parseSafe(sDate), "dd MMM yyyy", { locale: es });
+        const endFmt = format(parseSafe(eDate), "dd MMM yyyy", { locale: es });
+        if (startFmt === endFmt) {
+            dateRangeDisplay = <>{startFmt}</>;
+        } else {
+            dateRangeDisplay = <>{startFmt} - {endFmt}</>;
+        }
+    }
+
+    return (
+        <div 
+            className="flex flex-col gap-2 p-4 sm:p-5 rounded-2xl border border-border/40 bg-gradient-to-br from-bg-primary/50 to-bg-primary/30 hover:from-bg-primary hover:to-bg-primary/80 transition-all shadow-sm cursor-pointer"
+            onClick={() => setIsExpanded(!isExpanded)}
+        >
+            <div className="flex items-start gap-4 w-full">
+                <div className="p-2 rounded-xl bg-bg-secondary shadow-inner border border-border/50 shrink-0 mt-0.5">
+                    <StatusIcon status={exec.status} />
+                </div>
+                
+                <div className="flex flex-col min-w-0 flex-1">
+                    <div className="mb-1">
+                        {statusBadge}
+                    </div>
+
+                    <div className="flex items-center justify-between w-full">
+                        <span className="text-sm sm:text-lg font-bold text-text-primary flex items-center gap-1.5 sm:gap-2 capitalize break-words">
+                            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary shrink-0" />
+                            {dateRangeDisplay}
+                        </span>
+                        <div className="text-text-tertiary shrink-0 ml-2">
+                            {isExpanded ? <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {isExpanded && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-2 mt-2 pt-3 border-t border-border/30 pl-14" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
+                        <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
+                        Ejecución: {format(new Date(exec.startedAt), "dd/MM/yyyy")}
+                    </span>
+
+                    <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
+                        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
+                        Inicio: {format(new Date(exec.startedAt), "HH:mm:ss")}
+                    </span>
+
+                    {exec.completedAt && (
+                        <>
+                            <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
+                                <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
+                                Fin: {format(new Date(exec.completedAt), "HH:mm:ss")}
+                            </span>
+                            <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
+                                <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent-primary shrink-0" />
+                                Duración: <span className="font-bold">{getFormattedDuration(exec.startedAt, exec.completedAt)}</span>
+                            </span>
+                        </>
+                    )}
+
+                    {exec.stats && exec.stats.totalTransactionsFound !== undefined && (
+                        <span className="text-[11px] sm:text-xs font-medium text-text-secondary bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30 flex items-center gap-1 sm:gap-1.5 mt-1 w-full sm:w-auto">
+                            <span className="text-text-primary font-bold">{exec.stats.totalTransactionsFound}</span>
+                            <span>trx detectadas</span>
+                            {exec.source === 'GMAIL_N8N_WEBHOOK' ? (
+                                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded ml-auto sm:ml-1">
+                                    <Mail className="w-2.5 h-2.5 text-accent-primary shrink-0" />
+                                    GMAIL
+                                </span>
+                            ) : exec.source ? (
+                                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded ml-auto sm:ml-1">
+                                    {exec.source}
+                                </span>
+                            ) : null}
+                        </span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 }
 
 export function ScannerManager() {
@@ -354,15 +495,6 @@ export function ScannerManager() {
         }
     };
 
-    const StatusIcon = ({ status }: { status: string }) => {
-        switch (status) {
-            case 'COMPLETED': return <CheckCircle2 className="w-5 h-5 text-accent-success" />;
-            case 'FAILED': return <XCircle className="w-5 h-5 text-accent-danger" />;
-            case 'PROCESSING': return <RefreshCw className="w-5 h-5 text-accent-info animate-spin" />;
-            default: return <Clock className="w-5 h-5 text-text-tertiary" />;
-        }
-    };
-
     return (
         <div className="w-full flex flex-col gap-6">
 
@@ -434,7 +566,7 @@ export function ScannerManager() {
                                             key={i}
                                             onClick={() => setSelectedRecommendedIndex(i)}
                                             className={`flex flex-col items-center justify-center px-3 py-2 sm:px-4 sm:py-3 rounded-xl border transition-all sm:flex-1 sm:min-w-[130px] ${
-                                                i === 2 && recommendedRanges.length === 3 ? 'col-span-2 sm:col-span-1' : ''
+                                                i > 1 ? 'hidden sm:flex' : ''
                                             } ${selectedRecommendedIndex === i
                                                 ? 'bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20'
                                                 : 'bg-bg-secondary border-border/40 text-text-secondary hover:bg-bg-primary/60 hover:border-border/60 hover:text-text-primary'
@@ -512,134 +644,9 @@ export function ScannerManager() {
 
                 <TooltipProvider delayDuration={200}>
                     <div className="flex flex-col gap-4">
-                        {sortedExecutions.map((exec) => {
-                            let statusStyles = '';
-                            switch (exec.status) {
-                                case 'COMPLETED':
-                                    statusStyles = 'bg-success-bg border-accent-success/20 text-success-text';
-                                    break;
-                                case 'FAILED':
-                                    statusStyles = 'bg-danger-bg border-accent-danger/20 text-danger-text';
-                                    break;
-                                default:
-                                    statusStyles = 'bg-info-bg border-accent-info/20 text-info-text';
-                            }
-
-                            const statusBadge = exec.status === 'FAILED' ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => e.preventDefault()}
-                                            className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold tracking-wide border ${statusStyles} hover:bg-opacity-80 transition-colors shadow-sm cursor-pointer shrink-0`}
-                                        >
-                                            <span>FALLIDO</span>
-                                            <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-80" />
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" align="end" className="max-w-xs bg-bg-secondary border border-accent-danger/20 text-danger-text p-4 shadow-xl rounded-xl z-50 relative">
-                                        <p className="text-xs font-medium leading-relaxed whitespace-pre-wrap">
-                                            {exec.errorDetails || "La ejecución falló sin reportar un mensaje de error detallado."}
-                                        </p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : (
-                                <div className={`inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold tracking-wide border ${statusStyles} shadow-sm shrink-0 min-w-[90px] sm:min-w-[100px]`}>
-                                    {exec.status === 'COMPLETED' ? 'COMPLETADO' : exec.status === 'PROCESSING' ? 'PROCESANDO' : exec.status}
-                                </div>
-                            );
-
-                            return (
-                                <div key={exec.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-5 rounded-2xl border border-border/40 bg-gradient-to-br from-bg-primary/50 to-bg-primary/30 hover:from-bg-primary hover:to-bg-primary/80 hover:border-border/60 transition-all shadow-sm">
-                                    <div className="flex items-start gap-3 sm:gap-4 w-full min-w-0">
-                                        <div className="p-2 rounded-xl bg-bg-secondary shadow-inner border border-border/50 shrink-0 mt-0.5">
-                                            <StatusIcon status={exec.status} />
-                                        </div>
-                                        <div className="flex flex-col gap-2 min-w-0 flex-1">
-                                            <div className="flex items-start sm:items-center justify-between gap-2 w-full">
-                                                <span className="text-sm sm:text-lg font-bold text-text-primary flex items-center gap-1.5 sm:gap-2 capitalize">
-                                                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary shrink-0" />
-                                                    <span className="break-words">
-                                                        {(() => {
-                                                            const payload = parsePayload(exec.requestPayload);
-                                                            const sDate = payload?.startDate || exec.stats?.startDate;
-                                                            const eDate = payload?.endDate || exec.stats?.endDate;
-
-
-
-                                                            if (sDate && eDate) {
-                                                                const parseSafe = (d: string) => {
-                                                                    const datePart = d.split('T')[0];
-                                                                    return new Date(`${datePart}T12:00:00`);
-                                                                };
-                                                                const startFmt = format(parseSafe(sDate), "dd MMM yyyy", { locale: es });
-                                                                const endFmt = format(parseSafe(eDate), "dd MMM yyyy", { locale: es });
-                                                                if (startFmt === endFmt) {
-                                                                    return startFmt;
-                                                                }
-                                                                return `${startFmt} - ${endFmt}`;
-                                                            }
-                                                            return <span className="text-text-tertiary text-sm font-medium italic normal-case">No se pudo determinar el rango de fechas</span>;
-                                                        })()}
-                                                    </span>
-                                                </span>
-
-                                                {/* Status Badge - Mobile only (top right) */}
-                                                <div className="sm:hidden shrink-0 mt-0.5">
-                                                    {statusBadge}
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-0.5">
-                                                <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
-                                                    <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
-                                                    Ejecución: {format(new Date(exec.startedAt), "dd/MM/yyyy")}
-                                                </span>
-
-                                                <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
-                                                    <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
-                                                    Inicio: {format(new Date(exec.startedAt), "HH:mm:ss")}
-                                                </span>
-
-                                                {exec.completedAt && (
-                                                    <>
-                                                        <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
-                                                            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
-                                                            Fin: {format(new Date(exec.completedAt), "HH:mm:ss")}
-                                                        </span>
-                                                        <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
-                                                            <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent-primary shrink-0" />
-                                                            Duración: <span className="font-bold">{getFormattedDuration(exec.startedAt, exec.completedAt)}</span>
-                                                        </span>
-                                                    </>
-                                                )}
-
-                                                {exec.stats && exec.stats.totalTransactionsFound !== undefined && (
-                                                    <span className="text-[11px] sm:text-xs font-medium text-text-secondary bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30 flex items-center gap-1 sm:gap-1.5 mt-0.5 w-full sm:w-auto">
-                                                        <span className="text-text-primary font-bold">{exec.stats.totalTransactionsFound}</span>
-                                                        <span>trx detectadas</span>
-                                                        {exec.source === 'GMAIL_N8N_WEBHOOK' ? (
-                                                            <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded ml-auto sm:ml-1">
-                                                                <Mail className="w-2.5 h-2.5 text-accent-primary shrink-0" />
-                                                                GMAIL
-                                                            </span>
-                                                        ) : exec.source ? (
-                                                            <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded ml-auto sm:ml-1">
-                                                                {exec.source}
-                                                            </span>
-                                                        ) : null}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Status Badge - Desktop only */}
-                                    <div className="hidden sm:flex items-center justify-end shrink-0">
-                                        {statusBadge}
-                                    </div>
-                                </div>
-                            )
-                        })}
+                        {sortedExecutions.map((exec) => (
+                            <ExecutionHistoryCard key={exec.id} exec={exec} />
+                        ))}
 
                         {sortedExecutions.length === 0 && !isLoadingHistory && (
                             <div className="text-center py-8 text-muted-foreground text-sm">
