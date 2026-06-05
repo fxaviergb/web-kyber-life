@@ -213,18 +213,18 @@ export function TransactionFilters() {
             {/* Mobile Accordion Toggle */}
             <div 
                 className={cn(
-                    "sm:hidden relative flex items-center justify-between py-3 px-4 rounded-[1.25rem] border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent shadow-lg shadow-black/20 cursor-pointer transition-all active:scale-[0.98]",
-                    isExpanded ? "bg-white/[0.02] border-white/15" : "hover:bg-white/[0.06]"
+                    "sm:hidden relative flex items-center justify-between py-3 px-4 rounded-[1.25rem] border border-border/50 dark:border-white/10 bg-gradient-to-b from-black/[0.02] dark:from-white/[0.04] to-transparent shadow-lg shadow-black/5 dark:shadow-black/20 cursor-pointer transition-all active:scale-[0.98]",
+                    isExpanded ? "bg-black/[0.02] dark:bg-white/[0.02] border-border dark:border-white/15" : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
                 )}
                 onClick={() => setIsExpanded(!isExpanded)}
             >
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-t-[1.25rem]" aria-hidden="true" />
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/10 dark:via-white/20 to-transparent rounded-t-[1.25rem]" aria-hidden="true" />
                 <div className="flex items-center gap-3 relative z-10">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 border border-indigo-500/20 text-indigo-400 shadow-inner">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-inner">
                         <Filter className="w-4 h-4" />
                     </div>
                     <div className="flex flex-col justify-center gap-1.5">
-                        <span className="text-lg font-bold tracking-tight leading-none text-white/90">
+                        <span className="text-lg font-bold tracking-tight leading-none text-foreground/90">
                             Filtros de Búsqueda
                         </span>
                         <p className="text-[10px] text-muted-foreground font-medium leading-none uppercase tracking-wider">
@@ -232,8 +232,8 @@ export function TransactionFilters() {
                         </p>
                     </div>
                 </div>
-                <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-white/5 border border-white/10 shadow-sm">
-                    <ChevronDown className={cn("w-4 h-4 text-white/70 transition-transform duration-300", isExpanded && "rotate-180")} />
+                <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-black/5 dark:bg-white/5 border border-border/50 dark:border-white/10 shadow-sm">
+                    <ChevronDown className={cn("w-4 h-4 text-foreground/70 transition-transform duration-300", isExpanded && "rotate-180")} />
                 </div>
             </div>
 
