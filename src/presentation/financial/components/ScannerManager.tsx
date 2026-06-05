@@ -434,7 +434,7 @@ export function ScannerManager() {
                                             key={i}
                                             onClick={() => setSelectedRecommendedIndex(i)}
                                             className={`flex flex-col items-center justify-center px-3 py-2 sm:px-4 sm:py-3 rounded-xl border transition-all sm:flex-1 sm:min-w-[130px] ${
-                                                i === 2 && recommendedRanges.length === 3 ? 'col-span-2 sm:col-span-1' : ''
+                                                i > 1 ? 'hidden sm:flex' : ''
                                             } ${selectedRecommendedIndex === i
                                                 ? 'bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20'
                                                 : 'bg-bg-secondary border-border/40 text-text-secondary hover:bg-bg-primary/60 hover:border-border/60 hover:text-text-primary'
