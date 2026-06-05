@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AreaChart, Area, ResponsiveContainer, YAxis, XAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { ChevronDown, BarChart2 } from "lucide-react";
 import type { FinancialTransaction, FinancialTransactionType } from "@/domain/entities/financial";
 import { cn } from "@/lib/utils";
 import {
@@ -53,6 +54,7 @@ type ViewMode = 'day' | 'week' | 'month';
 
 export function TransactionSummary({ transactions }: TransactionSummaryProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('day');
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const { 
         balance, 
@@ -165,9 +167,47 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
     };
 
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 sm:p-6 flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center">
+        <div className="flex flex-col gap-3">
+            {/* Mobile Accordion Toggle */}
+            <div 
+                className={cn(
+                    "sm:hidden relative flex items-center justify-between py-3 px-4 rounded-[1.25rem] border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent shadow-lg shadow-black/20 cursor-pointer transition-all active:scale-[0.98]",
+                    isExpanded ? "bg-white/[0.02] border-white/15" : "hover:bg-white/[0.06]"
+                )}
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-t-[1.25rem]" aria-hidden="true" />
+                <div className="flex items-center gap-3 relative z-10">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-accent-primary/20 to-accent-primary/5 border border-accent-primary/20 text-accent-primary shadow-inner">
+                        <BarChart2 className="w-4.5 h-4.5" />
+                    </div>
+                    <div className="flex flex-col justify-center gap-1.5">
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-lg font-bold tracking-tight leading-none text-white/90">Balance</span>
+                            <span className={cn(
+                                "text-lg font-bold tracking-tight leading-none", 
+                                balance > 0 ? "text-emerald-400" : balance < 0 ? "text-rose-400" : "text-white/90"
+                            )}>
+                                {balanceStr}
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-medium leading-none uppercase tracking-wider">
+                            Resumen Visual <span className="opacity-60 normal-case tracking-normal ml-1">({transactions.length} reg)</span>
+                        </p>
+                    </div>
+                </div>
+                <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-white/5 border border-white/10 shadow-sm">
+                    <ChevronDown className={cn("w-4 h-4 text-white/70 transition-transform duration-300", isExpanded && "rotate-180")} />
+                </div>
+            </div>
 
-            {/* ── LEFT SIDE: BALANCE NETO (DONUT CHART) ── */}
+            {/* Content (Hidden on mobile by default) */}
+            <div className={cn(
+                "relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 sm:p-6 flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center transition-all duration-300",
+                isExpanded ? "flex animate-in fade-in slide-in-from-top-4" : "hidden sm:flex"
+            )}>
+
+                {/* ── LEFT SIDE: BALANCE NETO (DONUT CHART) ── */}
             <div className="relative z-10 flex flex-col items-center justify-center lg:w-auto lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8">
                 
                 <div className="relative w-44 h-44 flex-shrink-0 mx-auto">
@@ -224,10 +264,10 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
             </div>
 
             {/* ── RIGHT SIDE: BREAKDOWN CHART ── */}
-            <div className="relative z-10 flex flex-col w-full flex-1 h-40 sm:h-44 lg:h-44 justify-between">
+            <div className="relative z-10 flex flex-col w-full flex-1 sm:h-44 lg:h-44 justify-between">
                 {/* Header (Legend + Select) */}
-                <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground">
+                <div className="flex justify-between items-start sm:items-center mb-4 sm:mb-2 gap-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
                             <span>Ingresos</span>
@@ -255,7 +295,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 </div>
                 
                 {/* Chart Area */}
-                <div className="flex-1 w-full -ml-4">
+                <div className="w-full -ml-4 h-[180px] sm:h-auto sm:flex-1">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                             <defs>
@@ -333,6 +373,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 </div>
             </div>
 
+            </div>
         </div>
     );
 }
