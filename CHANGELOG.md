@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Financial Module**:
+  - Restructured `ScannerManager` UI for mobile responsiveness, changing execution history cards to a compact, collapsible accordion layout.
+  - Replaced `Tooltip` with `Popover` for failed execution details to guarantee touch compatibility on mobile devices.
+  - Limited recommended scan ranges to two items on mobile views for cleaner layout.
+  - Refined `TransactionSummary` and `TransactionFilters` colors to support both light and dark mode securely using theme tokens.
+  - Improved `TransactionCard` layout by positioning action buttons side-by-side horizontally and updating context button texts.
+  - Added "Balance" label next to the balance amount in transaction cards.
+
 ### Added
 - **Financial Module**:
   - Added full transaction management module including income, expense, and transfer tracking.
