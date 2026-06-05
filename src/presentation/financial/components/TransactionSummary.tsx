@@ -182,12 +182,15 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                         <BarChart2 className="w-4.5 h-4.5" />
                     </div>
                     <div className="flex flex-col justify-center gap-1.5">
-                        <span className={cn(
-                            "text-lg font-bold tracking-tight leading-none", 
-                            balance > 0 ? "text-emerald-400" : balance < 0 ? "text-rose-400" : "text-white/90"
-                        )}>
-                            {balanceStr}
-                        </span>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-lg font-bold tracking-tight leading-none text-white/90">Balance</span>
+                            <span className={cn(
+                                "text-lg font-bold tracking-tight leading-none", 
+                                balance > 0 ? "text-emerald-400" : balance < 0 ? "text-rose-400" : "text-white/90"
+                            )}>
+                                {balanceStr}
+                            </span>
+                        </div>
                         <p className="text-[10px] text-muted-foreground font-medium leading-none uppercase tracking-wider">
                             Resumen Visual <span className="opacity-60 normal-case tracking-normal ml-1">({transactions.length} reg)</span>
                         </p>
