@@ -31,6 +31,7 @@ Plataforma de control de procesos personales cotidianos. Gestiona tus gastos, su
 - **Bandeja de Entrada**: Procesamiento de transacciones escaneadas automáticamente desde notificaciones bancarias.
 - **Línea de Tiempo**: Visualización cronológica de transacciones con filtros avanzados y sincronización en tiempo real.
 - **Auditoría y Trazabilidad**: Control riguroso del ciclo de vida y estados de las transacciones (Pendiente, Completado, Archivado).
+- **Escáner Financiero**: Interfaz responsiva para ejecución y monitoreo de escaneos de transacciones manuales o automáticos con histórico detallado.
 
 ### 👤 Perfil de Usuario
 - **Gestión Integral**: Personalización de perfil, cambio de contraseña y gestión de datos personales.
