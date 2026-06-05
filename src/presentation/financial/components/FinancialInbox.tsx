@@ -489,7 +489,7 @@ export function FinancialInbox() {
                             )}
                             <h3 className="text-base font-semibold tracking-tight sm:text-lg">Escaneos por confirmar</h3>
                             <p className="max-w-md text-xs text-muted-foreground sm:text-sm">
-                                Prioriza monto, institución y fecha para revisar más rápido.
+                                Revisa y confirma las transacciones extraídas automáticamente de tus comprobantes.
                             </p>
                         </div>
                         <div className="sm:hidden text-muted-foreground flex-shrink-0 ml-4">
