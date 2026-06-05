@@ -474,8 +474,8 @@ export function FinancialInbox() {
         <div className="space-y-5">
             <Card className="rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5">
                 <CardContent className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-4 px-4 py-4 sm:px-5">
-                    <div 
-                        className="flex items-center justify-between cursor-pointer sm:cursor-default w-full sm:w-auto flex-1" 
+                    <div
+                        className="flex items-center justify-between cursor-pointer sm:cursor-default w-full sm:w-auto flex-1"
                         onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
                     >
                         <div className="space-y-1 flex-1">
@@ -489,7 +489,7 @@ export function FinancialInbox() {
                             )}
                             <h3 className="text-base font-semibold tracking-tight sm:text-lg">Escaneos por confirmar</h3>
                             <p className="max-w-md text-xs text-muted-foreground sm:text-sm">
-                                Revisa y confirma las transacciones extraídas automáticamente de tus comprobantes.
+                                Revisa y confirma o ejecuta un nuevo escaneo.
                             </p>
                         </div>
                         <div className="sm:hidden text-muted-foreground flex-shrink-0 ml-4">
