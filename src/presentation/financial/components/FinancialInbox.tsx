@@ -89,6 +89,44 @@ function formatDate(value?: string | null) {
     }).format(new Date(value));
 }
 
+function formatTime(value?: string | null) {
+    if (!value) {
+        return "--:--";
+    }
+
+    return new Intl.DateTimeFormat("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(new Date(value));
+}
+
+function formatDateLabel(dateStr: string): string {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return "Hoy";
+    if (date.toDateString() === yesterday.toDateString()) return "Ayer";
+
+    return date.toLocaleDateString("es-ES", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function groupTransactionsByDate(transactions: FinancialScannerTransaction[], editStates: Record<string, EditState>) {
+    const groups: Record<string, FinancialScannerTransaction[]> = {};
+
+    transactions.forEach(t => {
+        const dateStr = editStates[t.id!]?.date || t.date || t.createdAt;
+        const dateKey = dateStr ? formatDateLabel(dateStr) : "Fecha no detectada";
+        if (!groups[dateKey]) {
+            groups[dateKey] = [];
+        }
+        groups[dateKey].push(t);
+    });
+
+    return groups;
+}
+
 function InboxSkeleton() {
     return (
         <div className="space-y-4">
@@ -429,6 +467,8 @@ export function FinancialInbox() {
         );
     }
 
+    const groupedTransactions = groupTransactionsByDate(filteredTransactions, editStates);
+
     return (
         <div className="space-y-5">
             <Card className="rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5">
@@ -474,8 +514,14 @@ export function FinancialInbox() {
                 </CardContent>
             </Card>
 
-            <section className="grid gap-3">
-                {filteredTransactions.map((tx, index) => {
+            <section className="flex flex-col gap-6">
+                {Object.entries(groupedTransactions).map(([dateLabel, items]) => (
+                    <div key={dateLabel} className="flex flex-col gap-3">
+                        <h3 className="text-sm font-medium text-muted-foreground tracking-tight sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10">
+                            {dateLabel}
+                        </h3>
+                        <div className="grid gap-4 items-start grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                            {items.map((tx, index) => {
                     const isProcessing = processingId === tx.id;
                     const editing = isEditing[tx.id!] || false;
                     const expanded = expandedStates[tx.id!] || false;
@@ -492,7 +538,7 @@ export function FinancialInbox() {
                             key={tx.id}
                             className={cn(
                                 "group relative overflow-hidden rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                                "flex flex-col h-fit",
+                                "flex flex-col h-full",
                                 isProcessing && "opacity-60 pointer-events-none"
                             )}
                         >
@@ -500,61 +546,90 @@ export function FinancialInbox() {
                             
                             <CardHeader 
                                 className={cn(
-                                    "flex-row w-full items-center !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
+                                    "flex flex-col flex-1 h-full w-full !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
                                     (expanded || editing) && "border-b border-border/50",
                                     !editing && "cursor-pointer hover:bg-bg-secondary"
                                 )}
                                 onClick={() => { if(!editing) toggleExpanded(tx.id!) }}
                             >
-                                <div className="flex w-full items-center justify-between gap-3 min-w-0">
-                                    {/* LEFT SIDE */}
-                                    <div className="flex flex-col flex-1 min-w-0 gap-1.5">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className="text-[10px] font-medium text-foreground whitespace-nowrap opacity-60">
-                                                # {String(index + 1).padStart(2, "0")}
-                                            </span>
-                                            <Badge variant="warning" className="rounded-full px-2 py-0 text-[9px] uppercase tracking-[0.1em] shrink-0">
-                                                Pendiente
-                                            </Badge>
-                                            {tx.relatedTransactionHint && (
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <button
-                                                            type="button"
-                                                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-warning-text/25 bg-warning-bg text-warning-text transition-colors hover:bg-warning-bg/80 focus-visible:outline-none"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            <CircleAlert className="h-3 w-3" />
-                                                        </button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent align="start" className="w-72 rounded-2xl border-warning-text/20 bg-bg-secondary p-3 text-sm">
-                                                        <div className="flex items-start gap-2">
-                                                            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-text" />
-                                                            <p>Posible relación: {tx.relatedTransactionHint}</p>
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-                                            )}
+                                <div className="flex flex-col w-full h-full justify-between gap-2">
+                                    <div className="flex w-full items-start justify-between gap-3 min-w-0">
+                                        {/* LEFT SIDE (Top) */}
+                                        <div className="flex flex-col flex-1 min-w-0 gap-1">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <Badge variant="warning" className="rounded-full px-2 py-0 text-[9px] uppercase tracking-[0.1em] shrink-0">
+                                                    Pendiente
+                                                </Badge>
+                                                {tx.relatedTransactionHint && (
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <button
+                                                                type="button"
+                                                                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-warning-text/25 bg-warning-bg text-warning-text transition-colors hover:bg-warning-bg/80 focus-visible:outline-none"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <CircleAlert className="h-3 w-3" />
+                                                            </button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent align="start" className="w-72 rounded-2xl border-warning-text/20 bg-bg-secondary p-3 text-sm">
+                                                            <div className="flex items-start gap-2">
+                                                                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-text" />
+                                                                <p>Posible relación: {tx.relatedTransactionHint}</p>
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center gap-2 min-w-0 w-full mt-1">
+                                                {editing ? (
+                                                    <Input
+                                                        value={editStates[tx.id!]?.merchant || ""}
+                                                        onChange={(event) => updateEditState(tx.id!, "merchant", event.target.value)}
+                                                        placeholder="Institución"
+                                                        className="h-7 text-sm font-semibold border-border/50 bg-bg-primary w-full"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                ) : (
+                                                    <CardTitle className="text-sm sm:text-base tracking-tight font-semibold break-words whitespace-normal leading-tight w-full" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
+                                                        {editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}
+                                                    </CardTitle>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        <div className="flex items-center gap-2 min-w-0">
+                                        {/* RIGHT SIDE (Top) */}
+                                        <div className="flex flex-col items-end shrink-0 pt-0.5">
                                             {editing ? (
-                                                <Input
-                                                    value={editStates[tx.id!]?.merchant || ""}
-                                                    onChange={(event) => updateEditState(tx.id!, "merchant", event.target.value)}
-                                                    placeholder="Institución"
-                                                    className="h-7 text-sm font-semibold border-border/50 bg-bg-primary w-full max-w-[200px]"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
+                                                <div className="flex items-center justify-end gap-1 overflow-hidden max-w-[120px]">
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={editStates[tx.id!]?.amount ?? ""}
+                                                        onChange={(e) => updateEditState(tx.id!, "amount", e.target.value ? parseFloat(e.target.value) : null)}
+                                                        className="h-7 w-20 text-right font-semibold text-xs border-border/50 bg-bg-primary px-2"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                </div>
                                             ) : (
-                                                <CardTitle className="text-base sm:text-lg tracking-tight truncate font-semibold" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
-                                                    {editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}
-                                                </CardTitle>
+                                                <span
+                                                    className={cn(
+                                                        "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap",
+                                                        isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : "text-amber-500"
+                                                    )}
+                                                    title={formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
+                                                >
+                                                    {isIncome ? "+" : isExpense ? "-" : ""}
+                                                    {formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
+                                                </span>
                                             )}
                                         </div>
+                                    </div>
 
-                                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0 mt-0.5">
-                                            <span className="flex items-center gap-1 shrink-0">
+                                    {/* BOTTOM SIDE (Time, Context & Actions) */}
+                                    <div className="flex w-full items-center justify-between mt-1 pt-3 border-t border-border/40 gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
                                                 <Clock className="h-3 w-3 opacity-70" />
                                                 {editing ? (
                                                     <Input
@@ -565,89 +640,29 @@ export function FinancialInbox() {
                                                         onClick={(e) => e.stopPropagation()}
                                                     />
                                                 ) : (
-                                                    <span className="truncate">
-                                                        {editStates[tx.id!]?.date ? formatDate(editStates[tx.id!]!.date) : "Fecha no detectada"}
-                                                    </span>
-                                                )}
-                                            </span>
-
-                                            <span className="w-1 h-1 rounded-full bg-border shrink-0" />
-
-                                            <span className="flex items-center gap-1 shrink-0">
-                                                {editing ? (
-                                                    <Select
-                                                        value={editStates[tx.id!]?.type || DEFAULT_TRANSACTION_TYPE}
-                                                        onValueChange={(value) => updateEditState(tx.id!, "type", value)}
-                                                    >
-                                                        <SelectTrigger className="h-6 text-[10px] py-0 px-2 border-border/50 bg-bg-primary shadow-none w-28" onClick={(e) => e.stopPropagation()}>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {TYPE_OPTIONS.map((option) => (
-                                                                <SelectItem key={option.value} value={option.value}>
-                                                                    {option.label}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                ) : (
-                                                    <span className={cn(
-                                                        "font-medium truncate",
-                                                        isIncome ? "text-emerald-500/80" : isExpense ? "text-rose-500/80" : "text-amber-500/80"
-                                                    )}>
-                                                        {typeLabel}
+                                                    <span className="truncate font-medium">
+                                                        {editStates[tx.id!]?.date ? formatTime(editStates[tx.id!]!.date) : "--:--"}
                                                     </span>
                                                 )}
                                             </span>
 
                                             {!editing && (
-                                                <>
-                                                    <span className="w-1 h-1 rounded-full bg-border shrink-0 hidden sm:block" />
-                                                    <span className="hidden sm:flex items-center gap-1 font-medium hover:text-foreground transition-colors truncate">
-                                                        {expanded ? (
-                                                            <><ChevronUp className="h-3 w-3 shrink-0" /> <span className="truncate">Ocultar contexto</span></>
-                                                        ) : (
-                                                            <><ChevronDown className="h-3 w-3 shrink-0" /> <span className="truncate">Ver contexto</span></>
-                                                        )}
-                                                    </span>
-                                                </>
+                                                <span className="flex items-center gap-1 text-xs font-semibold hover:text-foreground transition-colors shrink-0 text-muted-foreground cursor-pointer">
+                                                    {expanded ? (
+                                                        <><ChevronUp className="h-3.5 w-3.5 shrink-0" /> <span>Ocultar</span></>
+                                                    ) : (
+                                                        <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span>Contexto</span></>
+                                                    )}
+                                                </span>
                                             )}
                                         </div>
-                                    </div>
-
-                                    {/* RIGHT SIDE */}
-                                    <div className="flex flex-col items-end shrink-0 gap-2">
-                                        {editing ? (
-                                            <div className="flex items-center justify-end gap-1 overflow-hidden max-w-[140px]">
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editStates[tx.id!]?.amount ?? ""}
-                                                    onChange={(e) => updateEditState(tx.id!, "amount", e.target.value ? parseFloat(e.target.value) : null)}
-                                                    className="h-7 w-20 text-right font-semibold text-xs border-border/50 bg-bg-primary px-2"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
-                                                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium shrink-0">{tx.currency || "USD"}</span>
-                                            </div>
-                                        ) : (
-                                            <span
-                                                className={cn(
-                                                    "text-sm sm:text-base font-semibold tracking-tight whitespace-nowrap",
-                                                    isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : "text-amber-500"
-                                                )}
-                                                title={formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
-                                            >
-                                                {isIncome ? "+" : isExpense ? "-" : ""}
-                                                {formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
-                                            </span>
-                                        )}
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                                             <Button
                                                 variant="ghost"
-                                                size="sm"
-                                                className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0 transition-colors"
                                                 disabled={isProcessing}
                                                 asChild
                                             >
@@ -662,7 +677,7 @@ export function FinancialInbox() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-7 px-2 rounded-full text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                                                        className="h-8 px-3 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
                                                         onClick={() => cancelEdit(tx.id!, tx)}
                                                         disabled={isProcessing}
                                                     >
@@ -670,11 +685,11 @@ export function FinancialInbox() {
                                                     </Button>
                                                     <Button
                                                         size="sm"
-                                                        className="h-7 px-2.5 rounded-full text-[10px] font-medium bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90"
+                                                        className="h-8 px-3 rounded-full text-xs font-semibold bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90 transition-colors"
                                                         onClick={() => toggleEdit(tx.id!)}
                                                         disabled={isProcessing}
                                                     >
-                                                        <Check className="h-3 w-3 mr-1" />
+                                                        <Check className="h-3.5 w-3.5 mr-1" />
                                                         Listo
                                                     </Button>
                                                 </>
@@ -682,18 +697,8 @@ export function FinancialInbox() {
                                                 <>
                                                     <Button
                                                         variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0"
-                                                        onClick={() => toggleEdit(tx.id!)}
-                                                        disabled={isProcessing}
-                                                        title="Editar"
-                                                    >
-                                                        <Edit2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 shrink-0"
+                                                        size="icon"
+                                                        className="h-8 w-8 rounded-full text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 shrink-0 transition-colors"
                                                         onClick={() => handleDismiss(tx.id!)}
                                                         disabled={isProcessing}
                                                         title="Descartar"
@@ -701,16 +706,16 @@ export function FinancialInbox() {
                                                         <X className="h-4 w-4" />
                                                     </Button>
                                                     <Button
-                                                        size="sm"
-                                                        className="h-7 px-2.5 rounded-full text-[10px] font-medium transition-colors"
+                                                        size="icon"
+                                                        className="h-8 w-8 rounded-full bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90 transition-colors shrink-0"
                                                         onClick={() => handleConfirm(tx)}
                                                         disabled={isProcessing}
+                                                        title="Confirmar"
                                                     >
-                                                        {isProcessing ? "..." : (
-                                                            <>
-                                                                <Check className="h-3 w-3 sm:mr-1" />
-                                                                <span className="hidden sm:inline">Confirmar</span>
-                                                            </>
+                                                        {isProcessing ? (
+                                                            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                                        ) : (
+                                                            <Check className="h-4 w-4" />
                                                         )}
                                                     </Button>
                                                 </>
@@ -746,6 +751,9 @@ export function FinancialInbox() {
                         </Card>
                     );
                 })}
+                        </div>
+                    </div>
+                ))}
             </section>
         </div>
     );
