@@ -218,7 +218,7 @@ export function InstitutionManager({ initialData, institutionTypes }: Institutio
                                             <p className="text-xs text-muted-foreground mt-0.5 capitalize">{label}</p>
                                         </div>
                                     </div>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10" onClick={() => handleOpenDialog(inst)}>
                                             <Edit2 className="w-4 h-4" />
                                         </Button>
