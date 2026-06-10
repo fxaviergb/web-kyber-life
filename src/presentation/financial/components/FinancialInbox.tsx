@@ -571,13 +571,13 @@ export function FinancialInbox() {
 
                                         <CardHeader
                                             className={cn(
-                                                "flex flex-col !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors h-[160px]",
+                                                "flex flex-col !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors h-44",
                                                 (expanded || editing) && "border-b border-border/50",
                                                 !editing && "cursor-pointer hover:bg-bg-secondary"
                                             )}
                                             onClick={() => { if (!editing) toggleExpanded(tx.id!) }}
                                         >
-                                            <div className="flex flex-col w-full h-full justify-between">
+                                            <div className="flex flex-col w-full h-full justify-between gap-2">
                                                 <div className="flex flex-col w-full gap-2">
                                                     {/* TOP ROW: Badge + Amount */}
                                                     <div className="flex w-full items-start justify-between gap-3 min-w-0">
