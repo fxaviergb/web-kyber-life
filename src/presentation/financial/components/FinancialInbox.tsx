@@ -680,13 +680,22 @@ export function FinancialInbox() {
                                                         </span>
 
                                                         {!editing && (
-                                                            <span className="flex items-center gap-1 text-xs font-semibold hover:text-foreground transition-colors shrink-0 text-muted-foreground cursor-pointer">
-                                                                {expanded ? (
-                                                                    <><ChevronUp className="h-3.5 w-3.5 shrink-0" /> <span>Ocultar</span></>
-                                                                ) : (
-                                                                    <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span>Resumen</span></>
+                                                            <button 
+                                                                type="button"
+                                                                title={expanded ? "Ocultar detalles" : "Ver resumen inteligente"}
+                                                                className={cn(
+                                                                    "flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full transition-all shrink-0 active:scale-95",
+                                                                    expanded 
+                                                                        ? "bg-bg-primary text-muted-foreground hover:text-foreground border border-border/50" 
+                                                                        : "bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-pink-500 text-white shadow-sm shadow-fuchsia-500/30 hover:shadow-md hover:shadow-fuchsia-500/40 hover:scale-105"
                                                                 )}
-                                                            </span>
+                                                            >
+                                                                {expanded ? (
+                                                                    <ChevronUp className="h-4 w-4 shrink-0" />
+                                                                ) : (
+                                                                    <Sparkles className="h-4 w-4 shrink-0" />
+                                                                )}
+                                                            </button>
                                                         )}
                                                     </div>
 
