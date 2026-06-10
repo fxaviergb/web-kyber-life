@@ -217,23 +217,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
     return (
         <Card className="w-full border-border/50 shadow-sm transition-all duration-200 bg-card">
-            <CardHeader className="border-b border-border/50 pb-3 sm:pb-4 px-4 sm:px-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">
-                    <div className="w-full flex flex-wrap items-center justify-between sm:justify-start gap-2">
-                        <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                            Registro de Escaneo
-                        </CardTitle>
-                        <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono text-[10px] sm:text-xs">
-                                ID: {initialData.id?.slice(0, 8)}...
-                            </Badge>
-                            <Badge variant="outline" className="uppercase text-[10px] tracking-wider shrink-0">
-                                {initialData.status}
-                            </Badge>
-                        </div>
-                    </div>
-                </div>
-            </CardHeader>
+
 
             <CardContent className="p-4 sm:p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
