@@ -53,14 +53,29 @@ const normalizeForMatch = (str?: string | null) => {
     }
 };
 
+function extractSummary(tx: FinancialScannerTransaction): string {
+    const s = tx.summary?.trim();
+    if (s && s !== "null" && s !== "undefined") {
+        return s;
+    }
+
+    const stats = tx.originStats as Record<string, unknown> | null | undefined;
+
+    const emailBody = typeof stats?.emailBody === "string" ? stats.emailBody.trim() : "";
+    if (emailBody) return `[MAIL] ${emailBody}`;
+
+    const snippet = typeof stats?.snippet === "string" ? stats.snippet.trim() : "";
+    if (snippet) return `[SNIPPET] ${snippet}`;
+
+    return "";
+}
+
 export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
     const router = useRouter();
     const [isProcessing, setIsProcessing] = useState(false);
 
     const [formData, setFormData] = useState(() => {
-        const originContext = initialData.originStats?.emailBody || initialData.originStats?.snippet || "";
-        const fallbackContext = initialData.description || "";
-        const defaultNotes = originContext || fallbackContext;
+        const defaultNotes = extractSummary(initialData) || initialData.description || "";
 
         return {
             type: normalizeType(initialData.type),

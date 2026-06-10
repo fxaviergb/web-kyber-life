@@ -79,13 +79,18 @@ function formatTime(dateStr: string): string {
 
 /**
  * Extract the best available context from a transaction.
- * Priority: originStats.emailBody → originStats.snippet → notes
+ * Priority: notes → originStats.emailBody → originStats.snippet
  */
 function extractContext(tx: FinancialTransaction): string {
+    if (tx.notes) return tx.notes;
     const stats = tx.originStats as Record<string, unknown> | null | undefined;
     const emailBody = stats?.emailBody as string | undefined;
     const snippet = stats?.snippet as string | undefined;
-    return emailBody || snippet || tx.notes || "";
+    
+    if (emailBody) return `[MAIL] ${emailBody}`;
+    if (snippet) return `[MAIL] ${snippet}`;
+    
+    return "";
 }
 
 // ─── Component ────────────────────────────────────────────────
@@ -99,7 +104,9 @@ export function TransactionCard({
     const [isExpanded, setIsExpanded] = useState(false);
 
     const isIncome = ["INCOME", "DEPOSIT", "REFUND"].includes(transaction.type);
-    const isExpense = ["EXPENSE", "PAYMENT", "WITHDRAWAL", "FEE", "TAX", "SUBSCRIPTION"].includes(transaction.type);
+    const isExpense = ["EXPENSE", "PAYMENT", "FEE", "TAX", "SUBSCRIPTION"].includes(transaction.type);
+    const isWithdrawal = transaction.type === "WITHDRAWAL";
+    const isNegative = isExpense || isWithdrawal;
     const typeLabel = TYPE_LABELS[transaction.type] ?? transaction.type;
     const displayContext = extractContext(transaction);
     const hasContext = displayContext.trim().length > 0;
@@ -178,7 +185,7 @@ export function TransactionCard({
                                         {isExpanded ? (
                                             <><ChevronUp className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Ocultar</span></>
                                         ) : (
-                                            <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Contexto</span></>
+                                            <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Resumen</span></>
                                         )}
                                     </span>
                                 </>
@@ -190,11 +197,11 @@ export function TransactionCard({
                         <span
                             className={cn(
                                 "text-sm sm:text-base font-semibold tracking-tight whitespace-nowrap",
-                                isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : "text-amber-500"
+                                isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : isWithdrawal ? "text-indigo-400" : "text-amber-500"
                             )}
                             title={formatAmount(transaction.amount, transaction.currency)}
                         >
-                            {isIncome ? "+" : isExpense ? "-" : ""}
+                            {isIncome ? "+" : isNegative ? "-" : ""}
                             {formatAmount(transaction.amount, transaction.currency)}
                         </span>
 
@@ -257,11 +264,11 @@ export function TransactionCard({
                     <div className="rounded-xl bg-bg-primary/50 p-3.5 border-none">
                         <div className="mb-2 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                             <Sparkles className="h-3.5 w-3.5 text-accent-primary shrink-0" />
-                            Contexto extraído
+                            Resumen
                         </div>
                         <div className="w-full max-w-full overflow-hidden">
                             <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap break-words [word-break:break-word]">
-                                {displayContext || "Sin contexto disponible para esta transacción."}
+                                {displayContext || "Sin resumen disponible para esta transacción."}
                             </p>
                         </div>
                     </div>

@@ -66,14 +66,22 @@ function formatAmount(amount?: number | null, currency = "USD") {
 
 /**
  * Extract the best available summary from a scanner transaction.
- * Priority: tx.summary → originStats.emailBody → originStats.snippet → description
+ * Priority: summary → originStats.emailBody → originStats.snippet
  */
 function extractSummary(tx: FinancialScannerTransaction): string {
-    if (tx.summary) return tx.summary;
+    if (tx.summary && tx.summary.trim() !== "") {
+        return tx.summary;
+    }
     const stats = tx.originStats as Record<string, unknown> | null | undefined;
     const emailBody = stats?.emailBody as string | undefined;
+    if (emailBody && emailBody.trim() !== "") {
+        return `[MAIL] ${emailBody}`;
+    }
     const snippet = stats?.snippet as string | undefined;
-    return emailBody || snippet || tx.description || "";
+    if (snippet && snippet.trim() !== "") {
+        return `[SNIPPET] ${snippet}`;
+    }
+    return "";
 }
 
 function formatDate(value?: string | null) {
@@ -542,7 +550,7 @@ export function FinancialInbox() {
                                 const isIncome = txType === "INCOME";
                                 const isExpense = txType === "EXPENSE";
                                 const typeLabel = TYPE_OPTIONS.find(o => o.value === txType)?.label || "Gasto";
-                                const displayContext = editStates[tx.id!]?.summary || "Sin resumen disponible para este escaneo.";
+                                const displaySummary = editStates[tx.id!]?.summary || "Sin resumen disponible para este escaneo.";
 
 
                                 return (
@@ -550,7 +558,7 @@ export function FinancialInbox() {
                                         key={tx.id}
                                         className={cn(
                                             "group relative overflow-hidden rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                                            "flex flex-col h-full",
+                                            "flex flex-col",
                                             isProcessing && "opacity-60 pointer-events-none"
                                         )}
                                     >
@@ -558,16 +566,16 @@ export function FinancialInbox() {
 
                                         <CardHeader
                                             className={cn(
-                                                "flex flex-col flex-1 h-full w-full !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
+                                                "flex flex-col !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
                                                 (expanded || editing) && "border-b border-border/50",
                                                 !editing && "cursor-pointer hover:bg-bg-secondary"
                                             )}
                                             onClick={() => { if (!editing) toggleExpanded(tx.id!) }}
                                         >
-                                            <div className="flex flex-col w-full h-full justify-between gap-2">
-                                                <div className="flex w-full items-start justify-between gap-3 min-w-0">
-                                                    {/* LEFT SIDE (Top) */}
-                                                    <div className="flex flex-col flex-1 min-w-0 gap-1">
+                                            <div className="flex flex-col w-full h-full justify-between gap-3">
+                                                <div className="flex flex-col w-full gap-2">
+                                                    {/* TOP ROW: Badge + Amount */}
+                                                    <div className="flex w-full items-start justify-between gap-3 min-w-0">
                                                         <div className="flex items-center gap-2 min-w-0">
                                                             <Badge variant="warning" className="rounded-full px-2 py-0 text-[9px] uppercase tracking-[0.1em] shrink-0">
                                                                 Pendiente
@@ -592,11 +600,43 @@ export function FinancialInbox() {
                                                                 </Popover>
                                                             )}
                                                         </div>
+                                                        
+                                                        <div className="flex flex-col items-end shrink-0">
+                                                            {editing ? (
+                                                                <div className="flex items-center justify-end gap-1 overflow-hidden max-w-[120px]">
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={editStates[tx.id!]?.amount ?? ""}
+                                                                        onChange={(e) => updateEditState(tx.id!, "amount", e.target.value ? parseFloat(e.target.value) : null)}
+                                                                        className="h-7 w-20 text-right font-semibold text-xs border-border/50 bg-bg-primary px-2"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <span
+                                                                    className={cn(
+                                                                        "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap",
+                                                                        isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : "text-amber-500"
+                                                                    )}
+                                                                    title={formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
+                                                                >
+                                                                    {isIncome ? "+" : isExpense ? "-" : ""}
+                                                                    {formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
 
-                                                        <div className="flex flex-col gap-0.5 min-w-0 w-full mt-1">
-                                                            <CardTitle className="text-sm sm:text-base tracking-tight font-semibold break-words whitespace-normal leading-tight w-full" title={tx.description || "Transacción"}>
-                                                                {tx.description || "Transacción"}
-                                                            </CardTitle>
+                                                    {/* TITLE & MERCHANT (Full Width) */}
+                                                    <div className="flex flex-col w-full gap-1">
+                                                        <CardTitle 
+                                                            className="text-sm sm:text-base tracking-tight font-semibold line-clamp-2 h-10 leading-tight w-full" 
+                                                            title={tx.description || "Transacción"}
+                                                        >
+                                                            {tx.description || "Transacción"}
+                                                        </CardTitle>
+                                                        <div className="flex items-center min-w-0 w-full text-xs text-muted-foreground min-h-[1.5rem]">
                                                             {editing ? (
                                                                 <Input
                                                                     value={editStates[tx.id!]?.merchant || ""}
@@ -606,38 +646,11 @@ export function FinancialInbox() {
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 />
                                                             ) : (
-                                                                <p className="text-xs text-muted-foreground font-medium break-words whitespace-normal leading-tight w-full" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
+                                                                <span className="truncate w-full block" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
                                                                     {editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}
-                                                                </p>
+                                                                </span>
                                                             )}
                                                         </div>
-                                                    </div>
-
-                                                    {/* RIGHT SIDE (Top) */}
-                                                    <div className="flex flex-col items-end shrink-0 pt-0.5">
-                                                        {editing ? (
-                                                            <div className="flex items-center justify-end gap-1 overflow-hidden max-w-[120px]">
-                                                                <Input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    value={editStates[tx.id!]?.amount ?? ""}
-                                                                    onChange={(e) => updateEditState(tx.id!, "amount", e.target.value ? parseFloat(e.target.value) : null)}
-                                                                    className="h-7 w-20 text-right font-semibold text-xs border-border/50 bg-bg-primary px-2"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <span
-                                                                className={cn(
-                                                                    "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap",
-                                                                    isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : "text-amber-500"
-                                                                )}
-                                                                title={formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
-                                                            >
-                                                                {isIncome ? "+" : isExpense ? "-" : ""}
-                                                                {formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
-                                                            </span>
-                                                        )}
                                                     </div>
                                                 </div>
 
@@ -666,7 +679,7 @@ export function FinancialInbox() {
                                                                 {expanded ? (
                                                                     <><ChevronUp className="h-3.5 w-3.5 shrink-0" /> <span>Ocultar</span></>
                                                                 ) : (
-                                                                    <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span>Contexto</span></>
+                                                                    <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span>Resumen</span></>
                                                                 )}
                                                             </span>
                                                         )}
@@ -740,7 +753,7 @@ export function FinancialInbox() {
                                             </div>
                                         </CardHeader>
 
-                                        {/* Expanded Area for Context */}
+                                        {/* Expanded Area for Resumen */}
                                         {(expanded || editing) && (
                                             <CardContent className="space-y-4 px-4 py-3 sm:px-5 animate-in slide-in-from-top-2 duration-200">
                                                 <div className="rounded-xl bg-bg-primary/50 p-3.5 border-none">
@@ -757,7 +770,7 @@ export function FinancialInbox() {
                                                         />
                                                     ) : (
                                                         <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap break-words [word-break:break-word]">
-                                                            {displayContext}
+                                                            {displaySummary}
                                                         </p>
                                                     )}
                                                 </div>
