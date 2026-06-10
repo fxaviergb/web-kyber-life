@@ -19,6 +19,7 @@ const TYPE_OPTIONS = [
     { value: "EXPENSE", label: "Gasto" },
     { value: "INCOME", label: "Ingreso" },
     { value: "TRANSFER", label: "Transferencias propias" },
+    { value: "WITHDRAWAL", label: "Retiro" },
 ] as const;
 
 interface ScanDetailsFormProps {
@@ -30,6 +31,7 @@ function getBadgeVariant(type?: string | null) {
         case "INCOME":
             return "success";
         case "EXPENSE":
+        case "WITHDRAWAL":
             return "danger";
         case "TRANSFER":
             return "warning";

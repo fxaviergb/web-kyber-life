@@ -28,6 +28,7 @@ const TYPE_OPTIONS = [
     { value: "EXPENSE", label: "Gasto" },
     { value: "INCOME", label: "Ingreso" },
     { value: "TRANSFER", label: "Transferencias propias" },
+    { value: "WITHDRAWAL", label: "Retiro" },
 ] as const;
 
 const DEFAULT_TRANSACTION_TYPE = "EXPENSE";
@@ -257,6 +258,10 @@ export function FinancialInbox() {
 
                 return [...newTransactions, ...existingTransactions];
             })();
+
+            console.log("=== REGISTROS DE TRANSACCIONES ESCANEADAS ===");
+            console.log("Nuevos escaneos traídos del backend:", nextTransactions);
+            console.log("Total combinados a mostrar:", resolvedTransactions);
 
             transactionsRef.current = resolvedTransactions;
             setTransactions(resolvedTransactions);
@@ -548,7 +553,7 @@ export function FinancialInbox() {
 
                                 const txType = editStates[tx.id!]?.type || normalizeTransactionType(tx.type);
                                 const isIncome = txType === "INCOME";
-                                const isExpense = txType === "EXPENSE";
+                                const isExpense = txType === "EXPENSE" || txType === "WITHDRAWAL";
                                 const typeLabel = TYPE_OPTIONS.find(o => o.value === txType)?.label || "Gasto";
                                 const displaySummary = editStates[tx.id!]?.summary || "Sin resumen disponible para este escaneo.";
 
@@ -566,13 +571,13 @@ export function FinancialInbox() {
 
                                         <CardHeader
                                             className={cn(
-                                                "flex flex-col !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
+                                                "flex flex-col !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors h-[160px]",
                                                 (expanded || editing) && "border-b border-border/50",
                                                 !editing && "cursor-pointer hover:bg-bg-secondary"
                                             )}
                                             onClick={() => { if (!editing) toggleExpanded(tx.id!) }}
                                         >
-                                            <div className="flex flex-col w-full h-full justify-between gap-3">
+                                            <div className="flex flex-col w-full h-full justify-between">
                                                 <div className="flex flex-col w-full gap-2">
                                                     {/* TOP ROW: Badge + Amount */}
                                                     <div className="flex w-full items-start justify-between gap-3 min-w-0">
@@ -629,14 +634,14 @@ export function FinancialInbox() {
                                                     </div>
 
                                                     {/* TITLE & MERCHANT (Full Width) */}
-                                                    <div className="flex flex-col w-full gap-1">
+                                                    <div className="flex flex-col w-full gap-0.5">
                                                         <CardTitle 
-                                                            className="text-sm sm:text-base tracking-tight font-semibold line-clamp-2 h-10 leading-tight w-full" 
+                                                            className="text-sm sm:text-base tracking-tight font-semibold line-clamp-2 leading-tight w-full" 
                                                             title={tx.description || "Transacción"}
                                                         >
                                                             {tx.description || "Transacción"}
                                                         </CardTitle>
-                                                        <div className="flex items-center min-w-0 w-full text-xs text-muted-foreground min-h-[1.5rem]">
+                                                        <div className="flex items-center min-w-0 w-full text-xs text-muted-foreground">
                                                             {editing ? (
                                                                 <Input
                                                                     value={editStates[tx.id!]?.merchant || ""}
@@ -655,7 +660,7 @@ export function FinancialInbox() {
                                                 </div>
 
                                                 {/* BOTTOM SIDE (Time, Context & Actions) */}
-                                                <div className="flex w-full items-center justify-between mt-1 pt-3 border-t border-border/40 gap-3">
+                                                <div className="flex w-full items-center justify-between mt-auto pt-3 border-t border-border/40 gap-3">
                                                     <div className="flex items-center gap-3 min-w-0">
                                                         <span className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
                                                             <Clock className="h-3 w-3 opacity-70" />

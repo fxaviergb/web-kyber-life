@@ -240,6 +240,7 @@ export function TransactionForm() {
                                     <SelectItem value="EXPENSE">Gasto</SelectItem>
                                     <SelectItem value="INCOME">Ingreso</SelectItem>
                                     <SelectItem value="TRANSFER">Transferencias propias</SelectItem>
+                                    <SelectItem value="WITHDRAWAL">Retiro</SelectItem>
                                     <SelectItem value="SUBSCRIPTION">Suscripción</SelectItem>
                                 </SelectContent>
                             </Select>
