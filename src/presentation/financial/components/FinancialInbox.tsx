@@ -21,7 +21,7 @@ interface EditState {
     merchant: string;
     amount?: number | null;
     date?: string | null;
-    description?: string;
+    summary?: string;
 }
 
 const TYPE_OPTIONS = [
@@ -65,10 +65,11 @@ function formatAmount(amount?: number | null, currency = "USD") {
 }
 
 /**
- * Extract the best available context from a scanner transaction.
- * Priority: originStats.emailBody → originStats.snippet → description
+ * Extract the best available summary from a scanner transaction.
+ * Priority: tx.summary → originStats.emailBody → originStats.snippet → description
  */
-function extractContext(tx: FinancialScannerTransaction): string {
+function extractSummary(tx: FinancialScannerTransaction): string {
+    if (tx.summary) return tx.summary;
     const stats = tx.originStats as Record<string, unknown> | null | undefined;
     const emailBody = stats?.emailBody as string | undefined;
     const snippet = stats?.snippet as string | undefined;
@@ -181,7 +182,7 @@ export function FinancialInbox() {
                 merchant: tx.merchant || "",
                 amount: tx.amount ?? null,
                 date: formatLocalDatetime(tx.date || tx.createdAt),
-                description: extractContext(tx),
+                summary: extractSummary(tx),
             },
         }));
         setIsEditing((prev) => ({ ...prev, [txId]: false }));
@@ -202,7 +203,7 @@ export function FinancialInbox() {
                     merchant: tx.merchant || "",
                     amount: tx.amount ?? null,
                     date: formatLocalDatetime(tx.date || tx.createdAt),
-                    description: extractContext(tx),
+                    summary: extractSummary(tx),
                 };
             });
 
@@ -344,7 +345,7 @@ export function FinancialInbox() {
                 merchant: merchant,
                 amount: amount,
                 date: editState?.date ? new Date(editState.date).toISOString() : undefined,
-                notes: editState?.description || undefined,
+                notes: editState?.summary || undefined,
             });
 
             if (result.success) {
@@ -541,7 +542,7 @@ export function FinancialInbox() {
                                 const isIncome = txType === "INCOME";
                                 const isExpense = txType === "EXPENSE";
                                 const typeLabel = TYPE_OPTIONS.find(o => o.value === txType)?.label || "Gasto";
-                                const displayContext = editStates[tx.id!]?.description || "Sin contexto disponible para este escaneo.";
+                                const displayContext = editStates[tx.id!]?.summary || "Sin resumen disponible para este escaneo.";
 
 
                                 return (
@@ -592,19 +593,22 @@ export function FinancialInbox() {
                                                             )}
                                                         </div>
 
-                                                        <div className="flex items-center gap-2 min-w-0 w-full mt-1">
+                                                        <div className="flex flex-col gap-0.5 min-w-0 w-full mt-1">
+                                                            <CardTitle className="text-sm sm:text-base tracking-tight font-semibold break-words whitespace-normal leading-tight w-full" title={tx.description || "Transacción"}>
+                                                                {tx.description || "Transacción"}
+                                                            </CardTitle>
                                                             {editing ? (
                                                                 <Input
                                                                     value={editStates[tx.id!]?.merchant || ""}
                                                                     onChange={(event) => updateEditState(tx.id!, "merchant", event.target.value)}
                                                                     placeholder="Institución"
-                                                                    className="h-7 text-sm font-semibold border-border/50 bg-bg-primary w-full"
+                                                                    className="h-6 text-xs font-medium border-border/50 bg-bg-primary w-full"
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 />
                                                             ) : (
-                                                                <CardTitle className="text-sm sm:text-base tracking-tight font-semibold break-words whitespace-normal leading-tight w-full" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
+                                                                <p className="text-xs text-muted-foreground font-medium break-words whitespace-normal leading-tight w-full" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
                                                                     {editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}
-                                                                </CardTitle>
+                                                                </p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -742,14 +746,14 @@ export function FinancialInbox() {
                                                 <div className="rounded-xl bg-bg-primary/50 p-3.5 border-none">
                                                     <div className="mb-2 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                                                         <Sparkles className="h-3.5 w-3.5 text-accent-primary shrink-0" />
-                                                        Contexto extraído
+                                                        Resumen
                                                     </div>
                                                     {editing ? (
                                                         <textarea
-                                                            value={editStates[tx.id!]?.description || ""}
-                                                            onChange={(e) => updateEditState(tx.id!, "description", e.target.value)}
+                                                            value={editStates[tx.id!]?.summary || ""}
+                                                            onChange={(e) => updateEditState(tx.id!, "summary", e.target.value)}
                                                             className="w-full min-h-[60px] rounded-lg border border-border/50 bg-bg-secondary p-2.5 text-xs sm:text-sm leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-accent-primary/50 resize-y"
-                                                            placeholder="No hay descripción disponible para este escaneo."
+                                                            placeholder="No hay resumen disponible para este escaneo."
                                                         />
                                                     ) : (
                                                         <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap break-words [word-break:break-word]">

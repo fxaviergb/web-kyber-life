@@ -19,6 +19,7 @@ export class SupabaseFinancialScannerTransactionRepository implements IFinancial
             type: row.type,
             category: row.category,
             description: row.description,
+            summary: row.summary,
             relatedTransactionHint: row.related_transaction_hint,
             originId: row.origin_id,
             originStats: row.origin_stats,
@@ -42,6 +43,7 @@ export class SupabaseFinancialScannerTransactionRepository implements IFinancial
             type: entity.type,
             category: entity.category,
             description: entity.description,
+            summary: entity.summary,
             related_transaction_hint: entity.relatedTransactionHint,
             origin_id: entity.originId,
             origin_stats: entity.originStats,
@@ -100,6 +102,7 @@ export class SupabaseFinancialScannerTransactionRepository implements IFinancial
         if (entity.type !== undefined) rowData.type = entity.type;
         if (entity.category !== undefined) rowData.category = entity.category;
         if (entity.description !== undefined) rowData.description = entity.description;
+        if (entity.summary !== undefined) rowData.summary = entity.summary;
         if (entity.relatedTransactionHint !== undefined) rowData.related_transaction_hint = entity.relatedTransactionHint;
         if (entity.originId !== undefined) rowData.origin_id = entity.originId;
         if (entity.originStats !== undefined) rowData.origin_stats = entity.originStats;

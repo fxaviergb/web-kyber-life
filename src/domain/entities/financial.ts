@@ -77,6 +77,7 @@ export interface FinancialScannerTransaction extends BaseEntity {
     type?: string | null;
     category?: string | null;
     description?: string | null;
+    summary?: string | null;
     relatedTransactionHint?: string | null;
     originId?: string | null;
     originStats?: Record<string, any> | null;
