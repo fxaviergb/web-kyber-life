@@ -41,6 +41,7 @@ describe("financial-schemas", () => {
             date: new Date().toISOString(),
             merchant: "Test Merchant",
             categoryId: uuidv4(),
+            description: "Test transaction description",
         };
 
         it("should validate a completely valid payload", () => {

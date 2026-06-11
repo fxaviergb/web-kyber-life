@@ -137,8 +137,8 @@ describe("Financial UI Components", () => {
             );
 
             const children = screen.getAllByTestId("tab-child");
-            // Since our mock renders all TabsContent blocks (4 tabs), we will have 4 children rendered.
-            expect(children.length).toBe(4);
+            // Since our mock renders all TabsContent blocks (5 tabs), we will have 5 children rendered.
+            expect(children.length).toBe(5);
         });
     });
 });

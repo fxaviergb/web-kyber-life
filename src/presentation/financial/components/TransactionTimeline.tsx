@@ -37,6 +37,7 @@ interface TransactionRow extends Record<string, unknown> {
     institution_id: string | null;
     account_id: string | null;
     tags: string[] | null;
+    description: string;
     notes: string | null;
     possible_duplicate: boolean;
     execution_id: string | null;
@@ -62,6 +63,7 @@ function mapRowToTransaction(row: TransactionRow): FinancialTransaction {
         institutionId: row.institution_id,
         accountId: row.account_id,
         tags: row.tags,
+        description: row.description,
         notes: row.notes,
         possibleDuplicate: row.possible_duplicate ?? false,
         executionId: row.execution_id,
@@ -372,7 +374,7 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                         <h3 className="text-sm font-medium text-muted-foreground tracking-tight sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10">
                             {dateLabel}
                         </h3>
-                        <div className="grid gap-4 items-start sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                             {items.map(t => (
                                 <TransactionCard 
                                     key={t.id} 

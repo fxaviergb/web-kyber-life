@@ -32,6 +32,7 @@ export interface DailyBreakdown {
     date: string; // YYYY-MM-DD
     income: number;
     expenses: number;
+    withdrawals: number;
     net: number;
 }
 
@@ -39,6 +40,7 @@ export interface MonthlyBreakdown {
     month: string; // "2026-01", "2026-02", etc.
     income: number;
     expenses: number;
+    withdrawals: number;
     net: number;
 }
 
@@ -138,15 +140,20 @@ export class FinancialDashboardService {
                     .filter(t => this.isIncomeType(t.type))
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
+                const withdrawals = monthTransactions
+                    .filter(t => this.isWithdrawalType(t.type))
+                    .reduce((sum, t) => sum + Number(t.amount), 0);
+
                 const expenses = monthTransactions
-                    .filter(t => !this.isIncomeType(t.type))
+                    .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type))
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 months.push({
                     month: monthKey,
                     income: Math.round(income * 100) / 100,
                     expenses: Math.round(expenses * 100) / 100,
-                    net: Math.round((income - expenses) * 100) / 100,
+                    withdrawals: Math.round(withdrawals * 100) / 100,
+                    net: Math.round((income - expenses - withdrawals) * 100) / 100,
                 });
                 
                 currentMonthIter.setMonth(currentMonthIter.getMonth() + 1);
@@ -166,15 +173,20 @@ export class FinancialDashboardService {
                     .filter(t => this.isIncomeType(t.type))
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
+                const withdrawals = monthTransactions
+                    .filter(t => this.isWithdrawalType(t.type))
+                    .reduce((sum, t) => sum + Number(t.amount), 0);
+
                 const expenses = monthTransactions
-                    .filter(t => !this.isIncomeType(t.type))
+                    .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type))
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 months.push({
                     month: monthKey,
                     income: Math.round(income * 100) / 100,
                     expenses: Math.round(expenses * 100) / 100,
-                    net: Math.round((income - expenses) * 100) / 100,
+                    withdrawals: Math.round(withdrawals * 100) / 100,
+                    net: Math.round((income - expenses - withdrawals) * 100) / 100,
                 });
             }
         }
@@ -299,12 +311,15 @@ export class FinancialDashboardService {
             // Take just YYYY-MM-DD
             const dateStr = t.date.split("T")[0];
             if (!groups[dateStr]) {
-                groups[dateStr] = { date: dateStr, income: 0, expenses: 0, net: 0 };
+                groups[dateStr] = { date: dateStr, income: 0, expenses: 0, withdrawals: 0, net: 0 };
             }
             const amount = Number(t.amount);
             if (this.isIncomeType(t.type)) {
                 groups[dateStr].income += amount;
                 groups[dateStr].net += amount;
+            } else if (this.isWithdrawalType(t.type)) {
+                groups[dateStr].withdrawals += amount;
+                groups[dateStr].net -= amount;
             } else {
                 groups[dateStr].expenses += amount;
                 groups[dateStr].net -= amount;
@@ -316,6 +331,7 @@ export class FinancialDashboardService {
                 date: d.date,
                 income: Math.round(d.income * 100) / 100,
                 expenses: Math.round(d.expenses * 100) / 100,
+                withdrawals: Math.round(d.withdrawals * 100) / 100,
                 net: Math.round(d.net * 100) / 100,
             }))
             .sort((a, b) => a.date.localeCompare(b.date)); // Sort chronologically
@@ -360,5 +376,9 @@ export class FinancialDashboardService {
 
     private isIncomeType(type: string): boolean {
         return type === "INCOME" || type === "DEPOSIT" || type === "REFUND";
+    }
+
+    private isWithdrawalType(type: string): boolean {
+        return type === "WITHDRAWAL";
     }
 }

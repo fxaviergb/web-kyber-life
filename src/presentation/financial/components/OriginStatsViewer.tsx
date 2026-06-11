@@ -77,6 +77,19 @@ export function OriginStatsViewer({ originStats }: OriginStatsViewerProps) {
                     </div>
                 )}
 
+                {/* ── Email Body (Explicit Display) ─────────────── */}
+                {Boolean(originStats.emailBody) && (
+                    <div className="pt-3 mt-1 border-t border-border/30">
+                        <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
+                            <Mail className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium">Cuerpo del mensaje</span>
+                        </div>
+                        <div className="text-xs font-mono text-muted-foreground break-words whitespace-pre-wrap bg-bg-secondary/30 p-2.5 rounded-lg border border-border/30 max-h-48 overflow-y-auto">
+                            {String(originStats.emailBody)}
+                        </div>
+                    </div>
+                )}
+
                 {/* ── Extra unknown keys (collapsed by default) ─ */}
                 {extraEntries.length > 0 && (
                     <div className="pt-2 border-t border-border/30">

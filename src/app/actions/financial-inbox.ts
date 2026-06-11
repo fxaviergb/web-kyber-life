@@ -35,6 +35,7 @@ export async function getUnprocessedInboxTransactionsAction() {
     try {
         const userId = await getAuthUserId();
         const transactions = await financialInboxService.getUnprocessedTransactions(userId);
+        
         return { success: true, data: transactions };
     } catch (error) {
         console.error("Error fetching inbox transactions:", error);

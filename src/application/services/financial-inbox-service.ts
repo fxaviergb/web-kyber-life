@@ -20,6 +20,7 @@ export interface MapScannerTransactionDTO {
     institutionName?: string;
     accountId?: UUID;
     accountName?: string;
+    description?: string;
     type?: FinancialTransaction['type'];
     notes?: string;
     merchant?: string;
@@ -113,18 +114,27 @@ export class FinancialInboxService {
             }
         }
 
-        if (!finalCategoryId && dto.categoryName && this.categoryRepo) {
+        const categoryNameToMatch = dto.categoryName || scannerTx.category;
+
+        if (!finalCategoryId && categoryNameToMatch && this.categoryRepo) {
             const categories = await this.categoryRepo.findAllBaseAndUser(dto.userId);
-            const normalizedTarget = normalizeForMatch(dto.categoryName);
+            const normalizedTarget = normalizeForMatch(categoryNameToMatch);
             const existing = categories.find(c => normalizeForMatch(c.name) === normalizedTarget && !c.isDeleted);
             if (existing && existing.id) {
                 finalCategoryId = existing.id;
-            } else {
+            } else if (dto.categoryName) {
+                // Only auto-create when the user explicitly provided the category name
                 const newCat = await this.categoryRepo.create({
                     id: crypto.randomUUID(), ownerUserId: dto.userId, name: dto.categoryName, isDeleted: false, createdAt: now, updatedAt: now
                 });
                 finalCategoryId = newCat.id!;
             }
+            // When falling back to scannerTx.category and no match: skip (don't auto-create from scanner data)
+        }
+
+        const resolvedDescription = (dto.description?.trim() || scannerTx.description?.trim() || '').trim();
+        if (!resolvedDescription) {
+            throw new Error("La descripción es requerida para confirmar la transacción");
         }
 
         const transaction: FinancialTransaction = {
@@ -140,7 +150,8 @@ export class FinancialInboxService {
             institutionId: finalInstitutionId,
             accountId: finalAccountId,
             tags: dto.tags ?? [],
-            notes: dto.notes ?? (scannerTx.originStats as Record<string, string>)?.emailBody ?? (scannerTx.originStats as Record<string, string>)?.snippet ?? scannerTx.description ?? null,
+            description: resolvedDescription,
+            notes: dto.notes ?? (scannerTx.originStats as Record<string, string>)?.emailBody ?? (scannerTx.originStats as Record<string, string>)?.snippet ?? null,
             possibleDuplicate: false,
             executionId: validExecutionId,
             originStats: {

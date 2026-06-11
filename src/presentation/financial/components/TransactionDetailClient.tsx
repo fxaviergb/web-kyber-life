@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { FinancialTransaction } from "@/domain/entities/financial";
+import { getTransactionDisplayTitle } from "@/lib/financial-utils";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AuditTrail } from "./AuditTrail";
 import { DuplicateResolver } from "./DuplicateResolver";
 import { OriginStatsViewer } from "./OriginStatsViewer";
-import { History, CalendarDays, Wallet, Edit2, Undo2, Check, Sparkles, Building2, Tags } from "lucide-react";
+import { History, CalendarDays, Wallet, Edit2, Undo2, Check, Sparkles, Building2, Tags, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,10 +76,7 @@ function formatDate(dateStr: string): string {
 }
 
 function extractContext(tx: FinancialTransaction): string {
-    const stats = tx.originStats as Record<string, unknown> | null | undefined;
-    const emailBody = stats?.emailBody as string | undefined;
-    const snippet = stats?.snippet as string | undefined;
-    return emailBody || snippet || tx.notes || "";
+    return tx.notes || "";
 }
 
 // ─── Component ────────────────────────────────────────────────
@@ -148,6 +146,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
     }, [transaction]);
 
     const [editState, setEditState] = useState({
+        description: transaction.description || "",
         merchant: transaction.merchant || "",
         institutionName: "",
         accountName: "",
@@ -170,6 +169,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
     const toggleEdit = () => {
         if (!isEditing) {
             setEditState({
+                description: transaction.description || getTransactionDisplayTitle(transaction),
                 merchant: displayNames.institution,
                 institutionName: displayNames.institution,
                 accountName: displayNames.account,
@@ -188,6 +188,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         setIsLoading(true);
         try {
             const res = await updateTransactionAction(transaction.id!, {
+                description: editState.description.trim() || undefined,
                 merchant: editState.merchant || editState.institutionName,
                 institutionId: null, // Force backend to resolve by name
                 institutionName: editState.institutionName || undefined,
@@ -266,7 +267,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                 </div>
                                 {isEditing ? (
                                     <AutocompleteInput
-                                        id="institutionName"
+                                        id="headerInstitutionName"
                                         value={editState.institutionName}
                                         onChange={(val) => {
                                             updateEditState("institutionName", val);
@@ -278,7 +279,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     />
                                 ) : (
                                     <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                                        {displayNames.institution || typeLabel}
+                                        {displayNames.institution || transaction.merchant || "Sin institución"}
                                     </h2>
                                 )}
                             </div>
@@ -306,6 +307,23 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
+
+                        <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                                <FileText className="h-4 w-4" /> Descripción
+                            </div>
+                            {isEditing ? (
+                                <Input
+                                    id="description"
+                                    value={editState.description}
+                                    onChange={(e) => updateEditState("description", e.target.value)}
+                                    className="h-9 text-sm border-border/50 bg-bg-secondary"
+                                    placeholder="Descripción de la transacción"
+                                />
+                            ) : (
+                                <div className="text-sm font-medium">{getTransactionDisplayTitle(transaction)}</div>
+                            )}
+                        </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
@@ -385,7 +403,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
 
                         <div className="rounded-2xl bg-bg-primary/50 p-5 border border-border/30">
                             <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                                <Sparkles className="h-4 w-4 text-accent-primary" /> Notas y Contexto
+                                <Sparkles className="h-4 w-4 text-accent-primary" /> Contexto
                             </div>
                             {isEditing ? (
                                 <textarea

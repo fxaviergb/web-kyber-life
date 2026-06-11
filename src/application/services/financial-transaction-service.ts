@@ -12,6 +12,7 @@ export interface CreateFinancialTransactionDTO {
     currency: string;
     date: string; // ISODate
     merchant?: string | null;
+    description: string;
     categoryId?: UUID | null;
     categoryName?: string | null;
     institutionId?: UUID | null;
@@ -122,6 +123,7 @@ export class FinancialTransactionService {
             currency: dto.currency,
             date: dto.date,
             merchant: dto.merchant ?? null,
+            description: dto.description,
             categoryId: finalCategoryId,
             institutionId: finalInstitutionId,
             accountId: finalAccountId,

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Check, CircleAlert, Inbox as InboxIcon, RefreshCw, Sparkles, X, Edit2, Search, Eye, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Check, CircleAlert, Inbox as InboxIcon, RefreshCw, FileText, X, Edit2, Search, Eye, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -21,13 +21,14 @@ interface EditState {
     merchant: string;
     amount?: number | null;
     date?: string | null;
-    description?: string;
+    summary?: string;
 }
 
 const TYPE_OPTIONS = [
     { value: "EXPENSE", label: "Gasto" },
     { value: "INCOME", label: "Ingreso" },
     { value: "TRANSFER", label: "Transferencias propias" },
+    { value: "WITHDRAWAL", label: "Retiro" },
 ] as const;
 
 const DEFAULT_TRANSACTION_TYPE = "EXPENSE";
@@ -65,14 +66,23 @@ function formatAmount(amount?: number | null, currency = "USD") {
 }
 
 /**
- * Extract the best available context from a scanner transaction.
- * Priority: originStats.emailBody → originStats.snippet → description
+ * Extract the best available summary from a scanner transaction.
+ * Priority: summary → originStats.emailBody → originStats.snippet
  */
-function extractContext(tx: FinancialScannerTransaction): string {
+function extractSummary(tx: FinancialScannerTransaction): string {
+    if (tx.summary && tx.summary.trim() !== "") {
+        return tx.summary;
+    }
     const stats = tx.originStats as Record<string, unknown> | null | undefined;
     const emailBody = stats?.emailBody as string | undefined;
+    if (emailBody && emailBody.trim() !== "") {
+        return `[MAIL] ${emailBody}`;
+    }
     const snippet = stats?.snippet as string | undefined;
-    return emailBody || snippet || tx.description || "";
+    if (snippet && snippet.trim() !== "") {
+        return `[SNIPPET] ${snippet}`;
+    }
+    return "";
 }
 
 function formatDate(value?: string | null) {
@@ -181,7 +191,7 @@ export function FinancialInbox() {
                 merchant: tx.merchant || "",
                 amount: tx.amount ?? null,
                 date: formatLocalDatetime(tx.date || tx.createdAt),
-                description: extractContext(tx),
+                summary: extractSummary(tx),
             },
         }));
         setIsEditing((prev) => ({ ...prev, [txId]: false }));
@@ -202,7 +212,7 @@ export function FinancialInbox() {
                     merchant: tx.merchant || "",
                     amount: tx.amount ?? null,
                     date: formatLocalDatetime(tx.date || tx.createdAt),
-                    description: extractContext(tx),
+                    summary: extractSummary(tx),
                 };
             });
 
@@ -221,6 +231,14 @@ export function FinancialInbox() {
             }
         };
     }, []);
+
+    // Agrega logs de los registros para consola
+    useEffect(() => {
+        if (transactions.length > 0) {
+            console.log("=== DATA ACTUAL EN FRONTEND (FinancialInbox) ===");
+            console.log(transactions);
+        }
+    }, [transactions]);
 
     const loadInbox = useCallback(async (options?: { silent?: boolean; mergeNewOnly?: boolean }) => {
         const { silent = false, mergeNewOnly = false } = options ?? {};
@@ -248,6 +266,10 @@ export function FinancialInbox() {
 
                 return [...newTransactions, ...existingTransactions];
             })();
+
+            console.log("=== REGISTROS DE TRANSACCIONES ESCANEADAS ===");
+            console.log("Nuevos escaneos traídos del backend:", nextTransactions);
+            console.log("Total combinados a mostrar:", resolvedTransactions);
 
             transactionsRef.current = resolvedTransactions;
             setTransactions(resolvedTransactions);
@@ -344,7 +366,7 @@ export function FinancialInbox() {
                 merchant: merchant,
                 amount: amount,
                 date: editState?.date ? new Date(editState.date).toISOString() : undefined,
-                notes: editState?.description || undefined,
+                notes: editState?.summary || undefined,
             });
 
             if (result.success) {
@@ -540,8 +562,9 @@ export function FinancialInbox() {
                                 const txType = editStates[tx.id!]?.type || normalizeTransactionType(tx.type);
                                 const isIncome = txType === "INCOME";
                                 const isExpense = txType === "EXPENSE";
+                                const isWithdrawal = txType === "WITHDRAWAL";
                                 const typeLabel = TYPE_OPTIONS.find(o => o.value === txType)?.label || "Gasto";
-                                const displayContext = editStates[tx.id!]?.description || "Sin contexto disponible para este escaneo.";
+                                const displaySummary = editStates[tx.id!]?.summary || "Sin resumen disponible para este escaneo.";
 
 
                                 return (
@@ -549,7 +572,7 @@ export function FinancialInbox() {
                                         key={tx.id}
                                         className={cn(
                                             "group relative overflow-hidden rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                                            "flex flex-col h-full",
+                                            "flex flex-col",
                                             isProcessing && "opacity-60 pointer-events-none"
                                         )}
                                     >
@@ -557,128 +580,140 @@ export function FinancialInbox() {
 
                                         <CardHeader
                                             className={cn(
-                                                "flex flex-col flex-1 h-full w-full !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
+                                                "flex flex-col !space-y-0 !px-4 !py-4 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
                                                 (expanded || editing) && "border-b border-border/50",
                                                 !editing && "cursor-pointer hover:bg-bg-secondary"
                                             )}
                                             onClick={() => { if (!editing) toggleExpanded(tx.id!) }}
                                         >
-                                            <div className="flex flex-col w-full h-full justify-between gap-2">
-                                                <div className="flex w-full items-start justify-between gap-3 min-w-0">
-                                                    {/* LEFT SIDE (Top) */}
-                                                    <div className="flex flex-col flex-1 min-w-0 gap-1">
+                                            <div className="flex flex-col w-full gap-3">
+                                                <div className="flex flex-col w-full gap-2">
+                                                    {/* TOP ROW: Badge + Amount */}
+                                                    <div className="flex w-full items-start justify-between gap-3 min-w-0">
                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            <Badge variant="warning" className="rounded-full px-2 py-0 text-[9px] uppercase tracking-[0.1em] shrink-0">
+                                                            <span className="inline-flex items-center rounded-md bg-[#FFB020]/10 text-[#FFB020] px-2 py-0.5 text-[10px] font-medium tracking-wide shrink-0 border border-[#FFB020]/20">
                                                                 Pendiente
-                                                            </Badge>
+                                                            </span>
                                                             {tx.relatedTransactionHint && (
                                                                 <Popover>
                                                                     <PopoverTrigger asChild>
                                                                         <button
                                                                             type="button"
-                                                                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-warning-text/25 bg-warning-bg text-warning-text transition-colors hover:bg-warning-bg/80 focus-visible:outline-none"
+                                                                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-[#FFB020]/20 bg-[#FFB020]/10 text-[#FFB020] transition-colors hover:bg-[#FFB020]/20 focus-visible:outline-none"
                                                                             onClick={(e) => e.stopPropagation()}
                                                                         >
                                                                             <CircleAlert className="h-3 w-3" />
                                                                         </button>
                                                                     </PopoverTrigger>
-                                                                    <PopoverContent align="start" className="w-72 rounded-2xl border-warning-text/20 bg-bg-secondary p-3 text-sm">
+                                                                    <PopoverContent align="start" className="w-72 rounded-xl border border-border/50 bg-bg-secondary p-3 text-sm shadow-xl shadow-black/40">
                                                                         <div className="flex items-start gap-2">
-                                                                            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-text" />
-                                                                            <p>Posible relación: {tx.relatedTransactionHint}</p>
+                                                                            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[#FFB020]" />
+                                                                            <p className="text-muted-foreground">Posible relación: <span className="text-foreground font-medium">{tx.relatedTransactionHint}</span></p>
                                                                         </div>
                                                                     </PopoverContent>
                                                                 </Popover>
                                                             )}
                                                         </div>
 
-                                                        <div className="flex items-center gap-2 min-w-0 w-full mt-1">
+                                                        <div className="flex flex-col items-end shrink-0">
+                                                            {editing ? (
+                                                                <div className="flex items-center justify-end gap-1 overflow-hidden max-w-[120px]">
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={editStates[tx.id!]?.amount ?? ""}
+                                                                        onChange={(e) => updateEditState(tx.id!, "amount", e.target.value ? parseFloat(e.target.value) : null)}
+                                                                        className="h-7 w-20 text-right font-medium text-xs border-border/40 bg-white/5 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-white/20"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <span
+                                                                    className={cn(
+                                                                        "text-[15px] sm:text-[17px] font-semibold tracking-tight whitespace-nowrap",
+                                                                        isIncome ? "text-[#2EE59D]" : isExpense ? "text-rose-400" : isWithdrawal ? "text-sky-400" : "text-[#FFB020]"
+                                                                    )}
+                                                                    title={formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
+                                                                >
+                                                                    {isIncome ? "+" : isExpense ? "-" : ""}
+                                                                    {formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* TITLE & MERCHANT (Full Width) */}
+                                                    <div className="flex flex-col w-full">
+                                                        <CardTitle
+                                                            className="text-sm sm:text-base tracking-tight font-semibold line-clamp-2 leading-tight w-full mb-0.5"
+                                                            title={tx.description || "Transacción"}
+                                                        >
+                                                            {tx.description || "Transacción"}
+                                                        </CardTitle>
+                                                        <div className="flex items-center min-w-0 w-full text-xs text-zinc-400">
                                                             {editing ? (
                                                                 <Input
                                                                     value={editStates[tx.id!]?.merchant || ""}
                                                                     onChange={(event) => updateEditState(tx.id!, "merchant", event.target.value)}
                                                                     placeholder="Institución"
-                                                                    className="h-7 text-sm font-semibold border-border/50 bg-bg-primary w-full"
+                                                                    className="h-7 text-xs font-medium border-white/10 bg-white/5 rounded-md px-2 w-full focus-visible:ring-1 focus-visible:ring-white/20 mt-1"
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 />
                                                             ) : (
-                                                                <CardTitle className="text-sm sm:text-base tracking-tight font-semibold break-words whitespace-normal leading-tight w-full" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
+                                                                <span className="truncate w-full block" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
                                                                     {editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}
-                                                                </CardTitle>
+                                                                </span>
                                                             )}
                                                         </div>
-                                                    </div>
-
-                                                    {/* RIGHT SIDE (Top) */}
-                                                    <div className="flex flex-col items-end shrink-0 pt-0.5">
-                                                        {editing ? (
-                                                            <div className="flex items-center justify-end gap-1 overflow-hidden max-w-[120px]">
-                                                                <Input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    value={editStates[tx.id!]?.amount ?? ""}
-                                                                    onChange={(e) => updateEditState(tx.id!, "amount", e.target.value ? parseFloat(e.target.value) : null)}
-                                                                    className="h-7 w-20 text-right font-semibold text-xs border-border/50 bg-bg-primary px-2"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <span
-                                                                className={cn(
-                                                                    "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap",
-                                                                    isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : "text-amber-500"
-                                                                )}
-                                                                title={formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
-                                                            >
-                                                                {isIncome ? "+" : isExpense ? "-" : ""}
-                                                                {formatAmount(editStates[tx.id!]?.amount, tx.currency || "USD")}
-                                                            </span>
-                                                        )}
                                                     </div>
                                                 </div>
 
                                                 {/* BOTTOM SIDE (Time, Context & Actions) */}
-                                                <div className="flex w-full items-center justify-between mt-1 pt-3 border-t border-border/40 gap-3">
+                                                <div className="flex w-full items-center justify-between pt-3 mt-1 border-t border-border/40 gap-3">
                                                     <div className="flex items-center gap-3 min-w-0">
-                                                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-                                                            <Clock className="h-3 w-3 opacity-70" />
+                                                        <span className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs shrink-0 bg-transparent text-zinc-400 hover:text-zinc-200 px-2 h-7 sm:h-8 rounded-sm border border-transparent font-medium transition-colors">
+                                                            <Clock className="h-3.5 w-3.5 opacity-70" />
                                                             {editing ? (
                                                                 <Input
                                                                     type="datetime-local"
                                                                     value={editStates[tx.id!]?.date || ""}
                                                                     onChange={(e) => updateEditState(tx.id!, "date", e.target.value)}
-                                                                    className="h-6 text-[10px] py-0 px-2 border-border/50 bg-bg-primary w-32"
+                                                                    className="h-6 text-[10px] py-0 px-2 border-white/10 bg-white/5 text-zinc-200 rounded-md w-32 focus-visible:ring-1 focus-visible:ring-white/20"
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 />
                                                             ) : (
-                                                                <span className="truncate font-medium">
+                                                                <span className="truncate">
                                                                     {editStates[tx.id!]?.date ? formatTime(editStates[tx.id!]!.date) : "--:--"}
                                                                 </span>
                                                             )}
                                                         </span>
-
-                                                        {!editing && (
-                                                            <span className="flex items-center gap-1 text-xs font-semibold hover:text-foreground transition-colors shrink-0 text-muted-foreground cursor-pointer">
-                                                                {expanded ? (
-                                                                    <><ChevronUp className="h-3.5 w-3.5 shrink-0" /> <span>Ocultar</span></>
-                                                                ) : (
-                                                                    <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span>Contexto</span></>
-                                                                )}
-                                                            </span>
-                                                        )}
                                                     </div>
 
                                                     {/* Actions */}
-                                                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                        {!editing && (
+                                                            <button
+                                                                type="button"
+                                                                title={expanded ? "Ocultar detalles" : "Ver detalles"}
+                                                                className="flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-md transition-all shrink-0 active:scale-95 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 text-indigo-400 hover:from-indigo-500/20 hover:to-indigo-600/10 hover:text-indigo-300 border border-indigo-500/10 hover:border-indigo-500/20 shadow-sm"
+                                                            >
+                                                                {expanded ? (
+                                                                    <ChevronUp className="h-4 w-4 shrink-0" />
+                                                                ) : (
+                                                                    <ChevronDown className="h-4 w-4 shrink-0" />
+                                                                )}
+                                                            </button>
+                                                        )}
+
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0 transition-colors"
+                                                            className="h-7 w-7 sm:h-8 sm:w-8 rounded-md bg-gradient-to-br from-zinc-500/10 to-zinc-600/5 text-zinc-400 border border-zinc-500/10 hover:from-zinc-500/20 hover:to-zinc-600/10 hover:text-zinc-300 hover:border-zinc-500/20 hover:shadow-sm shrink-0 transition-all"
                                                             disabled={isProcessing}
                                                             asChild
                                                         >
                                                             <Link href={`/financial/scans/${tx.id}`}>
-                                                                <Eye className="h-4 w-4" />
+                                                                <Eye className="h-4 w-4 opacity-70" />
                                                                 <span className="sr-only">Detalles</span>
                                                             </Link>
                                                         </Button>
@@ -688,7 +723,7 @@ export function FinancialInbox() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-8 px-3 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                                                                    className="h-7 sm:h-8 px-3 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-colors"
                                                                     onClick={() => cancelEdit(tx.id!, tx)}
                                                                     disabled={isProcessing}
                                                                 >
@@ -696,7 +731,7 @@ export function FinancialInbox() {
                                                                 </Button>
                                                                 <Button
                                                                     size="sm"
-                                                                    className="h-8 px-3 rounded-full text-xs font-semibold bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90 transition-colors"
+                                                                    className="h-7 sm:h-8 px-3 rounded-md text-xs font-medium bg-zinc-100 text-zinc-900 hover:bg-white shadow-sm transition-colors"
                                                                     onClick={() => toggleEdit(tx.id!)}
                                                                     disabled={isProcessing}
                                                                 >
@@ -709,7 +744,7 @@ export function FinancialInbox() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    className="h-8 w-8 rounded-full text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 shrink-0 transition-colors"
+                                                                    className="h-7 w-7 sm:h-8 sm:w-8 rounded-md bg-gradient-to-br from-rose-500/10 to-rose-600/5 text-rose-400 border border-rose-500/10 hover:from-rose-500/20 hover:to-rose-600/10 hover:text-rose-300 hover:border-rose-500/20 hover:shadow-sm shrink-0 transition-all"
                                                                     onClick={() => handleDismiss(tx.id!)}
                                                                     disabled={isProcessing}
                                                                     title="Descartar"
@@ -718,7 +753,7 @@ export function FinancialInbox() {
                                                                 </Button>
                                                                 <Button
                                                                     size="icon"
-                                                                    className="h-8 w-8 rounded-full bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90 transition-colors shrink-0"
+                                                                    className="h-7 w-7 sm:h-8 sm:w-8 rounded-md bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 text-emerald-400 border border-emerald-500/10 hover:from-emerald-500/20 hover:to-emerald-600/10 hover:text-emerald-300 hover:border-emerald-500/20 hover:shadow-sm shrink-0 transition-all"
                                                                     onClick={() => handleConfirm(tx)}
                                                                     disabled={isProcessing}
                                                                     title="Confirmar"
@@ -736,24 +771,20 @@ export function FinancialInbox() {
                                             </div>
                                         </CardHeader>
 
-                                        {/* Expanded Area for Context */}
+                                        {/* Expanded Area for Resumen */}
                                         {(expanded || editing) && (
                                             <CardContent className="space-y-4 px-4 py-3 sm:px-5 animate-in slide-in-from-top-2 duration-200">
-                                                <div className="rounded-xl bg-bg-primary/50 p-3.5 border-none">
-                                                    <div className="mb-2 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                                                        <Sparkles className="h-3.5 w-3.5 text-accent-primary shrink-0" />
-                                                        Contexto extraído
-                                                    </div>
+                                                <div className="rounded-xl bg-white/[0.02] p-3.5 border border-white/5">
                                                     {editing ? (
                                                         <textarea
-                                                            value={editStates[tx.id!]?.description || ""}
-                                                            onChange={(e) => updateEditState(tx.id!, "description", e.target.value)}
-                                                            className="w-full min-h-[60px] rounded-lg border border-border/50 bg-bg-secondary p-2.5 text-xs sm:text-sm leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-accent-primary/50 resize-y"
-                                                            placeholder="No hay descripción disponible para este escaneo."
+                                                            value={editStates[tx.id!]?.summary || ""}
+                                                            onChange={(e) => updateEditState(tx.id!, "summary", e.target.value)}
+                                                            className="w-full min-h-[60px] rounded-lg border border-white/10 bg-white/5 p-2.5 text-xs sm:text-sm leading-relaxed text-zinc-200 focus:outline-none focus:ring-2 focus:ring-white/20 resize-y"
+                                                            placeholder="No hay resumen disponible para este escaneo."
                                                         />
                                                     ) : (
-                                                        <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap break-words [word-break:break-word]">
-                                                            {displayContext}
+                                                        <p className="text-xs sm:text-sm leading-relaxed text-zinc-400 whitespace-pre-wrap break-words [word-break:break-word]">
+                                                            {displaySummary}
                                                         </p>
                                                     )}
                                                 </div>

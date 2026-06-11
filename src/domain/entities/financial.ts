@@ -59,6 +59,7 @@ export interface FinancialTransaction extends BaseEntity {
     institutionId?: UUID | null;
     accountId?: UUID | null;
     tags?: string[] | null;
+    description: string;
     notes?: string | null;
     possibleDuplicate: boolean;
     executionId?: UUID | null;
@@ -77,6 +78,7 @@ export interface FinancialScannerTransaction extends BaseEntity {
     type?: string | null;
     category?: string | null;
     description?: string | null;
+    summary?: string | null;
     relatedTransactionHint?: string | null;
     originId?: string | null;
     originStats?: Record<string, any> | null;

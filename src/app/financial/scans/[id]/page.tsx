@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { getScannerTransactionByIdAction } from "@/app/actions/financial-inbox";
 import { ScanDetailsForm } from "@/presentation/financial/components/ScanDetailsForm";
-import { Inbox as InboxIcon, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -41,13 +41,18 @@ export default async function ScanDetailsPage({ params }: ScanDetailsPageProps) 
 
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            {/* ── Page Header ──────────────────────────────── */}
+            <div className="flex items-center gap-4 mb-6">
+                <Link 
+                    href="/financial/scans"
+                    className="p-2 -ml-2 rounded-full hover:bg-bg-secondary text-text-secondary hover:text-text-primary transition-colors"
+                    title="Volver a escaneos"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                </Link>
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                        <InboxIcon className="h-8 w-8 text-primary" />
-                        Detalles de Escaneo
-                    </h2>
-                    <p className="text-muted-foreground mt-2">
+                    <h2 className="text-3xl font-bold tracking-tight text-text-primary">Detalles de Escaneo</h2>
+                    <p className="text-sm text-text-secondary mt-1">
                         Revisa todos los datos extraídos y edítalos antes de confirmar.
                     </p>
                 </div>

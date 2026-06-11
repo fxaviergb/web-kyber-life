@@ -22,16 +22,17 @@ import { cn } from "@/lib/utils";
 
 // ─── Date Preset Helpers ─────────────────────────────────────
 
-type DatePreset = "today" | "week" | "month" | "custom";
+type DatePreset = "today" | "week" | "month" | "all" | "custom";
 
 const PRESET_LABELS: Record<DatePreset, string> = {
     today: "Hoy",
     week: "Esta semana",
     month: "Este mes",
+    all: "Todos",
     custom: "Personalizado",
 };
 
-function getPresetRange(preset: Exclude<DatePreset, "custom">): { from: string; to: string } {
+function getPresetRange(preset: Exclude<DatePreset, "custom">): { from: string; to: string; range?: string } {
     const now = new Date();
     const toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     const toStr = toDate.toISOString();
@@ -50,6 +51,9 @@ function getPresetRange(preset: Exclude<DatePreset, "custom">): { from: string; 
         case "month": {
             const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
             return { from: from.toISOString(), to: toStr };
+        }
+        case "all": {
+            return { from: "", to: "", range: "all" };
         }
     }
 }
@@ -131,7 +135,7 @@ export function TransactionFilters() {
 
     // ── Date Filter Actions ──────────────────────────────────
 
-    const applyDateFilter = useCallback((from: string, to: string) => {
+    const applyDateFilter = useCallback((from: string, to: string, range?: string) => {
         setDateFrom(from);
         setDateTo(to);
         const params = new URLSearchParams(searchParams.toString());
@@ -145,13 +149,18 @@ export function TransactionFilters() {
         } else {
             params.delete("dateTo");
         }
+        if (range) {
+            params.set("range", range);
+        } else {
+            params.delete("range");
+        }
         router.push(`${pathname}?${params.toString()}`);
     }, [pathname, router, searchParams]);
 
     const handlePresetClick = (preset: Exclude<DatePreset, "custom">) => {
         setActivePreset(preset);
-        const { from, to } = getPresetRange(preset);
-        applyDateFilter(from, to);
+        const { from, to, range } = getPresetRange(preset);
+        applyDateFilter(from, to, range);
         setDatePopoverOpen(false);
     };
 
@@ -173,6 +182,7 @@ export function TransactionFilters() {
         const params = new URLSearchParams(searchParams.toString());
         params.delete("dateFrom");
         params.delete("dateTo");
+        params.delete("range");
         router.push(`${pathname}?${params.toString()}`);
     };
 
@@ -182,7 +192,8 @@ export function TransactionFilters() {
         || searchParams.has("query")
         || searchParams.has("currency")
         || searchParams.has("dateFrom")
-        || searchParams.has("dateTo");
+        || searchParams.has("dateTo")
+        || searchParams.has("range");
 
     const clearAllFilters = () => {
         setStatusFilter([]);
@@ -194,19 +205,24 @@ export function TransactionFilters() {
         params.delete("currency");
         params.delete("dateFrom");
         params.delete("dateTo");
+        params.delete("range");
         router.push(`${pathname}?${params.toString()}`);
     };
 
     // ── Build label for date button ──────────────────────────
 
+    const urlRange = searchParams.get("range");
+    const isDefaultMonth = !dateFrom && !dateTo && urlRange !== 'all';
+
     const getDateButtonLabel = (): string => {
-        if (!dateFrom && !dateTo) return "Fecha";
+        if (isDefaultMonth) return "Este mes";
+        if (urlRange === 'all') return "Todos";
         if (activePreset && activePreset !== "custom") return PRESET_LABELS[activePreset];
         if (dateFrom && dateTo) return `${formatShortDate(dateFrom)} – ${formatShortDate(dateTo)}`;
         return "Fecha";
     };
 
-    const hasDateFilter = Boolean(dateFrom || dateTo);
+    const hasDateFilter = Boolean(dateFrom || dateTo || urlRange === 'all');
 
     return (
         <div className="flex flex-col gap-3 w-full mb-4">
@@ -298,17 +314,26 @@ export function TransactionFilters() {
                                 <CalendarDays className={cn("h-4 w-4 shrink-0", hasDateFilter ? "text-accent-primary" : "text-muted-foreground")} />
                                 <span className="truncate max-w-[120px] sm:max-w-[160px]">{getDateButtonLabel()}</span>
                                 {hasDateFilter && (
-                                    <button
-                                        type="button"
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
                                         className="ml-1 -mr-1 rounded-full p-0.5 hover:bg-accent-primary/20 transition-colors"
                                         onClick={(e) => {
+                                            e.preventDefault();
                                             e.stopPropagation();
                                             clearDateFilter();
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                clearDateFilter();
+                                            }
                                         }}
                                         aria-label="Limpiar filtro de fecha"
                                     >
                                         <X className="h-3 w-3" />
-                                    </button>
+                                    </div>
                                 )}
                             </Button>
                         </PopoverTrigger>
@@ -318,7 +343,7 @@ export function TransactionFilters() {
                                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
                                     Rango rápido
                                 </p>
-                                {(["today", "week", "month"] as const).map((preset) => (
+                                {(["today", "week", "month", "all"] as const).map((preset) => (
                                     <button
                                         key={preset}
                                         type="button"

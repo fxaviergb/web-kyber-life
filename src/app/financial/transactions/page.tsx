@@ -17,8 +17,16 @@ export default async function TransactionsPage({
     const status = typeof params.status === 'string' ? params.status : undefined;
     const type = typeof params.type === 'string' ? params.type : undefined;
     const currency = typeof params.currency === 'string' ? params.currency : undefined;
-    const dateFrom = typeof params.dateFrom === 'string' ? params.dateFrom : undefined;
-    const dateTo = typeof params.dateTo === 'string' ? params.dateTo : undefined;
+    const range = typeof params.range === 'string' ? params.range : undefined;
+    let dateFrom = typeof params.dateFrom === 'string' ? params.dateFrom : undefined;
+    let dateTo = typeof params.dateTo === 'string' ? params.dateTo : undefined;
+
+    // Apply default "Este mes" filter
+    if (!dateFrom && !dateTo && range !== 'all') {
+        const now = new Date();
+        dateFrom = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0).toISOString();
+        dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+    }
 
     // Server-side paginated first page
     const initialResult = await searchPaginatedTransactionsAction({
@@ -37,7 +45,7 @@ export default async function TransactionsPage({
         : [];
 
     // Pass URL filters so the infinite-scroll can re-apply them
-    const searchFilters = { query, status, type, currency, dateFrom, dateTo };
+    const searchFilters = { query, status, type, currency, dateFrom, dateTo, range };
 
     return (
         <div className="flex flex-col gap-6">

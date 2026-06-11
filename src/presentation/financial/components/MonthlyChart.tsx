@@ -99,7 +99,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
             }));
         }
 
-        const groups: Record<string, { income: number; expenses: number; net: number }> = {};
+        const groups: Record<string, { income: number; expenses: number; withdrawals: number; net: number }> = {};
         
         for (const d of data) {
             let key = d.date;
@@ -107,10 +107,11 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
             if (viewMode === "month") key = getMonthKey(d.date);
 
             if (!groups[key]) {
-                groups[key] = { income: 0, expenses: 0, net: 0 };
+                groups[key] = { income: 0, expenses: 0, withdrawals: 0, net: 0 };
             }
             groups[key].income += d.income;
             groups[key].expenses += d.expenses;
+            groups[key].withdrawals += d.withdrawals || 0;
             groups[key].net += d.net;
         }
 
@@ -121,6 +122,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
                 fullLabel: key,
                 income: Math.round(vals.income * 100) / 100,
                 expenses: Math.round(vals.expenses * 100) / 100,
+                withdrawals: Math.round(vals.withdrawals * 100) / 100,
                 net: Math.round(vals.net * 100) / 100,
             }));
     }, [data, viewMode]);
@@ -222,6 +224,13 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
                                         dataKey="expenses"
                                         name="Gastos"
                                         fill="hsl(0, 84%, 60%)"
+                                        radius={[4, 4, 0, 0]}
+                                        maxBarSize={40}
+                                    />
+                                    <Bar
+                                        dataKey="withdrawals"
+                                        name="Retiros"
+                                        fill="#0284c7"
                                         radius={[4, 4, 0, 0]}
                                         maxBarSize={40}
                                     />
