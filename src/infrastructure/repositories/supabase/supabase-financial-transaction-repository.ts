@@ -21,6 +21,7 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
             merchant: entity.merchant,
             category_id: entity.categoryId,
             tags: entity.tags || [],
+            description: entity.description,
             notes: entity.notes,
             possible_duplicate: entity.possibleDuplicate,
             execution_id: entity.executionId,
@@ -70,6 +71,7 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
             merchant: entity.merchant,
             category_id: entity.categoryId,
             tags: entity.tags || [],
+            description: entity.description,
             notes: entity.notes,
             possible_duplicate: entity.possibleDuplicate,
             updated_at: new Date().toISOString()
@@ -243,6 +245,7 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
             merchant: row.merchant,
             categoryId: row.category_id,
             tags: row.tags || [],
+            description: row.description || '',
             notes: row.notes,
             possibleDuplicate: row.possible_duplicate,
             executionId: row.execution_id,

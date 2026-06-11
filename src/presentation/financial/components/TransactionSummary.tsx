@@ -16,7 +16,7 @@ import {
 // ─── Type visual metadata ────────────────────────────────────
 
 interface TypeMeta {
-    sign: "positive" | "negative" | "neutral";
+    sign: "positive" | "negative" | "neutral" | "withdrawal";
 }
 
 const TYPE_META: Record<FinancialTransactionType, TypeMeta> = {
@@ -26,7 +26,7 @@ const TYPE_META: Record<FinancialTransactionType, TypeMeta> = {
     EXPENSE: { sign: "negative" },
     SUBSCRIPTION: { sign: "negative" },
     PAYMENT: { sign: "negative" },
-    WITHDRAWAL: { sign: "negative" },
+    WITHDRAWAL: { sign: "withdrawal" },
     FEE: { sign: "negative" },
     TAX: { sign: "negative" },
     TRANSFER: { sign: "neutral" },
@@ -62,7 +62,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         chartData,
         totalIncome,
         totalExpense,
-        totalOther
+        totalOther,
+        totalWithdrawal
     } = useMemo(() => {
         if (transactions.length === 0) {
             return {
@@ -71,7 +72,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 chartData: [],
                 totalIncome: 0,
                 totalExpense: 0,
-                totalOther: 0
+                totalOther: 0,
+                totalWithdrawal: 0
             };
         }
 
@@ -85,8 +87,9 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         let incomeSum = 0;
         let expenseSum = 0;
         let otherSum = 0;
+        let withdrawalSum = 0;
 
-        const chartDataMap: Record<string, { date: string, income: number, expense: number, other: number, timestamp: number }> = {};
+        const chartDataMap: Record<string, { date: string, income: number, expense: number, other: number, withdrawal: number, timestamp: number }> = {};
 
         transactions.forEach((t) => {
             const d = new Date(t.date);
@@ -110,7 +113,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
             }
 
             if (!chartDataMap[dateStr]) {
-                chartDataMap[dateStr] = { date: dateStr, income: 0, expense: 0, other: 0, timestamp };
+                chartDataMap[dateStr] = { date: dateStr, income: 0, expense: 0, other: 0, withdrawal: 0, timestamp };
             }
 
             const { sign } = TYPE_META[t.type];
@@ -120,6 +123,9 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
             } else if (sign === "negative") {
                 expenseSum += t.amount;
                 chartDataMap[dateStr].expense += t.amount;
+            } else if (sign === "withdrawal") {
+                withdrawalSum += t.amount;
+                chartDataMap[dateStr].withdrawal += t.amount;
             } else {
                 otherSum += t.amount;
                 chartDataMap[dateStr].other += t.amount;
@@ -129,13 +135,24 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         // Ordenar cronológicamente para el gráfico
         const chartData = Object.values(chartDataMap).sort((a, b) => a.timestamp - b.timestamp);
 
+        let finalBalance = incomeSum - expenseSum - withdrawalSum;
+        // Si estamos viendo exclusivamente transferencias
+        if (incomeSum === 0 && expenseSum === 0 && withdrawalSum === 0 && otherSum > 0) {
+            finalBalance = otherSum;
+        }
+        // Si estamos viendo exclusivamente retiros, mostrar la suma en positivo
+        else if (incomeSum === 0 && expenseSum === 0 && otherSum === 0 && withdrawalSum > 0) {
+            finalBalance = withdrawalSum;
+        }
+
         return {
-            balance: incomeSum - expenseSum,
+            balance: finalBalance,
             primaryCurrency: dominant,
             chartData,
             totalIncome: incomeSum,
             totalExpense: expenseSum,
-            totalOther: otherSum
+            totalOther: otherSum,
+            totalWithdrawal: withdrawalSum
         };
     }, [transactions, viewMode]);
 
@@ -144,6 +161,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
     const pieData = [
         { name: "Ingresos", value: totalIncome, fill: "#10b981" },
         { name: "Gastos", value: totalExpense, fill: "#f43f5e" },
+        { name: "Retiros", value: totalWithdrawal, fill: "#0284c7" },
         { name: "Transferencias", value: totalOther, fill: "#f59e0b" },
     ].filter(d => d.value > 0);
 
@@ -268,18 +286,30 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                     {/* Header (Legend + Select) */}
                     <div className="flex justify-between items-start sm:items-center mb-4 sm:mb-2 gap-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground">
-                            <div className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                <span>Ingresos</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-full bg-rose-500" />
-                                <span>Gastos</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                <span>Transferencias</span>
-                            </div>
+                            {totalIncome > 0 && (
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span>Ingresos</span>
+                                </div>
+                            )}
+                            {totalExpense > 0 && (
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-rose-500" />
+                                    <span>Gastos</span>
+                                </div>
+                            )}
+                            {totalWithdrawal > 0 && (
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#0284c7" }} />
+                                    <span>Retiros</span>
+                                </div>
+                            )}
+                            {totalOther > 0 && (
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                    <span>Transferencias</span>
+                                </div>
+                            )}
                         </div>
 
                         <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
@@ -311,6 +341,10 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                         <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
                                         <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                                     </linearGradient>
+                                    <linearGradient id="colorWithdrawal" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#0284c7" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#0284c7" stopOpacity={0} />
+                                    </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                                 <YAxis
@@ -338,36 +372,52 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                             return (
                                                 <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-3 text-xs flex flex-col gap-1 z-50">
                                                     <span className="font-medium text-foreground mb-1">{label}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                        <span className="text-muted-foreground">Ingresos:</span>
-                                                        <span className="font-semibold text-foreground">
-                                                            {formatCurrency((payload.find(p => p.dataKey === 'income')?.value as number) || 0, primaryCurrency)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-rose-500" />
-                                                        <span className="text-muted-foreground">Gastos:</span>
-                                                        <span className="font-semibold text-foreground">
-                                                            {formatCurrency((payload.find(p => p.dataKey === 'expense')?.value as number) || 0, primaryCurrency)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                                        <span className="text-muted-foreground">Transferencias:</span>
-                                                        <span className="font-semibold text-foreground">
-                                                            {formatCurrency((payload.find(p => p.dataKey === 'other')?.value as number) || 0, primaryCurrency)}
-                                                        </span>
-                                                    </div>
+                                                    {totalIncome > 0 && (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                            <span className="text-muted-foreground">Ingresos:</span>
+                                                            <span className="font-semibold text-foreground">
+                                                                {formatCurrency((payload.find(p => p.dataKey === 'income')?.value as number) || 0, primaryCurrency)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {totalExpense > 0 && (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 rounded-full bg-rose-500" />
+                                                            <span className="text-muted-foreground">Gastos:</span>
+                                                            <span className="font-semibold text-foreground">
+                                                                {formatCurrency((payload.find(p => p.dataKey === 'expense')?.value as number) || 0, primaryCurrency)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {totalWithdrawal > 0 && (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#0284c7" }} />
+                                                            <span className="text-muted-foreground">Retiros:</span>
+                                                            <span className="font-semibold text-foreground">
+                                                                {formatCurrency((payload.find(p => p.dataKey === 'withdrawal')?.value as number) || 0, primaryCurrency)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {totalOther > 0 && (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                            <span className="text-muted-foreground">Transferencias:</span>
+                                                            <span className="font-semibold text-foreground">
+                                                                {formatCurrency((payload.find(p => p.dataKey === 'other')?.value as number) || 0, primaryCurrency)}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         }
                                         return null;
                                     }}
                                 />
-                                <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
-                                <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
-                                <Area type="monotone" dataKey="other" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorOther)" />
+                                {totalIncome > 0 && <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />}
+                                {totalExpense > 0 && <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />}
+                                {totalWithdrawal > 0 && <Area type="monotone" dataKey="withdrawal" stroke="#0284c7" strokeWidth={2} fillOpacity={1} fill="url(#colorWithdrawal)" />}
+                                {totalOther > 0 && <Area type="monotone" dataKey="other" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorOther)" />}
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>

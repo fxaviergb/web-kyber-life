@@ -93,6 +93,20 @@ function extractContext(tx: FinancialTransaction): string {
     return "";
 }
 
+function getFallbackDescription(tx: FinancialTransaction, typeLabel: string): string {
+    if (tx.description && tx.description.trim() !== "") return tx.description;
+    
+    // Attempt to extract from originStats if available
+    const stats = tx.originStats as Record<string, unknown> | null | undefined;
+    const emailSubject = stats?.emailSubject as string | undefined;
+    if (emailSubject && emailSubject.trim() !== "") {
+        return emailSubject;
+    }
+
+    const merchantStr = tx.merchant ? ` en ${tx.merchant}` : "";
+    return `${typeLabel}${merchantStr}`;
+}
+
 // ─── Component ────────────────────────────────────────────────
 
 export function TransactionCard({
@@ -110,6 +124,7 @@ export function TransactionCard({
     const typeLabel = TYPE_LABELS[transaction.type] ?? transaction.type;
     const displayContext = extractContext(transaction);
     const hasContext = displayContext.trim().length > 0;
+    const displayTitle = getFallbackDescription(transaction, typeLabel);
 
     const handleAction = async (
         actionFn: (id: string) => Promise<{ success: boolean; error?: string }>,
@@ -138,7 +153,7 @@ export function TransactionCard({
         <Card
             className={cn(
                 "group relative overflow-hidden rounded-[1.75rem] border-border/60 bg-bg-secondary py-0 shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                "flex flex-col h-fit",
+                "flex flex-col h-full",
                 isLoading && "opacity-60 pointer-events-none",
             )}
         >
@@ -151,30 +166,58 @@ export function TransactionCard({
             {/* ── Nivel 1: Resumen (Siempre visible) ───────────────── */}
             <CardHeader
                 className={cn(
-                    "flex-row w-full items-center !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
+                    "flex flex-col flex-1 w-full min-h-0 !space-y-0 !px-4 !py-4 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
                     isExpanded && "border-b border-border/50",
                     hasContext && "cursor-pointer hover:bg-bg-secondary"
                 )}
                 onClick={() => hasContext && setIsExpanded(!isExpanded)}
             >
-                {/* Mobile: List Row (Entity/Time on left, Amount on right) */}
-                <div className="flex w-full items-center justify-between gap-3 min-w-0">
-                    <div className="flex flex-col flex-1 min-w-0 gap-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <CardTitle
-                                className="text-base sm:text-lg tracking-tight truncate font-semibold"
-                                title={transaction.merchant || typeLabel}
-                            >
-                                {transaction.merchant || typeLabel}
-                            </CardTitle>
-                            {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
-                                <AlertCircle className="h-3.5 w-3.5 text-warning-text shrink-0" />
+                {/* Main Content */}
+                <div className="flex-1 w-full min-w-0 pb-3 block">
+                    {/* Amount & Duplicate Icon (Floated Right) */}
+                    <div className="float-right ml-3 mb-1 flex flex-col items-end shrink-0 mt-0.5">
+                        <span
+                            className={cn(
+                                "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap",
+                                isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : isWithdrawal ? "text-indigo-400" : "text-amber-500"
                             )}
-                        </div>
+                            title={formatAmount(transaction.amount, transaction.currency)}
+                        >
+                            {isIncome ? "+" : isNegative ? "-" : ""}
+                            {formatAmount(transaction.amount, transaction.currency)}
+                        </span>
+                        {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
+                            <AlertCircle className="h-4 w-4 text-warning-text shrink-0 mt-1" />
+                        )}
+                    </div>
 
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+                    {/* Title (Description) */}
+                    <CardTitle
+                        className={cn(
+                            "text-base sm:text-lg tracking-tight line-clamp-3 font-semibold break-words transition-colors leading-tight mt-0.5",
+                            hasContext && "group-hover/card:text-accent-primary"
+                        )}
+                        title={displayTitle}
+                    >
+                        {displayTitle}
+                    </CardTitle>
+
+                    {/* Subtitle (Institution / Merchant) */}
+                    <div className="mt-1">
+                        <span className="line-clamp-3 break-words text-sm font-medium text-zinc-300" title={transaction.merchant || typeLabel}>
+                            {transaction.merchant || typeLabel}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Separator - Pushed to bottom by flex-1 on Main Content */}
+                <div className="w-full h-px bg-border/80 shrink-0 mt-auto" />
+
+                {/* Footer */}
+                <div className="flex w-full items-center justify-between gap-3 min-w-0 pt-3 shrink-0">
+                    <div className="flex items-center gap-x-3 text-xs text-muted-foreground shrink-0">
                             <span className="flex items-center gap-1 shrink-0">
-                                <Clock className="h-3 w-3 opacity-70" />
+                                <Clock className="h-3.5 w-3.5 opacity-70" />
                                 {formatTime(transaction.date)}
                             </span>
 
@@ -191,26 +234,13 @@ export function TransactionCard({
                                 </>
                             )}
                         </div>
-                    </div>
-
-                    <div className="flex flex-col items-end shrink-0 gap-1">
-                        <span
-                            className={cn(
-                                "text-sm sm:text-base font-semibold tracking-tight whitespace-nowrap",
-                                isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : isWithdrawal ? "text-indigo-400" : "text-amber-500"
-                            )}
-                            title={formatAmount(transaction.amount, transaction.currency)}
-                        >
-                            {isIncome ? "+" : isNegative ? "-" : ""}
-                            {formatAmount(transaction.amount, transaction.currency)}
-                        </span>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0"
+                                className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0"
                                 disabled={isLoading}
                                 asChild
                             >
@@ -222,7 +252,7 @@ export function TransactionCard({
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0">
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0">
                                         <MoreVertical className="h-4 w-4" />
                                         <span className="sr-only">Opciones</span>
                                     </Button>
@@ -255,7 +285,6 @@ export function TransactionCard({
                             </DropdownMenu>
                         </div>
                     </div>
-                </div>
             </CardHeader>
 
             {/* ── Nivel 2: Detalles Extensos (Desplegable) ──────────────────── */}

@@ -59,6 +59,7 @@ export interface FinancialTransaction extends BaseEntity {
     institutionId?: UUID | null;
     accountId?: UUID | null;
     tags?: string[] | null;
+    description: string;
     notes?: string | null;
     possibleDuplicate: boolean;
     executionId?: UUID | null;

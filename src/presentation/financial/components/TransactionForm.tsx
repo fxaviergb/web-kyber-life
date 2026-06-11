@@ -13,7 +13,7 @@ import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@
 import { FinancialTransactionType } from "@/domain/entities/financial";
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
-import { Building2, Landmark, FolderGit2 } from "lucide-react";
+import { Building2, Landmark, FolderGit2, FileText } from "lucide-react";
 
 export function TransactionForm() {
     const router = useRouter();
@@ -22,6 +22,7 @@ export function TransactionForm() {
     // Form State
     const [type, setType] = useState<FinancialTransactionType>("EXPENSE");
     const [amount, setAmount] = useState("");
+    const [description, setDescription] = useState("");
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     const [notes, setNotes] = useState("");
     const [institutionName, setInstitutionName] = useState("");
@@ -55,6 +56,7 @@ export function TransactionForm() {
                     const data = latestDraft.data as any;
                     if (data.type) setType(data.type);
                     if (data.amount) setAmount(data.amount.toString());
+                    if (data.description) setDescription(data.description);
                     if (data.date) setDate(data.date.split("T")[0]);
                     if (data.notes) setNotes(data.notes);
                     if (data.institutionName) setInstitutionName(data.institutionName);
@@ -76,10 +78,11 @@ export function TransactionForm() {
                 // just keep one draft or clear existing before adding, but for simplicity we'll
                 // clear all and add the current one as the unique draft for this form instance.
                 await financialOfflineStore.drafts.clear();
-                if (amount || institutionName || notes) {
+                if (amount || institutionName || notes || description) {
                     await financialOfflineStore.drafts.add("draft_transaction", {
                         type,
                         amount: Number(amount) || 0,
+                        description,
                         date: new Date(date).toISOString(),
                         notes,
                         institutionName,
@@ -97,7 +100,7 @@ export function TransactionForm() {
         // Use a small timeout to debounce saving
         const timeoutId = setTimeout(saveDraft, 500);
         return () => clearTimeout(timeoutId);
-    }, [type, amount, date, notes, institutionName, accountName, categoryName]);
+    }, [type, amount, description, date, notes, institutionName, accountName, categoryName]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -129,6 +132,7 @@ export function TransactionForm() {
             status: "MANUAL" as const,
             amount: Number(amount),
             currency: "USD",
+            description: description.trim() || undefined,
             date: new Date(date).toISOString(),
             notes: notes || undefined,
             institutionName: institutionName || undefined,
@@ -184,6 +188,22 @@ export function TransactionForm() {
             </CardHeader>
             <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="description" className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-violet-500" />
+                            Descripción
+                        </Label>
+                        <Input
+                            id="description"
+                            name="description"
+                            type="text"
+                            placeholder="Ej.: Compra en supermercado, Pago de servicio..."
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            autoComplete="off"
+                        />
+                    </div>
+
                     <div className="space-y-2">
                         <Label htmlFor="institutionName" className="flex items-center gap-2">
                             <Building2 className="w-4 h-4 text-blue-500" />

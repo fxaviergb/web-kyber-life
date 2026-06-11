@@ -128,8 +128,19 @@ export async function createTransactionAction(data: Record<string, unknown>) {
         const validated = createTransactionSchema.parse(data);
         const userId = await getAuthUserId();
 
+        let description = validated.description?.trim();
+        if (!description) {
+            const emailSubject = validated.originStats?.emailSubject as string | undefined;
+            if (emailSubject?.trim()) {
+                description = emailSubject.trim();
+            } else {
+                description = `${validated.type} - ${validated.categoryName || 'General'}`;
+            }
+        }
+
         const result = await financialTransactionService.createTransaction({
             ...validated,
+            description,
             ownerUserId: userId,
         });
         return { success: true, data: result };
@@ -269,7 +280,13 @@ export async function updateTransactionAction(id: string, data: Record<string, u
         const userId = await getAuthUserId();
 
         const { id: txId, ...updateData } = validated;
-        const result = await financialTransactionService.updateTransaction(txId, userId, updateData);
+        
+        const cleanUpdateData: any = { ...updateData };
+        if (cleanUpdateData.description === null) {
+            delete cleanUpdateData.description;
+        }
+
+        const result = await financialTransactionService.updateTransaction(txId, userId, cleanUpdateData);
         return { success: true, data: result };
     } catch (error) {
         if (error instanceof z.ZodError) {

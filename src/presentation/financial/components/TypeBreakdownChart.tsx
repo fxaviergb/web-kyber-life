@@ -46,12 +46,23 @@ export function TypeBreakdownChart({ data }: TypeBreakdownChartProps) {
                     strokeWidth={2}
                     stroke="var(--color-bg-primary)"
                 >
-                    {data.map((_, index) => (
-                        <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                        />
-                    ))}
+                    {data.map((entry, index) => {
+                        let color = COLORS[index % COLORS.length];
+                        if (entry.type === 'WITHDRAWAL') {
+                            color = "#0284c7";
+                        } else if (entry.type === 'INCOME' || entry.type === 'DEPOSIT') {
+                            color = "hsl(142, 71%, 45%)";
+                        } else if (entry.type === 'EXPENSE') {
+                            color = "hsl(0, 84%, 60%)";
+                        }
+                        
+                        return (
+                            <Cell
+                                key={`cell-${index}`}
+                                fill={color}
+                            />
+                        );
+                    })}
                 </Pie>
                 <Tooltip
                     formatter={(value: number | undefined) => formatCurrency(value ?? 0)}

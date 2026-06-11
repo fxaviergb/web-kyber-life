@@ -580,13 +580,13 @@ export function FinancialInbox() {
 
                                         <CardHeader
                                             className={cn(
-                                                "flex flex-col !space-y-0 !px-4 !py-3 sm:!px-5 select-none bg-bg-secondary/50 transition-colors h-44",
+                                                "flex flex-col !space-y-0 !px-4 !py-4 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
                                                 (expanded || editing) && "border-b border-border/50",
                                                 !editing && "cursor-pointer hover:bg-bg-secondary"
                                             )}
                                             onClick={() => { if (!editing) toggleExpanded(tx.id!) }}
                                         >
-                                            <div className="flex flex-col w-full h-full justify-between gap-2">
+                                            <div className="flex flex-col w-full gap-3">
                                                 <div className="flex flex-col w-full gap-2">
                                                     {/* TOP ROW: Badge + Amount */}
                                                     <div className="flex w-full items-start justify-between gap-3 min-w-0">
@@ -614,7 +614,7 @@ export function FinancialInbox() {
                                                                 </Popover>
                                                             )}
                                                         </div>
-                                                        
+
                                                         <div className="flex flex-col items-end shrink-0">
                                                             {editing ? (
                                                                 <div className="flex items-center justify-end gap-1 overflow-hidden max-w-[120px]">
@@ -644,8 +644,8 @@ export function FinancialInbox() {
 
                                                     {/* TITLE & MERCHANT (Full Width) */}
                                                     <div className="flex flex-col w-full">
-                                                        <CardTitle 
-                                                            className="text-sm sm:text-base tracking-tight font-semibold line-clamp-2 leading-tight w-full mb-0.5" 
+                                                        <CardTitle
+                                                            className="text-sm sm:text-base tracking-tight font-semibold line-clamp-2 leading-tight w-full mb-0.5"
                                                             title={tx.description || "Transacción"}
                                                         >
                                                             {tx.description || "Transacción"}
@@ -669,7 +669,7 @@ export function FinancialInbox() {
                                                 </div>
 
                                                 {/* BOTTOM SIDE (Time, Context & Actions) */}
-                                                <div className="flex w-full items-center justify-between mt-auto pt-4 border-t border-white/10 gap-3">
+                                                <div className="flex w-full items-center justify-between pt-3 mt-1 border-t border-border/40 gap-3">
                                                     <div className="flex items-center gap-3 min-w-0">
                                                         <span className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs shrink-0 bg-transparent text-zinc-400 hover:text-zinc-200 px-2 h-7 sm:h-8 rounded-sm border border-transparent font-medium transition-colors">
                                                             <Clock className="h-3.5 w-3.5 opacity-70" />
@@ -692,7 +692,7 @@ export function FinancialInbox() {
                                                     {/* Actions */}
                                                     <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                                                         {!editing && (
-                                                            <button 
+                                                            <button
                                                                 type="button"
                                                                 title={expanded ? "Ocultar detalles" : "Ver detalles"}
                                                                 className="flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-md transition-all shrink-0 active:scale-95 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 text-indigo-400 hover:from-indigo-500/20 hover:to-indigo-600/10 hover:text-indigo-300 border border-indigo-500/10 hover:border-indigo-500/20 shadow-sm"

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, X, FileJson, Info, Pencil, Building2, Landmark, FolderGit2 } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, X, FileJson, Info, Pencil, Building2, Landmark, FolderGit2, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 
@@ -77,9 +77,10 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const [formData, setFormData] = useState(() => {
-        const defaultNotes = extractSummary(initialData) || initialData.description || "";
+        const defaultNotes = extractSummary(initialData) || "";
 
         return {
+            description: initialData.description || "",
             type: normalizeType(initialData.type),
             amount: initialData.amount !== null ? String(initialData.amount) : "",
             date: initialData.date ? new Date(initialData.date).toISOString().slice(0, 16) : "",
@@ -160,6 +161,11 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
             return;
         }
 
+        if (!formData.description || formData.description.trim() === "") {
+            toast.error("La descripción es requerida para confirmar");
+            return;
+        }
+
         if (!formData.institutionName || formData.institutionName.trim() === "") {
             toast.error("La institución es requerida");
             return;
@@ -170,6 +176,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
             const result = await mapInboxTransactionAction({
                 scannerTransactionId: initialData.id,
+                description: formData.description.trim(),
                 type: formData.type,
                 merchant: formData.institutionName || null,
                 amount: isNaN(parsedAmount) ? null : parsedAmount,
@@ -231,6 +238,35 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
 
                             <div className="space-y-4">
                                 <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                    <Label htmlFor="description" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <FileText className="h-4 w-4 text-slate-500" />
+                                        Descripción
+                                    </Label>
+                                    <Input
+                                        id="description"
+                                        value={formData.description}
+                                        onChange={(e) => handleChange("description", e.target.value)}
+                                        className="h-9 bg-background border-border/50"
+                                        placeholder="Ej. Compra en Supermercado"
+                                    />
+                                </div>
+
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                    <Label htmlFor="institutionName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <Building2 className="h-4 w-4 text-blue-500" />
+                                        Institución <span className="text-destructive">*</span>
+                                    </Label>
+                                    <AutocompleteInput
+                                        id="institutionName"
+                                        value={formData.institutionName}
+                                        onChange={(val) => handleChange("institutionName", val)}
+                                        options={institutions}
+                                        className="h-9 text-sm bg-background border-border/50"
+                                        placeholder="Ej. Banco de Chile, Sodexo..."
+                                    />
+                                </div>
+
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
                                     <Label htmlFor="type" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                                         <Tag className="h-4 w-4 text-purple-500" />
                                         Tipo de Transacción <span className="text-destructive">*</span>
@@ -272,17 +308,17 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                 </div>
 
                                 <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label htmlFor="institutionName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <Building2 className="h-4 w-4 text-blue-500" />
-                                        Institución <span className="text-destructive">*</span>
+                                    <Label htmlFor="categoryName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <FolderGit2 className="h-4 w-4 text-amber-500" />
+                                        Categoría
                                     </Label>
                                     <AutocompleteInput
-                                        id="institutionName"
-                                        value={formData.institutionName}
-                                        onChange={(val) => handleChange("institutionName", val)}
-                                        options={institutions}
+                                        id="categoryName"
+                                        value={formData.categoryName}
+                                        onChange={(val) => handleChange("categoryName", val)}
+                                        options={categories}
                                         className="h-9 text-sm bg-background border-border/50"
-                                        placeholder="Ej. Banco de Chile, Sodexo..."
+                                        placeholder="Ej. Supermercado, Transporte..."
                                     />
                                 </div>
 
@@ -301,21 +337,6 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                     />
                                 </div>
 
-                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label htmlFor="categoryName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <FolderGit2 className="h-4 w-4 text-amber-500" />
-                                        Categoría
-                                    </Label>
-                                    <AutocompleteInput
-                                        id="categoryName"
-                                        value={formData.categoryName}
-                                        onChange={(val) => handleChange("categoryName", val)}
-                                        options={categories}
-                                        className="h-9 text-sm bg-background border-border/50"
-                                        placeholder="Ej. Supermercado, Transporte..."
-                                    />
-                                </div>
-
                                 <div className="space-y-2">
                                     <Label htmlFor="date" className="flex items-center gap-1.5 text-muted-foreground">
                                         <CalendarDays className="h-3.5 w-3.5" />
@@ -329,8 +350,6 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                         className="bg-background border-border/50"
                                     />
                                 </div>
-
-
 
                                 <div className="space-y-2">
                                     <Label htmlFor="notes" className="flex items-center gap-1.5 text-muted-foreground">

@@ -20,6 +20,7 @@ export const transactionStatusSchema = z.enum(TRANSACTION_STATUSES);
 export const createTransactionSchema = z.object({
     type: transactionTypeSchema,
     status: transactionStatusSchema.optional(),
+    description: z.string().max(2000).optional().nullable(),
     amount: z.number().positive("Amount must be positive"),
     currency: z.string().min(3, "Currency code required").max(3, "Use ISO 4217 code"),
     date: z.string().refine(
@@ -120,6 +121,7 @@ export const recentTransactionsSchema = dateFilterSchema.extend({
 
 export const mapInboxTransactionSchema = z.object({
     scannerTransactionId: z.string().uuid("Invalid scanner transaction ID"),
+    description: z.string().min(1, "La descripción es requerida").max(2000),
     categoryId: z.string().uuid("Invalid category ID").optional().nullable(),
     categoryName: z.string().max(255).optional().nullable(),
     institutionId: z.string().uuid("Invalid institution ID").optional().nullable(),

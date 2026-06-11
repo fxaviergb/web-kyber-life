@@ -2,14 +2,15 @@
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { ListFilter, TrendingDown, TrendingUp, ArrowRightLeft } from "lucide-react";
+import { ListFilter, TrendingDown, TrendingUp, ArrowRightLeft, Wallet } from "lucide-react";
 import { ReactNode } from "react";
 
 const TABS = [
     { value: "ALL", label: "Todos", icon: ListFilter },
     { value: "EXPENSE", label: "Gastos", icon: TrendingDown },
     { value: "INCOME", label: "Ingresos", icon: TrendingUp },
-    { value: "TRANSFER", label: "Transferencias", icon: ArrowRightLeft }
+    { value: "TRANSFER", label: "Transferencias", icon: ArrowRightLeft },
+    { value: "WITHDRAWAL", label: "Retiros", icon: Wallet }
 ];
 
 export function TransactionTabs({ children }: { children?: ReactNode }) {
@@ -32,7 +33,7 @@ export function TransactionTabs({ children }: { children?: ReactNode }) {
     return (
         <div className="w-full pb-2">
             <Tabs value={currentType} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 rounded-xl mb-6">
+                <TabsList className="grid w-full grid-cols-5 bg-muted/50 p-1 rounded-xl mb-6">
                     {TABS.map(tab => {
                         const Icon = tab.icon;
                         return (
