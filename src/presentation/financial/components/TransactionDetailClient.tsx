@@ -352,9 +352,11 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {Object.entries(TYPE_LABELS).map(([val, label]) => (
-                                                <SelectItem key={val} value={val}>{label}</SelectItem>
-                                            ))}
+                                            {Object.entries(TYPE_LABELS)
+                                                .filter(([val]) => ["EXPENSE", "INCOME", "TRANSFER", "WITHDRAWAL"].includes(val))
+                                                .map(([val, label]) => (
+                                                    <SelectItem key={val} value={val}>{label}</SelectItem>
+                                                ))}
                                         </SelectContent>
                                     </Select>
                                 ) : (
