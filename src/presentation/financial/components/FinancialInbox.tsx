@@ -350,6 +350,7 @@ export function FinancialInbox() {
         try {
             const result = await mapInboxTransactionAction({
                 scannerTransactionId: tx.id!,
+                description: tx.description && tx.description.trim() !== "" ? tx.description.trim() : (merchant || "Transacción escaneada"),
                 type: type,
                 merchant: merchant,
                 amount: amount,
@@ -580,7 +581,7 @@ export function FinancialInbox() {
 
                                         <CardHeader
                                             className={cn(
-                                                "flex flex-col !space-y-0 !px-4 !py-4 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
+                                                "flex flex-col !space-y-0 !px-4 !pt-4 !pb-2.5 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
                                                 (expanded || editing) && "border-b border-border/50",
                                                 !editing && "cursor-pointer hover:bg-bg-secondary"
                                             )}
@@ -694,6 +695,7 @@ export function FinancialInbox() {
                                                         {!editing && (
                                                             <button
                                                                 type="button"
+                                                                onClick={() => toggleExpanded(tx.id!)}
                                                                 title={expanded ? "Ocultar detalles" : "Ver detalles"}
                                                                 className="flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-md transition-all shrink-0 active:scale-95 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 text-indigo-400 hover:from-indigo-500/20 hover:to-indigo-600/10 hover:text-indigo-300 border border-indigo-500/10 hover:border-indigo-500/20 shadow-sm"
                                                             >
@@ -773,8 +775,9 @@ export function FinancialInbox() {
 
                                         {/* Expanded Area for Resumen */}
                                         {(expanded || editing) && (
-                                            <CardContent className="space-y-4 px-4 py-3 sm:px-5 animate-in slide-in-from-top-2 duration-200">
-                                                <div className="rounded-xl bg-white/[0.02] p-3.5 border border-white/5">
+                                            <CardContent className="space-y-4 px-4 pb-3 pt-2.5 sm:px-5 animate-in slide-in-from-top-2 duration-200">
+                                                <div className="rounded-xl bg-white/[0.02] p-3.5 border border-white/5 flex flex-col gap-2">
+                                                    <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Resumen</span>
                                                     {editing ? (
                                                         <textarea
                                                             value={editStates[tx.id!]?.summary || ""}
