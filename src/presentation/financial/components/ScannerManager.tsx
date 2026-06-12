@@ -135,15 +135,21 @@ function ExecutionHistoryCard({ exec }: { exec: FinancialScanExecution }) {
     let dateRangeDisplay = <span className="text-text-tertiary text-sm font-medium italic normal-case">No se pudo determinar el rango de fechas</span>;
     if (sDate && eDate) {
         const parseSafe = (d: string) => {
+            if (!d) return new Date("");
             const datePart = d.split('T')[0];
             return new Date(`${datePart}T12:00:00`);
         };
-        const startFmt = format(parseSafe(sDate), "dd MMM yyyy", { locale: es });
-        const endFmt = format(parseSafe(eDate), "dd MMM yyyy", { locale: es });
-        if (startFmt === endFmt) {
-            dateRangeDisplay = <>{startFmt}</>;
-        } else {
-            dateRangeDisplay = <>{startFmt} - {endFmt}</>;
+        const startDateObj = parseSafe(sDate);
+        const endDateObj = parseSafe(eDate);
+        
+        if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
+            const startFmt = format(startDateObj, "dd MMM yyyy", { locale: es });
+            const endFmt = format(endDateObj, "dd MMM yyyy", { locale: es });
+            if (startFmt === endFmt) {
+                dateRangeDisplay = <>{startFmt}</>;
+            } else {
+                dateRangeDisplay = <>{startFmt} - {endFmt}</>;
+            }
         }
     }
 
@@ -364,12 +370,16 @@ export function ScannerManager() {
                 const eDate = payload?.endDate || e.stats?.endDate;
                 if (!sDate || !eDate) return null;
                 const parseSafe = (d: string) => {
+                    if (!d) return new Date("");
                     const datePart = d.split('T')[0];
                     return new Date(`${datePart}T12:00:00`);
                 };
+                const startObj = parseSafe(sDate);
+                const endObj = parseSafe(eDate);
+                if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) return null;
                 return {
-                    startStr: format(parseSafe(sDate), 'yyyy-MM-dd'),
-                    endStr: format(parseSafe(eDate), 'yyyy-MM-dd')
+                    startStr: format(startObj, 'yyyy-MM-dd'),
+                    endStr: format(endObj, 'yyyy-MM-dd')
                 };
             })
             .filter(Boolean) as { startStr: string, endStr: string }[];

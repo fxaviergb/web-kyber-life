@@ -44,8 +44,10 @@ export async function triggerFinancialScanAction(startDate: string, endDate: str
         });
 
         if (!response.ok) {
-            console.error(`Error triggering N8N webhook: ${response.status} - ${response.statusText}`);
-            return { success: false, error: "Error al iniciar el escaneo en el sistema remoto." };
+            const errorText = await response.text().catch(() => "");
+            const truncatedDetail = errorText.length > 200 ? errorText.substring(0, 200) + "..." : errorText;
+            console.error(`Error triggering N8N webhook: ${response.status} - ${response.statusText}. Details: ${truncatedDetail}`);
+            return { success: false, error: `Error al iniciar el escaneo en el sistema remoto. Detalles: ${truncatedDetail || response.statusText}` };
         }
 
         revalidatePath("/financial/scanner");

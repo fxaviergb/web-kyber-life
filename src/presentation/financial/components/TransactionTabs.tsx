@@ -18,43 +18,58 @@ export function TransactionTabs({ children }: { children?: ReactNode }) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const currentType = searchParams.get("type") || "ALL";
+    const typeParam = searchParams.get("type");
+    const currentTypes = typeParam ? typeParam.split(',') : [];
+    const isAll = currentTypes.length === 0;
 
-    const handleTabChange = (value: string) => {
+    const handleToggle = (value: string) => {
         const params = new URLSearchParams(searchParams.toString());
+        
         if (value === "ALL") {
             params.delete("type");
         } else {
-            params.set("type", value);
+            let newTypes = [...currentTypes];
+            if (newTypes.includes(value)) {
+                newTypes = newTypes.filter(t => t !== value);
+            } else {
+                newTypes.push(value);
+            }
+            
+            if (newTypes.length === 0) {
+                params.delete("type");
+            } else {
+                params.set("type", newTypes.join(','));
+            }
         }
+        
         router.push(`${pathname}?${params.toString()}`);
     };
 
     return (
         <div className="w-full pb-2">
-            <Tabs value={currentType} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 bg-muted/50 p-1 rounded-xl mb-6">
-                    {TABS.map(tab => {
-                        const Icon = tab.icon;
-                        return (
-                            <TabsTrigger 
-                                key={tab.value} 
-                                value={tab.value}
-                                className="flex items-center gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-2 transition-all"
-                            >
-                                <Icon className="w-4 h-4" />
-                                <span className="hidden sm:inline font-medium">{tab.label}</span>
-                            </TabsTrigger>
-                        );
-                    })}
-                </TabsList>
+            <div className="grid w-full grid-cols-5 bg-muted/50 p-1 rounded-xl mb-6 items-center justify-center text-muted-foreground">
+                {TABS.map(tab => {
+                    const Icon = tab.icon;
+                    const isActive = tab.value === "ALL" ? isAll : currentTypes.includes(tab.value);
+                    
+                    return (
+                        <button 
+                            key={tab.value} 
+                            onClick={() => handleToggle(tab.value)}
+                            className={`flex items-center justify-center gap-2 rounded-lg py-2 transition-all text-sm whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${isActive ? 'bg-background shadow-sm text-foreground' : 'hover:text-foreground'}`}
+                        >
+                            <Icon className="w-4 h-4" />
+                            <span className="hidden sm:inline font-medium">{tab.label}</span>
+                        </button>
+                    );
+                })}
+            </div>
 
-                {children && TABS.map(tab => (
-                    <TabsContent key={tab.value} value={tab.value} className="mt-0 outline-none">
-                        {children}
-                    </TabsContent>
-                ))}
-            </Tabs>
+            {children && (
+                <div className="mt-0 outline-none">
+                    {children}
+                </div>
+            )}
         </div>
     );
 }

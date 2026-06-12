@@ -136,7 +136,9 @@ export class InMemoryFinancialTransactionRepository extends InMemoryRepository<F
         }
 
         if (!filters) return filtered;
-        if (filters.type) filtered = filtered.filter(t => t.type === filters.type);
+        if (filters.types && filters.types.length > 0) {
+            filtered = filtered.filter(t => t.type && filters.types!.includes(t.type));
+        }
         if (filters.categoryId) filtered = filtered.filter(t => t.categoryId === filters.categoryId);
         if (filters.institutionId) filtered = filtered.filter(t => t.institutionId === filters.institutionId);
         if (filters.accountId) filtered = filtered.filter(t => t.accountId === filters.accountId);

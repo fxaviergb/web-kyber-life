@@ -11,24 +11,6 @@ jest.mock("next/navigation", () => ({
     useSearchParams: jest.fn(),
 }));
 
-jest.mock("@/components/ui/tabs", () => ({
-    Tabs: ({ children, onValueChange, value }: any) => {
-        // Expose a way to call onValueChange for tests
-        return (
-            <div data-testid="mock-tabs" data-value={value} onClick={(e) => {
-                const target = e.target as HTMLElement;
-                if (target.dataset.value) {
-                    onValueChange(target.dataset.value);
-                }
-            }}>
-                {children}
-            </div>
-        );
-    },
-    TabsList: ({ children }: any) => <div>{children}</div>,
-    TabsTrigger: ({ children, value }: any) => <button data-value={value}>{children}</button>,
-    TabsContent: ({ children, value }: any) => <div data-value={value}>{children}</div>,
-}));
 
 describe("Financial UI Components", () => {
     describe("AutocompleteInput", () => {
@@ -109,9 +91,23 @@ describe("Financial UI Components", () => {
             render(<TransactionTabs />);
             
             const incomeTab = screen.getByText("Ingresos");
-            fireEvent.click(incomeTab.parentElement!);
+            fireEvent.click(incomeTab.closest("button")!);
 
             expect(mockPush).toHaveBeenCalledWith("/financial/transactions?type=INCOME");
+        });
+
+        it("appends to the URL when multiple tabs are clicked", () => {
+            (useSearchParams as jest.Mock).mockReturnValue({
+                get: jest.fn().mockReturnValue("EXPENSE"),
+                toString: jest.fn().mockReturnValue("type=EXPENSE"),
+            });
+
+            render(<TransactionTabs />);
+            
+            const incomeTab = screen.getByText("Ingresos");
+            fireEvent.click(incomeTab.closest("button")!);
+
+            expect(mockPush).toHaveBeenCalledWith("/financial/transactions?type=EXPENSE%2CINCOME");
         });
 
         it("removes the type param when 'Todos' is clicked", () => {
@@ -124,12 +120,12 @@ describe("Financial UI Components", () => {
             
             const allTab = screen.getByText("Todos");
             // Click the span's parent button which has the data-value
-            fireEvent.click(allTab.parentElement!);
+            fireEvent.click(allTab.closest("button")!);
 
             expect(mockPush).toHaveBeenCalledWith("/financial/transactions?");
         });
         
-        it("renders children inside TabsContent", () => {
+        it("renders children directly", () => {
             render(
                 <TransactionTabs>
                     <div data-testid="tab-child">Child Content</div>
@@ -137,8 +133,7 @@ describe("Financial UI Components", () => {
             );
 
             const children = screen.getAllByTestId("tab-child");
-            // Since our mock renders all TabsContent blocks (5 tabs), we will have 5 children rendered.
-            expect(children.length).toBe(5);
+            expect(children.length).toBe(1);
         });
     });
 });

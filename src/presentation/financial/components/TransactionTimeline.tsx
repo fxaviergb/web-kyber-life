@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { FinancialTransaction } from "@/domain/entities/financial";
 import type { PaginatedResult } from "@/domain/pagination";
 import { TransactionCard } from "./TransactionCard";
@@ -19,7 +20,7 @@ interface TransactionTimelineProps {
     /** Server-rendered first page */
     initialTransactions: FinancialTransaction[];
     /** Current URL search-params so infinite scroll can re-apply the same filters */
-    searchFilters?: Record<string, string | undefined>;
+    searchFilters?: Record<string, any>;
 }
 
 // ─── Supabase row shape (snake_case) ─────────────────────────
@@ -126,13 +127,17 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
 
             const mapped = mapRowToTransaction(newRow as TransactionRow);
 
+            // Skip if the new transaction doesn't match the active type filter
+            const activeTypes = searchFilters?.types as string[] | undefined;
+            if (activeTypes && activeTypes.length > 0 && !activeTypes.includes(mapped.type)) return;
+
             setTransactions(prev => {
                 // Prevent duplicates
                 if (prev.some(t => t.id === mapped.id)) return prev;
                 return [mapped, ...prev];
             });
         },
-        [],
+        [searchFilters?.types],
     );
 
     const handleRealtimeUpdate = useCallback(
@@ -350,8 +355,24 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
         });
     }, [searchFilters?.status]);
 
+    // ── Client-side reactive type filter ─────────────────────
+    // The list + charts must always reflect the active type filter from the URL.
+    // The server filters the first page, but a search-param navigation can leave
+    // the server-rendered children stale (router / PWA front-end-nav cache), while
+    // `useSearchParams` is always reactive. Filtering here keeps the UI in sync
+    // regardless — the same approach that makes the scans inbox reliable.
+    const searchParams = useSearchParams();
+    const typeFilter = searchParams.get("type");
+
+    const visibleTransactions = useMemo(() => {
+        if (!typeFilter) return transactions;
+        const activeTypes = typeFilter.split(",").filter(Boolean);
+        if (activeTypes.length === 0) return transactions;
+        return transactions.filter(t => t.type && activeTypes.includes(t.type));
+    }, [transactions, typeFilter]);
+
     // ── Render ───────────────────────────────────────────────
-    const grouped = groupTransactionsByDate(transactions);
+    const grouped = groupTransactionsByDate(visibleTransactions);
 
     return (
         <div className="flex flex-col gap-8">
@@ -362,9 +383,9 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                 </div>
             )}
 
-            <TransactionSummary transactions={transactions} />
+            <TransactionSummary transactions={visibleTransactions} />
 
-            {transactions.length === 0 ? (
+            {visibleTransactions.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground">
                     No se encontraron transacciones.
                 </div>
@@ -398,7 +419,7 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                 </div>
             )}
 
-            {!hasMore && transactions.length > 0 && (
+            {!hasMore && visibleTransactions.length > 0 && (
                 <p className="text-center text-xs text-muted-foreground py-4">
                     Todas las transacciones fueron cargadas.
                 </p>
