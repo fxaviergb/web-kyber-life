@@ -3,15 +3,13 @@
 import { useMemo, useState } from "react";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MonthlyChart } from "./MonthlyChart";
+import { UnifiedTrendChart } from "./UnifiedTrendChart";
 import { TypeBreakdownChart } from "./TypeBreakdownChart";
 import { CategoryPieChart } from "./CategoryPieChart";
 import { InstitutionBarChart } from "./InstitutionBarChart";
-import { DailySpendingChart } from "./DailySpendingChart";
-import { DailyIncomeChart } from "./DailyIncomeChart";
 import { useFinancialDashboardOffline } from "../hooks/useFinancialDashboardOffline";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
-import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Clock } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Clock, ArrowRightLeft, Wallet } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +25,8 @@ export function FinancialDashboard() {
     const [filterType, setFilterType] = useState<"all" | "today" | "week" | "month" | "custom">("month");
     const [customStartDate, setCustomStartDate] = useState<string>("");
     const [customEndDate, setCustomEndDate] = useState<string>("");
+    const [categoryLimit, setCategoryLimit] = useState<number>(5);
+    const [institutionLimit, setInstitutionLimit] = useState<number>(5);
 
     const { startDate, endDate } = useMemo(() => {
         const now = new Date();
@@ -68,6 +68,25 @@ export function FinancialDashboard() {
 
     const { kpis, monthly, typeBreakdown, categoryBreakdown, institutionBreakdown, dailyBreakdown, recent, loading, isStale, error, refresh } =
         useFinancialDashboardOffline(startDate, endDate);
+
+    const totalCategoryExpenses = useMemo(() => {
+        if (!categoryBreakdown) return 0;
+        return categoryBreakdown.reduce((sum, item) => sum + item.total, 0);
+    }, [categoryBreakdown]);
+
+    const displayedCategoryBreakdown = useMemo(() => {
+        if (!categoryBreakdown) return [];
+        const filtered = categoryBreakdown.filter(c => c.categoryName && c.categoryName.toLowerCase() !== "sin categoría");
+        return filtered.slice(0, categoryLimit);
+    }, [categoryBreakdown, categoryLimit]);
+
+    const displayedInstitutionBreakdown = useMemo(() => {
+        if (!institutionBreakdown) return [];
+        const filtered = institutionBreakdown.filter(i =>
+            i.institutionName && i.institutionName.toLowerCase() !== "unknown"
+        );
+        return filtered.slice(0, institutionLimit);
+    }, [institutionBreakdown, institutionLimit]);
 
     // ── Realtime: auto-refresh dashboard when transactions change ──
     const subscriptions = useMemo(
@@ -230,6 +249,7 @@ export function FinancialDashboard() {
                         value={formatCurrency(kpis?.totalIncome ?? 0)}
                         icon={TrendingUp}
                         iconClassName="text-green-500"
+                        valueClassName="text-green-500"
                         description="Ingresos confirmados"
                         tooltipText="Suma de todas las transacciones positivas (ingresos, depósitos y devoluciones) dentro del rango de fechas seleccionado."
                         className="flex-1"
@@ -241,8 +261,33 @@ export function FinancialDashboard() {
                         value={formatCurrency(kpis?.totalExpenses ?? 0)}
                         icon={TrendingDown}
                         iconClassName="text-red-500"
+                        valueClassName="text-red-500"
                         description="Gastos confirmados"
-                        tooltipText="Suma de todas las transacciones negativas (pagos, compras, retiros y comisiones) dentro del rango de fechas seleccionado."
+                        tooltipText="Suma de todas las transacciones negativas (pagos, compras y comisiones) dentro del rango de fechas seleccionado."
+                        className="flex-1"
+                    />
+                </div>
+                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
+                    <StatCard
+                        title="Transferencias"
+                        value={formatCurrency(kpis?.totalTransfers ?? 0)}
+                        icon={ArrowRightLeft}
+                        iconClassName="text-orange-500"
+                        valueClassName="text-orange-500"
+                        description="Entre cuentas propias"
+                        tooltipText="Suma de todas las transferencias realizadas entre cuentas propias dentro del rango de fechas seleccionado."
+                        className="flex-1"
+                    />
+                </div>
+                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
+                    <StatCard
+                        title="Retiros"
+                        value={formatCurrency(kpis?.totalWithdrawals ?? 0)}
+                        icon={Wallet}
+                        iconClassName="text-blue-500"
+                        valueClassName="text-blue-500"
+                        description="Retiros en cajeros"
+                        tooltipText="Suma de todos los retiros en efectivo o salidas no clasificadas como gasto dentro del rango de fechas seleccionado."
                         className="flex-1"
                     />
                 </div>
@@ -252,6 +297,7 @@ export function FinancialDashboard() {
                         value={`${(kpis?.netBalance ?? 0) >= 0 ? "+" : "-"}${formatCurrency(kpis?.netBalance ?? 0)}`}
                         icon={DollarSign}
                         iconClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
+                        valueClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
                         description="Ingresos menos gastos"
                         tooltipText="Diferencia exacta entre tus ingresos totales y gastos totales. Un balance positivo indica superávit."
                         trend={kpis ? {
@@ -261,72 +307,53 @@ export function FinancialDashboard() {
                         className="flex-1"
                     />
                 </div>
-                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
-                    <StatCard
-                        title="Promedio"
-                        value={formatCurrency(kpis?.avgTransactionAmount ?? 0)}
-                        icon={Activity}
-                        description="Promedio general"
-                        tooltipText="Valor promedio general, calculado dividiendo el volumen total de dinero movido entre la cantidad de transacciones."
-                        className="flex-1"
-                    />
-                </div>
-                <Link href="/financial/scans" className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
-                    <StatCard
-                        title="En revisión"
-                        value={kpis?.pendingTransactionsCount?.toString() ?? "0"}
-                        icon={Clock}
-                        iconClassName="text-amber-500"
-                        description="Pendientes de confirmación"
-                        tooltipText="Transacciones que han sido escaneadas pero aún no se han clasificado o confirmado manualmente."
-                        className="flex-1 hover:bg-muted/50 transition-colors cursor-pointer"
-                    />
-                </Link>
             </div>
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="lg:col-span-2">
-                    <MonthlyChart data={dailyBreakdown} />
+                    <UnifiedTrendChart data={dailyBreakdown} />
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Ingreso diario</CardTitle>
-                        <CardDescription>Evolución de tus ingresos día a día</CardDescription>
+                <Card className="flex flex-col">
+                    <CardHeader className="flex flex-row items-start justify-between pb-2 gap-4">
+                        <div>
+                            <CardTitle>Por categoría de gasto</CardTitle>
+                            <CardDescription>Distribución detallada de tus gastos</CardDescription>
+                        </div>
+                        <Select value={categoryLimit.toString()} onValueChange={(v) => setCategoryLimit(Number(v))}>
+                            <SelectTrigger className="w-[90px] h-8 text-xs bg-muted/40 border-border/40 rounded-lg">
+                                <SelectValue placeholder="Top" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="5">Top 5</SelectItem>
+                                <SelectItem value="10">Top 10</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </CardHeader>
-                    <CardContent>
-                        <DailyIncomeChart data={dailyBreakdown} />
+                    <CardContent className="flex-1">
+                        <CategoryPieChart data={displayedCategoryBreakdown} grandTotal={totalCategoryExpenses} />
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Gasto diario</CardTitle>
-                        <CardDescription>Evolución de tus gastos día a día</CardDescription>
+                <Card className="flex flex-col">
+                    <CardHeader className="flex flex-row items-start justify-between pb-2 gap-4">
+                        <div>
+                            <CardTitle>Por institución</CardTitle>
+                            <CardDescription>Volumen total movido por banco o institución</CardDescription>
+                        </div>
+                        <Select value={institutionLimit.toString()} onValueChange={(v) => setInstitutionLimit(Number(v))}>
+                            <SelectTrigger className="w-[90px] h-8 text-xs bg-muted/40 border-border/40 rounded-lg">
+                                <SelectValue placeholder="Top" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="5">Top 5</SelectItem>
+                                <SelectItem value="10">Top 10</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </CardHeader>
-                    <CardContent>
-                        <DailySpendingChart data={dailyBreakdown} />
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Por categoría de gasto</CardTitle>
-                        <CardDescription>Distribución detallada de tus gastos</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <CategoryPieChart data={categoryBreakdown} />
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Por institución</CardTitle>
-                        <CardDescription>Volumen total movido por banco o institución</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <InstitutionBarChart data={institutionBreakdown} />
+                    <CardContent className="flex-1">
+                        <InstitutionBarChart data={displayedInstitutionBreakdown} />
                     </CardContent>
                 </Card>
             </div>
@@ -352,33 +379,73 @@ export function FinancialDashboard() {
                         </p>
                     ) : (
                         <div className="space-y-3">
-                            {recent.map(tx => (
-                                <Link
-                                    key={tx.id}
-                                    href={`/financial/transactions/${tx.id}`}
-                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border"
-                                >
-                                    <div className="flex flex-col gap-0.5">
-                                        <span className="font-medium text-sm">
-                                            {tx.merchant || tx.type}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                            {new Date(tx.date).toLocaleDateString("es-ES", {
-                                                month: "short",
-                                                day: "numeric",
-                                                year: "numeric",
-                                            })}
-                                        </span>
-                                    </div>
-                                    <span className={`font-semibold text-sm ${tx.type === "INCOME" || tx.type === "DEPOSIT" || tx.type === "REFUND"
-                                        ? "text-green-500"
-                                        : "text-red-500"
-                                        }`}>
-                                        {tx.type === "INCOME" || tx.type === "DEPOSIT" || tx.type === "REFUND" ? "+" : "-"}
-                                        ${Number(tx.amount).toFixed(2)}
-                                    </span>
-                                </Link>
-                            ))}
+                            {recent.map(tx => {
+                                let sign = "-";
+                                let colorClass = "text-red-500";
+                                let IconComponent = TrendingDown;
+                                let bgClass = "bg-red-500/10 border-red-500/20 text-red-500";
+
+                                if (tx.type === "INCOME" || tx.type === "DEPOSIT" || tx.type === "REFUND") {
+                                    sign = "+";
+                                    colorClass = "text-green-500";
+                                    IconComponent = TrendingUp;
+                                    bgClass = "bg-green-500/10 border-green-500/20 text-green-500";
+                                } else if (tx.type === "TRANSFER") {
+                                    sign = "";
+                                    colorClass = "text-orange-500";
+                                    IconComponent = ArrowRightLeft;
+                                    bgClass = "bg-orange-500/10 border-orange-500/20 text-orange-500";
+                                } else if (tx.type === "WITHDRAWAL") {
+                                    sign = "-";
+                                    colorClass = "text-blue-500";
+                                    IconComponent = Wallet;
+                                    bgClass = "bg-blue-500/10 border-blue-500/20 text-blue-500";
+                                }
+
+                                return (
+                                    <Link
+                                        key={tx.id}
+                                        href={`/financial/transactions/${tx.id}`}
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 rounded-xl hover:bg-muted/50 transition-all border border-border/50 group"
+                                    >
+                                        <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 flex-1 min-w-0">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${bgClass}`}>
+                                                <IconComponent className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                                                <span className="font-semibold text-sm sm:text-base leading-none group-hover:text-primary transition-colors truncate" title={tx.description || tx.merchant || tx.type}>
+                                                    {tx.description || tx.merchant || tx.type}
+                                                </span>
+                                                <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                                                    {tx.institutionName && (
+                                                        <span className="flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md font-medium text-foreground/80">
+                                                            {tx.institutionName}
+                                                        </span>
+                                                    )}
+                                                    {tx.categoryName && (
+                                                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-md font-medium border" style={{ borderColor: tx.categoryColor ? `${tx.categoryColor}40` : '', color: tx.categoryColor || '' }}>
+                                                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tx.categoryColor || 'currentColor' }} />
+                                                            {tx.categoryName}
+                                                        </span>
+                                                    )}
+                                                    <span className="flex items-center gap-1 whitespace-nowrap">
+                                                        {new Date(tx.date).toLocaleDateString("es-ES", {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            year: "numeric",
+                                                        })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 sm:mt-0 flex items-center justify-start sm:justify-end w-full sm:w-auto pl-[3.25rem] sm:pl-0">
+                                            <span className={`font-bold text-sm sm:text-base ${colorClass}`}>
+                                                {sign}{formatCurrency(Number(tx.amount))}
+                                            </span>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
                         </div>
                     )}
                 </CardContent>

@@ -15,6 +15,7 @@ interface StatCardProps {
     };
     className?: string;
     iconClassName?: string;
+    valueClassName?: string;
     tooltipText?: string;
     compact?: boolean;
 }
@@ -27,6 +28,7 @@ export function StatCard({
     trend,
     className,
     iconClassName,
+    valueClassName,
     tooltipText,
     compact,
 }: StatCardProps) {
@@ -55,7 +57,7 @@ export function StatCard({
                 <Icon className={cn(compact ? "h-3.5 w-3.5" : "h-4 w-4", "text-text-tertiary", iconClassName)} />
             </CardHeader>
             <CardContent className={cn("flex-1 flex flex-col", compact ? "p-3 pt-0" : "")}>
-                <div className={cn("font-bold text-text-primary tabular-nums tracking-tight", compact ? "text-lg" : "text-2xl")}>{value}</div>
+                <div className={cn("font-bold text-text-primary tabular-nums tracking-tight", compact ? "text-lg" : "text-2xl", valueClassName)}>{value}</div>
                 {(description || trend) && (
                     <p className={cn("text-text-tertiary mt-auto pt-1", compact ? "text-[10px]" : "text-xs")}>
                         {trend && (
