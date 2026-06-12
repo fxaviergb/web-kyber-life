@@ -4,6 +4,8 @@ import { IFinancialTransactionRepository, IFinancialCategoryRepository, IFinanci
 export interface FinancialKPIs {
     totalIncome: number;
     totalExpenses: number;
+    totalTransfers: number;
+    totalWithdrawals: number;
     netBalance: number;
     transactionCount: number;
     avgTransactionAmount: number;
@@ -33,6 +35,7 @@ export interface DailyBreakdown {
     income: number;
     expenses: number;
     withdrawals: number;
+    other: number;
     net: number;
 }
 
@@ -41,6 +44,7 @@ export interface MonthlyBreakdown {
     income: number;
     expenses: number;
     withdrawals: number;
+    other: number;
     net: number;
 }
 
@@ -91,19 +95,29 @@ export class FinancialDashboardService {
             .filter(t => this.isIncomeType(t.type))
             .reduce((sum, t) => sum + Number(t.amount), 0);
 
+        const totalWithdrawals = confirmed
+            .filter(t => this.isWithdrawalType(t.type))
+            .reduce((sum, t) => sum + Number(t.amount), 0);
+
+        const totalTransfers = confirmed
+            .filter(t => t.type === "TRANSFER")
+            .reduce((sum, t) => sum + Number(t.amount), 0);
+
         const totalExpenses = confirmed
-            .filter(t => !this.isIncomeType(t.type))
+            .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type) && t.type !== "TRANSFER")
             .reduce((sum, t) => sum + Number(t.amount), 0);
 
         const netBalance = totalIncome - totalExpenses;
         const transactionCount = confirmed.length;
         const avgTransactionAmount = transactionCount > 0
-            ? (totalIncome + totalExpenses) / transactionCount
+            ? (totalIncome + totalExpenses + totalWithdrawals + totalTransfers) / transactionCount
             : 0;
 
         return {
             totalIncome: Math.round(totalIncome * 100) / 100,
             totalExpenses: Math.round(totalExpenses * 100) / 100,
+            totalTransfers: Math.round(totalTransfers * 100) / 100,
+            totalWithdrawals: Math.round(totalWithdrawals * 100) / 100,
             netBalance: Math.round(netBalance * 100) / 100,
             transactionCount,
             avgTransactionAmount: Math.round(avgTransactionAmount * 100) / 100,
@@ -145,7 +159,11 @@ export class FinancialDashboardService {
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 const expenses = monthTransactions
-                    .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type))
+                    .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type) && t.type !== "TRANSFER")
+                    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+                const other = monthTransactions
+                    .filter(t => t.type === "TRANSFER" || t.type === "OTHER")
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 months.push({
@@ -153,7 +171,8 @@ export class FinancialDashboardService {
                     income: Math.round(income * 100) / 100,
                     expenses: Math.round(expenses * 100) / 100,
                     withdrawals: Math.round(withdrawals * 100) / 100,
-                    net: Math.round((income - expenses - withdrawals) * 100) / 100,
+                    other: Math.round(other * 100) / 100,
+                    net: Math.round((income - expenses) * 100) / 100,
                 });
                 
                 currentMonthIter.setMonth(currentMonthIter.getMonth() + 1);
@@ -178,7 +197,11 @@ export class FinancialDashboardService {
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 const expenses = monthTransactions
-                    .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type))
+                    .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type) && t.type !== "TRANSFER")
+                    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+                const other = monthTransactions
+                    .filter(t => t.type === "TRANSFER" || t.type === "OTHER")
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 months.push({
@@ -186,7 +209,8 @@ export class FinancialDashboardService {
                     income: Math.round(income * 100) / 100,
                     expenses: Math.round(expenses * 100) / 100,
                     withdrawals: Math.round(withdrawals * 100) / 100,
-                    net: Math.round((income - expenses - withdrawals) * 100) / 100,
+                    other: Math.round(other * 100) / 100,
+                    net: Math.round((income - expenses) * 100) / 100,
                 });
             }
         }
@@ -311,7 +335,7 @@ export class FinancialDashboardService {
             // Take just YYYY-MM-DD
             const dateStr = t.date.split("T")[0];
             if (!groups[dateStr]) {
-                groups[dateStr] = { date: dateStr, income: 0, expenses: 0, withdrawals: 0, net: 0 };
+                groups[dateStr] = { date: dateStr, income: 0, expenses: 0, withdrawals: 0, other: 0, net: 0 };
             }
             const amount = Number(t.amount);
             if (this.isIncomeType(t.type)) {
@@ -319,7 +343,8 @@ export class FinancialDashboardService {
                 groups[dateStr].net += amount;
             } else if (this.isWithdrawalType(t.type)) {
                 groups[dateStr].withdrawals += amount;
-                groups[dateStr].net -= amount;
+            } else if (this.isOtherType(t.type)) {
+                groups[dateStr].other += amount;
             } else {
                 groups[dateStr].expenses += amount;
                 groups[dateStr].net -= amount;
@@ -332,6 +357,7 @@ export class FinancialDashboardService {
                 income: Math.round(d.income * 100) / 100,
                 expenses: Math.round(d.expenses * 100) / 100,
                 withdrawals: Math.round(d.withdrawals * 100) / 100,
+                other: Math.round(d.other * 100) / 100,
                 net: Math.round(d.net * 100) / 100,
             }))
             .sort((a, b) => a.date.localeCompare(b.date)); // Sort chronologically
@@ -350,7 +376,25 @@ export class FinancialDashboardService {
             });
         }
         
-        return transactions.slice(0, limit);
+        const recent = transactions.slice(0, limit);
+
+        // Fetch categories and institutions to populate names
+        const categories = await this.categoryRepo.findAllBaseAndUser(userId);
+        const institutions = await this.institutionRepo.findByOwnerId(userId);
+        
+        const catMap = new Map(categories.map(c => [c.id, c]));
+        const instMap = new Map(institutions.map(i => [i.id, i]));
+
+        return recent.map(t => {
+            const category = t.categoryId ? catMap.get(t.categoryId) : null;
+            const institution = t.institutionId ? instMap.get(t.institutionId) : null;
+            return {
+                ...t,
+                categoryName: category?.name,
+                categoryColor: category?.color || undefined,
+                institutionName: institution?.name,
+            };
+        });
     }
 
     private filterActive(transactions: FinancialTransaction[], startDate?: Date, endDate?: Date): FinancialTransaction[] {
@@ -380,5 +424,9 @@ export class FinancialDashboardService {
 
     private isWithdrawalType(type: string): boolean {
         return type === "WITHDRAWAL";
+    }
+
+    private isOtherType(type: string): boolean {
+        return type === "TRANSFER" || type === "OTHER";
     }
 }

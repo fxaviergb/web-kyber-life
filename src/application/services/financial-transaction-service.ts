@@ -203,9 +203,13 @@ export class FinancialTransactionService {
             }
         }
 
+        const { categoryName, institutionName, accountName, ...restData } = data;
+
         const updatedTx: FinancialTransaction = {
             ...tx,
-            ...data,
+            ...restData,
+            categoryName: categoryName === null ? undefined : (categoryName ?? tx.categoryName),
+            institutionName: institutionName === null ? undefined : (institutionName ?? tx.institutionName),
             institutionId: finalInstitutionId,
             accountId: finalAccountId,
             categoryId: finalCategoryId,

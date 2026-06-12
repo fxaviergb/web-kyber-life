@@ -135,15 +135,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         // Ordenar cronológicamente para el gráfico
         const chartData = Object.values(chartDataMap).sort((a, b) => a.timestamp - b.timestamp);
 
-        let finalBalance = incomeSum - expenseSum - withdrawalSum;
-        // Si estamos viendo exclusivamente transferencias
-        if (incomeSum === 0 && expenseSum === 0 && withdrawalSum === 0 && otherSum > 0) {
-            finalBalance = otherSum;
-        }
-        // Si estamos viendo exclusivamente retiros, mostrar la suma en positivo
-        else if (incomeSum === 0 && expenseSum === 0 && otherSum === 0 && withdrawalSum > 0) {
-            finalBalance = withdrawalSum;
-        }
+        const finalBalance = incomeSum - expenseSum;
 
         return {
             balance: finalBalance,
@@ -287,35 +279,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
                 {/* ── RIGHT SIDE: BREAKDOWN CHART ── */}
                 <div className="relative z-10 flex flex-col w-full flex-1 sm:h-44 lg:h-44 justify-between">
-                    {/* Header (Legend + Select) */}
-                    <div className="flex justify-between items-start sm:items-center mb-4 sm:mb-2 gap-2">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground">
-                            {totalIncome > 0 && (
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                    <span>Ingresos</span>
-                                </div>
-                            )}
-                            {totalExpense > 0 && (
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-2 rounded-full bg-rose-500" />
-                                    <span>Gastos</span>
-                                </div>
-                            )}
-                            {totalWithdrawal > 0 && (
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#0284c7" }} />
-                                    <span>Retiros</span>
-                                </div>
-                            )}
-                            {totalOther > 0 && (
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                    <span>Transferencias</span>
-                                </div>
-                            )}
-                        </div>
-
+                    {/* Header (Select only) */}
+                    <div className="flex justify-end items-start sm:items-center mb-4 sm:mb-2 gap-2">
                         <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
                             <SelectTrigger className="h-7 w-[110px] text-xs bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
                                 <SelectValue placeholder="Vista" />
@@ -431,7 +396,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 {/* ── Per-type totals ── computed from the same (filtered) transactions
                     that feed the charts, placed below so the charts never resize. */}
                 {pieData.length > 0 && (
-                    <div className="relative z-10 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-white/5 flex flex-wrap items-center gap-x-6 gap-y-2.5">
+                    <div className="relative z-10 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-white/5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5">
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                             Totales
                         </span>

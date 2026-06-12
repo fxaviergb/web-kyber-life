@@ -60,8 +60,7 @@ export function InstitutionBarChart({ data }: InstitutionBarChartProps) {
 
     return (
         <div 
-            className="w-full overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-border/80 transition-all" 
-            style={{ maxHeight: "350px" }}
+            className="w-full h-full min-h-[350px] flex-1 overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-border/80 transition-all" 
         >
             <div style={{ height: calculatedHeight, width: "100%" }}>
                 <ResponsiveContainer width="100%" height="100%">
