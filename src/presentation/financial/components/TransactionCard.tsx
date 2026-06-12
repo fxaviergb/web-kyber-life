@@ -44,21 +44,28 @@ interface TransactionCardProps {
 
 // ─── Helpers ──────────────────────────────────────────────────
 
-const TYPE_LABELS: Record<string, string> = {
-    EXPENSE: "Gasto",
-    INCOME: "Ingreso",
-    TRANSFER: "Transferencias propias",
-    SUBSCRIPTION: "Suscripción",
-    PAYMENT: "Pago",
-    REFUND: "Reembolso",
-    WITHDRAWAL: "Retiro",
-    DEPOSIT: "Depósito",
-    FEE: "Comisión",
-    TAX: "Impuesto",
-    OTHER: "Otro",
+// Per-type visual style: concise label, badge color, and amount color.
+interface TypeStyle {
+    label: string;
+    badge: string;
+    amount: string;
+}
+
+const TYPE_STYLE: Record<string, TypeStyle> = {
+    EXPENSE:      { label: "Gasto",         badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",          amount: "text-rose-500" },
+    INCOME:       { label: "Ingreso",       badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", amount: "text-emerald-500" },
+    TRANSFER:     { label: "Transferencia", badge: "bg-sky-500/10 text-sky-400 border-sky-500/20",             amount: "text-sky-400" },
+    WITHDRAWAL:   { label: "Retiro",        badge: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",    amount: "text-indigo-400" },
+    SUBSCRIPTION: { label: "Suscripción",   badge: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20", amount: "text-rose-500" },
+    PAYMENT:      { label: "Pago",          badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",          amount: "text-rose-500" },
+    REFUND:       { label: "Reembolso",     badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", amount: "text-emerald-500" },
+    DEPOSIT:      { label: "Depósito",      badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", amount: "text-emerald-500" },
+    FEE:          { label: "Comisión",      badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",       amount: "text-amber-500" },
+    TAX:          { label: "Impuesto",      badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",       amount: "text-amber-500" },
+    OTHER:        { label: "Otro",          badge: "bg-zinc-500/10 text-zinc-300 border-zinc-500/20",          amount: "text-zinc-300" },
 };
 
-// Removed STATUS_CONFIG as it is no longer used
+const DEFAULT_TYPE_STYLE: TypeStyle = TYPE_STYLE.OTHER;
 
 
 function formatAmount(amount: number, currency = "USD"): string {
@@ -119,9 +126,10 @@ export function TransactionCard({
 
     const isIncome = ["INCOME", "DEPOSIT", "REFUND"].includes(transaction.type);
     const isExpense = ["EXPENSE", "PAYMENT", "FEE", "TAX", "SUBSCRIPTION"].includes(transaction.type);
-    const isWithdrawal = transaction.type === "WITHDRAWAL";
-    const isNegative = isExpense || isWithdrawal;
-    const typeLabel = TYPE_LABELS[transaction.type] ?? transaction.type;
+    // Retiro y transferencia son neutros: no llevan signo + / -.
+    const amountSign = isIncome ? "+" : isExpense ? "-" : "";
+    const style = TYPE_STYLE[transaction.type] ?? DEFAULT_TYPE_STYLE;
+    const typeLabel = style.label;
     const displayContext = extractContext(transaction);
     const hasContext = displayContext.trim().length > 0;
     const displayTitle = getFallbackDescription(transaction, typeLabel);
@@ -173,28 +181,38 @@ export function TransactionCard({
                 onClick={() => hasContext && setIsExpanded(!isExpanded)}
             >
                 {/* Main Content */}
-                <div className="flex-1 w-full min-w-0 pb-3 block">
-                    {/* Amount & Duplicate Icon (Floated Right) */}
-                    <div className="float-right ml-3 mb-1 flex flex-col items-end shrink-0 mt-0.5">
+                <div className="flex-1 w-full min-w-0 pb-3 flex flex-col gap-2">
+                    {/* Row 1: Type badge (left) + Amount (right) */}
+                    <div className="flex items-center justify-between gap-3 w-full">
                         <span
                             className={cn(
-                                "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap",
-                                isIncome ? "text-emerald-500" : isExpense ? "text-rose-500" : isWithdrawal ? "text-indigo-400" : "text-amber-500"
+                                "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-tight whitespace-nowrap shrink-0",
+                                style.badge
                             )}
-                            title={formatAmount(transaction.amount, transaction.currency)}
                         >
-                            {isIncome ? "+" : isNegative ? "-" : ""}
-                            {formatAmount(transaction.amount, transaction.currency)}
+                            {typeLabel}
                         </span>
-                        {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
-                            <AlertCircle className="h-4 w-4 text-warning-text shrink-0 mt-1" />
-                        )}
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
+                                <AlertCircle className="h-4 w-4 text-warning-text shrink-0" />
+                            )}
+                            <span
+                                className={cn(
+                                    "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap",
+                                    style.amount
+                                )}
+                                title={formatAmount(transaction.amount, transaction.currency)}
+                            >
+                                {amountSign}{formatAmount(transaction.amount, transaction.currency)}
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Title (Description) */}
+                    {/* Row 2: Title (Description) — full width, up to 3 lines */}
                     <CardTitle
                         className={cn(
-                            "text-base sm:text-lg tracking-tight line-clamp-3 font-semibold break-words transition-colors leading-tight mt-0.5",
+                            "text-base sm:text-lg tracking-tight line-clamp-3 font-semibold break-words transition-colors leading-tight w-full",
                             hasContext && "group-hover/card:text-accent-primary"
                         )}
                         title={displayTitle}
@@ -202,12 +220,10 @@ export function TransactionCard({
                         {displayTitle}
                     </CardTitle>
 
-                    {/* Subtitle (Institution / Merchant) */}
-                    <div className="mt-1">
-                        <span className="line-clamp-3 break-words text-sm font-medium text-zinc-300" title={transaction.merchant || typeLabel}>
-                            {transaction.merchant || typeLabel}
-                        </span>
-                    </div>
+                    {/* Row 3: Subtitle (Institution / Merchant) — full width, up to 3 lines */}
+                    <span className="line-clamp-3 break-words text-sm font-medium text-zinc-300 w-full" title={transaction.merchant || typeLabel}>
+                        {transaction.merchant || typeLabel}
+                    </span>
                 </div>
 
                 {/* Separator - Pushed to bottom by flex-1 on Main Content */}

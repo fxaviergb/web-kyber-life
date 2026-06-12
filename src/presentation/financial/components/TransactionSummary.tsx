@@ -221,9 +221,13 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
             {/* Content (Hidden on mobile by default) */}
             <div className={cn(
-                "relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 sm:p-6 flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center transition-all duration-300",
+                "relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 sm:p-6 flex-col transition-all duration-300",
                 isExpanded ? "flex animate-in fade-in slide-in-from-top-4" : "hidden sm:flex"
             )}>
+
+                {/* Charts row (donut + breakdown) — kept in its own wrapper so the
+                    totals strip below never alters the chart dimensions. */}
+                <div className="flex w-full flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center">
 
                 {/* ── LEFT SIDE: BALANCE NETO (DONUT CHART) ── */}
                 <div className="relative z-10 flex flex-col items-center justify-center lg:w-auto lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8">
@@ -422,6 +426,26 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                         </ResponsiveContainer>
                     </div>
                 </div>
+                </div>
+
+                {/* ── Per-type totals ── computed from the same (filtered) transactions
+                    that feed the charts, placed below so the charts never resize. */}
+                {pieData.length > 0 && (
+                    <div className="relative z-10 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-white/5 flex flex-wrap items-center gap-x-6 gap-y-2.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                            Totales
+                        </span>
+                        {pieData.map((item) => (
+                            <div key={item.name} className="flex items-center gap-2 min-w-0">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
+                                <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">{item.name}</span>
+                                <span className="text-xs sm:text-sm font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
+                                    {formatCurrency(item.value, primaryCurrency)}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
             </div>
         </div>

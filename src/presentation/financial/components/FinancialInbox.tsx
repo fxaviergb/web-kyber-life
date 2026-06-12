@@ -232,14 +232,6 @@ export function FinancialInbox() {
         };
     }, []);
 
-    // Agrega logs de los registros para consola
-    useEffect(() => {
-        if (transactions.length > 0) {
-            console.log("=== DATA ACTUAL EN FRONTEND (FinancialInbox) ===");
-            console.log(transactions);
-        }
-    }, [transactions]);
-
     const loadInbox = useCallback(async (options?: { silent?: boolean; mergeNewOnly?: boolean }) => {
         const { silent = false, mergeNewOnly = false } = options ?? {};
 
@@ -266,10 +258,6 @@ export function FinancialInbox() {
 
                 return [...newTransactions, ...existingTransactions];
             })();
-
-            console.log("=== REGISTROS DE TRANSACCIONES ESCANEADAS ===");
-            console.log("Nuevos escaneos traídos del backend:", nextTransactions);
-            console.log("Total combinados a mostrar:", resolvedTransactions);
 
             transactionsRef.current = resolvedTransactions;
             setTransactions(resolvedTransactions);
@@ -418,9 +406,21 @@ export function FinancialInbox() {
     const filteredTransactions = useMemo(() => {
         let filtered = transactions;
         if (typeFilter && typeFilter !== "ALL") {
+            const activeTypes = typeFilter.split(',').filter(Boolean);
             filtered = transactions.filter(tx => {
-                const currentType = editStates[tx.id!]?.type || normalizeTransactionType(tx.type);
-                return currentType === typeFilter;
+                // Use the raw DB type for filtering to avoid defaulting null/unsupported
+                // types to EXPENSE (which editStates does via normalizeTransactionType).
+                // Only use the editState type if the user explicitly changed it (i.e. it
+                // differs from what the raw DB type normalizes to, including null → null).
+                const rawType = tx.type ? tx.type.toUpperCase() : null;
+                const editedType = editStates[tx.id!]?.type;
+                const normalizedRaw = rawType
+                    ? (TYPE_OPTIONS.find(o => o.value === rawType)?.value ?? null)
+                    : null;
+                const isExplicitUserEdit = editedType !== undefined && editedType !== normalizedRaw;
+                const currentType = isExplicitUserEdit ? editedType : rawType;
+                if (!currentType) return false;
+                return activeTypes.includes(currentType);
             });
         }
 

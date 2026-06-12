@@ -7,6 +7,11 @@ import { Plus, Inbox as InboxIcon } from "lucide-react";
 import Link from "next/link";
 import { TransactionTabs } from "@/presentation/financial/components/TransactionTabs";
 
+// Always render fresh on the server so a type-filter navigation refetches the
+// correctly filtered first page instead of serving a cached route payload.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function TransactionsPage({
     searchParams,
 }: {
@@ -15,7 +20,11 @@ export default async function TransactionsPage({
     const params = await searchParams;
     const query = typeof params.query === 'string' ? params.query : undefined;
     const status = typeof params.status === 'string' ? params.status : undefined;
-    const type = typeof params.type === 'string' ? params.type : undefined;
+    const typeParam = params.type;
+    const types = typeof typeParam === 'string' && typeParam.length > 0 
+        ? typeParam.split(',') 
+        : Array.isArray(typeParam) ? typeParam : undefined;
+
     const currency = typeof params.currency === 'string' ? params.currency : undefined;
     const range = typeof params.range === 'string' ? params.range : undefined;
     let dateFrom = typeof params.dateFrom === 'string' ? params.dateFrom : undefined;
@@ -32,7 +41,7 @@ export default async function TransactionsPage({
     const initialResult = await searchPaginatedTransactionsAction({
         query,
         status,
-        type,
+        types,
         currency,
         dateFrom,
         dateTo,
@@ -45,7 +54,7 @@ export default async function TransactionsPage({
         : [];
 
     // Pass URL filters so the infinite-scroll can re-apply them
-    const searchFilters = { query, status, type, currency, dateFrom, dateTo, range };
+    const searchFilters = { query, status, types, currency, dateFrom, dateTo, range };
 
     return (
         <div className="flex flex-col gap-6">

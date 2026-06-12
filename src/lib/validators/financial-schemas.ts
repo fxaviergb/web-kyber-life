@@ -54,7 +54,7 @@ export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
 export const searchTransactionsSchema = z.object({
     query: z.string().max(200).optional(),
     status: transactionStatusSchema.optional(),
-    type: transactionTypeSchema.optional(),
+    types: z.array(transactionTypeSchema).optional(),
     currency: z.string().min(3).max(3).optional(),
 });
 
@@ -65,7 +65,7 @@ export type SearchTransactionsInput = z.infer<typeof searchTransactionsSchema>;
 export const paginatedSearchSchema = z.object({
     query: z.string().max(200).optional(),
     status: transactionStatusSchema.optional(),
-    type: transactionTypeSchema.optional(),
+    types: z.array(transactionTypeSchema).optional(),
     currency: z.string().min(3).max(3).optional(),
     categoryId: z.string().uuid().optional(),
     institutionId: z.string().uuid().optional(),

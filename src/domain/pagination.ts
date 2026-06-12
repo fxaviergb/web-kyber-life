@@ -27,7 +27,7 @@ export interface PaginatedResult<T> {
 export interface TransactionSearchFilters {
     query?: string;
     status?: FinancialTransactionStatus;
-    type?: FinancialTransactionType;
+    types?: FinancialTransactionType[];
     categoryId?: UUID;
     institutionId?: UUID;
     accountId?: UUID;

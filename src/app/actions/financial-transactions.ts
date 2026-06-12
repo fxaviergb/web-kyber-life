@@ -27,7 +27,7 @@ function formatZodError(error: z.ZodError): string {
 
 // ─── Search / List ───────────────────────────────────────────
 
-export async function searchTransactionsAction(params: { query?: string; status?: string; type?: string }) {
+export async function searchTransactionsAction(params: { query?: string; status?: string; types?: string[] }) {
     try {
         const validated = searchTransactionsSchema.parse(params);
         const userId = await getAuthUserId();
@@ -46,8 +46,8 @@ export async function searchTransactionsAction(params: { query?: string; status?
         } else {
             filtered = filtered.filter(t => t.status !== 'DELETED' && t.status !== 'ARCHIVED');
         }
-        if (validated.type) {
-            filtered = filtered.filter(t => t.type === validated.type);
+        if (validated.types && validated.types.length > 0) {
+            filtered = filtered.filter(t => t.type && validated.types!.includes(t.type));
         }
 
         return { success: true, data: filtered };

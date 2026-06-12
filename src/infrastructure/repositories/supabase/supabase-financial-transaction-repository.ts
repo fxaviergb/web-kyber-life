@@ -217,7 +217,7 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
         }
 
         if (!filters) return qb;
-        if (filters.type) qb = qb.eq('type', filters.type);
+        if (filters.types && filters.types.length > 0) qb = qb.in('type', filters.types);
         if (filters.categoryId) qb = qb.eq('category_id', filters.categoryId);
         if (filters.institutionId) qb = qb.eq('institution_id', filters.institutionId);
         if (filters.accountId) qb = qb.eq('account_id', filters.accountId);
