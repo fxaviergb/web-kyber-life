@@ -490,17 +490,17 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 {/* ── Per-type totals ── computed from the same (filtered) transactions
                     that feed the charts, placed below so the charts never resize. */}
                 {pieData.length > 0 && (
-                    <div className="relative z-10 mb-5 sm:mb-0 sm:mt-6 pb-4 sm:pb-0 sm:pt-5 border-b sm:border-b-0 sm:border-t border-white/5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 order-1 sm:order-2">
+                    <div className="relative z-10 mb-5 sm:mb-0 sm:mt-6 pb-4 sm:pb-0 sm:pt-5 border-b sm:border-b-0 sm:border-t border-white/5 flex flex-wrap items-center justify-center gap-x-2.5 sm:gap-x-6 gap-y-2.5 order-1 sm:order-2 w-full">
                         {pieData.map((item) => {
                             const Icon = item.icon;
                             return (
-                                <div key={item.name} className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                                <div key={item.name} className="flex items-center gap-1 sm:gap-2 min-w-0 shrink-0">
                                     {/* Icon for mobile, dot for desktop */}
-                                    <Icon className="w-4 h-4 sm:hidden" style={{ color: item.fill }} />
+                                    <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:hidden shrink-0" style={{ color: item.fill }} />
                                     <span className="hidden sm:inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
                                     
                                     <span className="hidden sm:inline text-[11px] font-medium text-muted-foreground whitespace-nowrap">{item.name}</span>
-                                    <span className="text-xs sm:text-sm font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
+                                    <span className="text-[11px] sm:text-sm font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
                                         {formatCurrency(item.value, primaryCurrency)}
                                     </span>
                                 </div>
