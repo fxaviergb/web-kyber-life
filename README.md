@@ -26,12 +26,18 @@ Plataforma de control de procesos personales cotidianos. Gestiona tus gastos, su
 - **Historial de Compras**: Registro detallado de todas tus transacciones pasadas.
 - **Analytics**: Tableros visuales con gráficos de gasto mensual, distribución por categorías y productos más comprados.
 
-### 💰 Gestión Financiera
-- **Módulo de Transacciones**: Registro integral de ingresos, gastos y transferencias.
-- **Bandeja de Entrada**: Procesamiento de transacciones escaneadas automáticamente desde notificaciones bancarias.
-- **Línea de Tiempo**: Visualización cronológica de transacciones con filtros avanzados y sincronización en tiempo real.
-- **Auditoría y Trazabilidad**: Control riguroso del ciclo de vida y estados de las transacciones (Pendiente, Completado, Archivado).
-- **Escáner Financiero**: Interfaz responsiva para ejecución y monitoreo de escaneos de transacciones manuales o automáticos con histórico detallado.
+### 💰 Gestión Financiera (Módulo Principal V1)
+- **Dashboard Financiero Integral**: 
+  - Gráficos interactivos de Resumen Financiero con soporte dinámico para Gráficos de Dona y de Barras (responsive-first).
+  - Integración de filtros por fechas predefinidas y rangos personalizados (optimizados para cortes contables de tarjetas).
+  - Cálculo global de porcentajes basado estrictamente en el contexto de filtros aplicados.
+- **Módulo de Transacciones**: Registro integral de ingresos, gastos y transferencias con soporte para categorización e instituciones vinculadas.
+- **Búsqueda y Filtros Avanzados**:
+  - Motor de búsqueda de texto libre inteligente que busca concurrentemente y por coincidencias parciales en Descripciones, Categorías e Instituciones.
+  - Sincronización en tiempo real vía WebSockets de Supabase.
+- **Bandeja de Entrada (AI Inbox)**: Procesamiento de transacciones escaneadas automáticamente desde notificaciones bancarias.
+- **Escáner Financiero y Webhooks**: Interfaz responsiva para ejecución y monitoreo de escaneos manuales o automáticos con histórico detallado. Conectividad integrada mediante webhooks de N8N.
+- **Auditoría y Trazabilidad**: Control riguroso del ciclo de vida y estados de las transacciones (Pendiente, Completado, Archivado) con soporte completo offline y "hard-deletes".
 
 ### 👤 Perfil de Usuario
 - **Gestión Integral**: Personalización de perfil, cambio de contraseña y gestión de datos personales.
