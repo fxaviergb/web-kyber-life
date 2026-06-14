@@ -30,6 +30,7 @@ describe("SupabaseFinancialTransactionRepository", () => {
             overlaps: jest.fn().mockReturnThis(),
             contains: jest.fn().mockReturnThis(),
             ilike: jest.fn().mockReturnThis(),
+            or: jest.fn().mockReturnThis(),
             single: jest.fn().mockReturnThis(),
         };
 
@@ -147,6 +148,7 @@ describe("SupabaseFinancialTransactionRepository", () => {
                 institutionId: null,
                 accountId: null,
                 merchant: null,
+                description: "Test description",
                 notes: null,
                 originStats: null,
             };

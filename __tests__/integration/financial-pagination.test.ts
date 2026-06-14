@@ -31,6 +31,7 @@ describe("InMemoryFinancialTransactionRepository - Pagination", () => {
                 tags: i % 5 === 0 ? ["food"] : [],
                 possibleDuplicate: false,
                 isDeleted: false,
+                description: `Description ${i}`,
                 originStats: null,
             });
         }
@@ -54,6 +55,7 @@ describe("InMemoryFinancialTransactionRepository - Pagination", () => {
             tags: [],
             possibleDuplicate: false,
             isDeleted: false,
+            description: "Other description",
             originStats: null,
         });
 

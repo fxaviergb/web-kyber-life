@@ -309,11 +309,17 @@ export class FinancialTransactionService {
     // ── Queries ──────────────────────────────────────────────
 
     async getTransactionsByUser(userId: UUID): Promise<FinancialTransaction[]> {
-        return this.transactionRepo.findByOwnerId(userId);
+        const transactions = await this.transactionRepo.findByOwnerId(userId);
+        return this.enrichTransactionsWithCategories(transactions, userId);
     }
 
     async getTransactionById(id: string): Promise<FinancialTransaction | null> {
-        return this.transactionRepo.findById(id);
+        const tx = await this.transactionRepo.findById(id);
+        if (tx) {
+            const enriched = await this.enrichTransactionsWithCategories([tx], tx.ownerUserId);
+            return enriched[0];
+        }
+        return null;
     }
 
     async getUniqueTags(userId: UUID): Promise<string[]> {
@@ -335,10 +341,70 @@ export class FinancialTransactionService {
     ): Promise<PaginatedResult<FinancialTransaction>> {
         const page = Math.max(1, pagination?.page ?? 1);
         const pageSize = Math.min(100, Math.max(1, pagination?.pageSize ?? 20));
-        return this.transactionRepo.findPaginated(userId, filters, { page, pageSize });
+
+        await this.resolveSearchFilters(userId, filters);
+
+        const result = await this.transactionRepo.findPaginated(userId, filters, { page, pageSize });
+        result.data = await this.enrichTransactionsWithCategories(result.data, userId);
+        return result;
+    }
+
+    async searchAllFiltered(
+        userId: UUID,
+        filters: TransactionSearchFilters,
+    ): Promise<FinancialTransaction[]> {
+        await this.resolveSearchFilters(userId, filters);
+
+        const transactions = await this.transactionRepo.search(userId, filters.query || '', filters);
+        return this.enrichTransactionsWithCategories(transactions, userId);
     }
 
     // ── Private Helpers ──────────────────────────────────────
+
+    private async resolveSearchFilters(userId: UUID, filters: TransactionSearchFilters): Promise<void> {
+        if (filters.query) {
+            const words = filters.query.trim().split(/\s+/).filter(w => w.length > 0);
+            if (words.length > 0) {
+                const categories = this.categoryRepo ? await this.categoryRepo.findAllBaseAndUser(userId) : [];
+                const institutions = this.institutionRepo ? await this.institutionRepo.findByOwnerId(userId) : [];
+
+                const wordCategoryIds = words.map(word => 
+                    categories.filter(c => c.name.toLowerCase().includes(word.toLowerCase())).map(c => c.id!)
+                );
+                const wordInstitutionIds = words.map(word => 
+                    institutions.filter(i => i.name.toLowerCase().includes(word.toLowerCase())).map(i => i.id!)
+                );
+
+                (filters as any).words = words;
+                (filters as any).wordCategoryIds = wordCategoryIds;
+                (filters as any).wordInstitutionIds = wordInstitutionIds;
+            }
+        }
+    }
+
+    private async enrichTransactionsWithCategories(transactions: FinancialTransaction[], userId: UUID): Promise<FinancialTransaction[]> {
+        if (!this.categoryRepo || transactions.length === 0) return transactions;
+        
+        try {
+            const categories = await this.categoryRepo.findAllBaseAndUser(userId);
+            const categoryMap = new Map(categories.map(c => [c.id, c]));
+            
+            return transactions.map(tx => {
+                if (tx.categoryId && categoryMap.has(tx.categoryId)) {
+                    const category = categoryMap.get(tx.categoryId);
+                    return {
+                        ...tx,
+                        categoryName: category?.name,
+                        categoryColor: category?.color ?? undefined,
+                    };
+                }
+                return tx;
+            });
+        } catch (e) {
+            console.error("Failed to enrich transactions with categories", e);
+            return transactions;
+        }
+    }
 
     private async findOwnedTransactionOrThrow(transactionId: UUID, userId: UUID): Promise<FinancialTransaction> {
         const tx = await this.transactionRepo.findById(transactionId);

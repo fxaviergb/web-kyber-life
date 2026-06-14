@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AreaChart, Area, ResponsiveContainer, YAxis, XAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
-import { ChevronDown, BarChart2 } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { AreaChart, Area, ResponsiveContainer, YAxis, XAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, BarChart, Bar, LabelList } from 'recharts';
+import { ChevronDown, BarChart2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, PieChart as PieChartIcon, BarChart3 as BarChartIcon } from "lucide-react";
 import type { FinancialTransaction, FinancialTransactionType } from "@/domain/entities/financial";
 import { cn } from "@/lib/utils";
 import {
@@ -55,6 +55,19 @@ type ViewMode = 'day' | 'week' | 'month';
 export function TransactionSummary({ transactions }: TransactionSummaryProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('day');
     const [isExpanded, setIsExpanded] = useState(false);
+    
+    // Default null avoids hydration mismatch; we determine it on mount
+    const [userChartPreference, setUserChartPreference] = useState<"donut" | "bar" | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    const activeChartType = userChartPreference || (isMobile ? "bar" : "donut");
 
     const {
         balance,
@@ -150,12 +163,17 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
     if (transactions.length === 0) return null;
 
+    const totalTransactionsSum = totalIncome + totalExpense + totalOther + totalWithdrawal;
+
     const pieData = [
-        { name: "Ingresos", value: totalIncome, fill: "#10b981" },
-        { name: "Gastos", value: totalExpense, fill: "#f43f5e" },
-        { name: "Retiros", value: totalWithdrawal, fill: "#0284c7" },
-        { name: "Transferencias", value: totalOther, fill: "#f59e0b" },
-    ].filter(d => d.value > 0);
+        { name: "Ingresos", value: totalIncome, fill: "#10b981", icon: TrendingUp },
+        { name: "Gastos", value: totalExpense, fill: "#f43f5e", icon: TrendingDown },
+        { name: "Transferencias", value: totalOther, fill: "#f59e0b", icon: ArrowRightLeft },
+        { name: "Retiros", value: totalWithdrawal, fill: "#0284c7", icon: Wallet },
+    ].filter(d => d.value > 0).map(d => ({
+        ...d,
+        percentage: totalTransactionsSum > 0 ? (d.value / totalTransactionsSum) * 100 : 0
+    }));
 
     const balanceStr = (balance > 0 ? "+" : balance < 0 ? "-" : "") + formatCurrency(Math.abs(balance), primaryCurrency);
     // Adaptar el radio interno dinámicamente según el tamaño del texto para que los bordes sean lo más gruesos posibles sin solaparse
@@ -173,6 +191,20 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
             <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-[10px] font-bold drop-shadow-md">
                 {`${(percent * 100).toFixed(0)}%`}
             </text>
+        );
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderCustomXAxisTick = ({ x, y, payload }: any) => {
+        const item = pieData.find(d => d.name === payload.value);
+        if (!item) return null;
+        const Icon = item.icon;
+        return (
+            <g transform={`translate(${x},${y})`}>
+                <foreignObject x={-12} y={5} width={24} height={24}>
+                    <Icon className="w-4 h-4 mx-auto" style={{ color: item.fill }} />
+                </foreignObject>
+            </g>
         );
     };
 
@@ -219,196 +251,261 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
                 {/* Charts row (donut + breakdown) — kept in its own wrapper so the
                     totals strip below never alters the chart dimensions. */}
-                <div className="flex w-full flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center">
+                <div className="flex w-full flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center order-2 sm:order-1">
 
-                {/* ── LEFT SIDE: BALANCE NETO (DONUT CHART) ── */}
-                <div className="relative z-10 flex flex-col items-center justify-center lg:w-auto lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8">
+                    {/* ── LEFT SIDE: BALANCE NETO (DONUT CHART OR BAR CHART) ── */}
+                    <div className="relative z-10 flex flex-col items-center justify-center lg:w-auto lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8 w-full sm:w-auto">
 
-                    <div className="relative w-44 h-44 flex-shrink-0 mx-auto">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={pieData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={dynamicInnerRadius}
-                                    outerRadius="100%"
-                                    paddingAngle={2}
-                                    dataKey="value"
-                                    stroke="none"
-                                    labelLine={false}
-                                    label={renderCustomizedLabel}
-                                >
-                                    {pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                            return (
-                                                <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-2 text-xs flex items-center gap-2 z-50">
-                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].payload.fill }} />
-                                                    <span className="text-muted-foreground">{payload[0].name}:</span>
-                                                    <span className="font-semibold text-foreground">
-                                                        {formatCurrency(payload[0].value as number, primaryCurrency)}
-                                                    </span>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        {/* Subtle Toggle for Chart Type */}
+                        <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full mb-4 self-end">
+                            <button 
+                                onClick={() => setUserChartPreference('donut')}
+                                className={cn(
+                                    "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground", 
+                                    activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
+                                )}
+                                aria-label="Ver gráfico de dona"
+                            >
+                                <PieChartIcon className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                                onClick={() => setUserChartPreference('bar')}
+                                className={cn(
+                                    "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground", 
+                                    activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
+                                )}
+                                aria-label="Ver gráfico de barras"
+                            >
+                                <BarChartIcon className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
 
-                        {/* Centered text */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1 px-2">
-                            <span className={cn(
-                                "text-base sm:text-lg font-bold tracking-tighter drop-shadow-sm leading-none mb-1 whitespace-nowrap",
-                                balance > 0 ? "bg-gradient-to-br from-emerald-400 to-emerald-600 bg-clip-text text-transparent" : (balance < 0 ? "bg-gradient-to-br from-red-400 to-red-600 bg-clip-text text-transparent" : "text-muted-foreground")
-                            )}>
-                                {balanceStr}
-                            </span>
-                            <span className="text-[10px] font-medium text-muted-foreground/80">
-                                {transactions.length} trx
-                            </span>
+                        <div className={cn("relative flex-shrink-0 mx-auto", activeChartType === 'donut' ? "w-44 h-44" : "w-full h-44 sm:w-56")}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                {activeChartType === 'donut' ? (
+                                    <PieChart>
+                                        <Pie
+                                            data={pieData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={dynamicInnerRadius}
+                                            outerRadius="100%"
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                            stroke="none"
+                                            labelLine={false}
+                                            label={renderCustomizedLabel}
+                                            animationDuration={400}
+                                            animationBegin={0}
+                                            animationEasing="ease-out"
+                                        >
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    return (
+                                                        <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-2 text-xs flex items-center gap-2 z-50">
+                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].payload.fill }} />
+                                                            <span className="text-muted-foreground">{payload[0].name}:</span>
+                                                            <span className="font-semibold text-foreground">
+                                                                {formatCurrency(payload[0].value as number, primaryCurrency)}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                    </PieChart>
+                                ) : (
+                                    <BarChart data={pieData} margin={{ top: 20, right: 10, left: 10, bottom: 20 }}>
+                                        <XAxis dataKey="name" tick={renderCustomXAxisTick} axisLine={false} tickLine={false} />
+                                        <YAxis type="number" hide domain={[0, 'dataMax + 10']} />
+                                        <Tooltip
+                                            cursor={{ fill: 'transparent' }}
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    const data = payload[0].payload;
+                                                    return (
+                                                        <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-2 text-xs flex flex-col gap-1 z-50">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.fill }} />
+                                                                <span className="text-muted-foreground">{data.name}:</span>
+                                                            </div>
+                                                            <span className="font-semibold text-foreground">
+                                                                {formatCurrency(data.value as number, primaryCurrency)} ({data.percentage.toFixed(1)}%)
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                            ))}
+                                            <LabelList dataKey="percentage" position="top" formatter={(val: any) => `${Number(val || 0).toFixed(0)}%`} className="text-[10px] font-bold fill-foreground" />
+                                        </Bar>
+                                    </BarChart>
+                                )}
+                            </ResponsiveContainer>
+
+                            {/* Centered text only for donut chart */}
+                            {activeChartType === 'donut' && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1 px-2">
+                                    <span className={cn(
+                                        "text-base sm:text-lg font-bold tracking-tighter drop-shadow-sm leading-none mb-1 whitespace-nowrap",
+                                        balance > 0 ? "bg-gradient-to-br from-emerald-400 to-emerald-600 bg-clip-text text-transparent" : (balance < 0 ? "bg-gradient-to-br from-red-400 to-red-600 bg-clip-text text-transparent" : "text-muted-foreground")
+                                    )}>
+                                        {balanceStr}
+                                    </span>
+                                    <span className="text-[10px] font-medium text-muted-foreground/80">
+                                        {transactions.length} trx
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
-                </div>
 
-                {/* ── RIGHT SIDE: BREAKDOWN CHART ── */}
-                <div className="relative z-10 flex flex-col w-full flex-1 sm:h-44 lg:h-44 justify-between">
-                    {/* Header (Select only) */}
-                    <div className="flex justify-end items-start sm:items-center mb-4 sm:mb-2 gap-2">
-                        <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
-                            <SelectTrigger className="h-7 w-[110px] text-xs bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
-                                <SelectValue placeholder="Vista" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-background/95 backdrop-blur-xl border-white/10">
-                                <SelectItem value="day" className="text-xs">Por día</SelectItem>
-                                <SelectItem value="week" className="text-xs">Por semana</SelectItem>
-                                <SelectItem value="month" className="text-xs">Por mes</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {/* ── RIGHT SIDE: BREAKDOWN CHART ── */}
+                    <div className="relative z-10 flex flex-col w-full flex-1 sm:h-44 lg:h-44 justify-between">
+                        {/* Header (Select only) */}
+                        <div className="flex justify-end items-start sm:items-center mb-4 sm:mb-2 gap-2">
+                            <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+                                <SelectTrigger className="h-7 w-[110px] text-xs bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
+                                    <SelectValue placeholder="Vista" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-background/95 backdrop-blur-xl border-white/10">
+                                    <SelectItem value="day" className="text-xs">Por día</SelectItem>
+                                    <SelectItem value="week" className="text-xs">Por semana</SelectItem>
+                                    <SelectItem value="month" className="text-xs">Por mes</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                    {/* Chart Area */}
-                    <div className="w-full -ml-4 h-[180px] sm:h-auto sm:flex-1">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorOther" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorWithdrawal" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#0284c7" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#0284c7" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                                <YAxis
-                                    tickFormatter={(value) => {
-                                        if (value >= 1000000) return `$${(value / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
-                                        if (value >= 1000) return `$${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
-                                        return `$${value}`;
-                                    }}
-                                    width={40}
-                                    tick={{ fontSize: 10, fill: '#878787' }}
-                                    axisLine={false}
-                                    tickLine={false}
-                                />
-                                <XAxis
-                                    dataKey="date"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#878787', fontSize: 10 }}
-                                    dy={10}
-                                    minTickGap={20}
-                                />
-                                <Tooltip
-                                    content={({ active, payload, label }) => {
-                                        if (active && payload && payload.length) {
-                                            return (
-                                                <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-3 text-xs flex flex-col gap-1 z-50">
-                                                    <span className="font-medium text-foreground mb-1">{label}</span>
-                                                    {totalIncome > 0 && (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                            <span className="text-muted-foreground">Ingresos:</span>
-                                                            <span className="font-semibold text-foreground">
-                                                                {formatCurrency((payload.find(p => p.dataKey === 'income')?.value as number) || 0, primaryCurrency)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    {totalExpense > 0 && (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full bg-rose-500" />
-                                                            <span className="text-muted-foreground">Gastos:</span>
-                                                            <span className="font-semibold text-foreground">
-                                                                {formatCurrency((payload.find(p => p.dataKey === 'expense')?.value as number) || 0, primaryCurrency)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    {totalWithdrawal > 0 && (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#0284c7" }} />
-                                                            <span className="text-muted-foreground">Retiros:</span>
-                                                            <span className="font-semibold text-foreground">
-                                                                {formatCurrency((payload.find(p => p.dataKey === 'withdrawal')?.value as number) || 0, primaryCurrency)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    {totalOther > 0 && (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                                            <span className="text-muted-foreground">Transferencias:</span>
-                                                            <span className="font-semibold text-foreground">
-                                                                {formatCurrency((payload.find(p => p.dataKey === 'other')?.value as number) || 0, primaryCurrency)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }}
-                                />
-                                {totalIncome > 0 && <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />}
-                                {totalExpense > 0 && <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />}
-                                {totalWithdrawal > 0 && <Area type="monotone" dataKey="withdrawal" stroke="#0284c7" strokeWidth={2} fillOpacity={1} fill="url(#colorWithdrawal)" />}
-                                {totalOther > 0 && <Area type="monotone" dataKey="other" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorOther)" />}
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {/* Chart Area */}
+                        <div className="w-full -ml-4 h-[180px] sm:h-auto sm:flex-1">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorOther" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorWithdrawal" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#0284c7" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#0284c7" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                    <YAxis
+                                        tickFormatter={(value) => {
+                                            if (value >= 1000000) return `$${(value / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+                                            if (value >= 1000) return `$${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+                                            return `$${value}`;
+                                        }}
+                                        width={40}
+                                        tick={{ fontSize: 10, fill: '#878787' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <XAxis
+                                        dataKey="date"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#878787', fontSize: 10 }}
+                                        dy={10}
+                                        minTickGap={20}
+                                    />
+                                    <Tooltip
+                                        content={({ active, payload, label }) => {
+                                            if (active && payload && payload.length) {
+                                                return (
+                                                    <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-3 text-xs flex flex-col gap-1 z-50">
+                                                        <span className="font-medium text-foreground mb-1">{label}</span>
+                                                        {totalIncome > 0 && (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                                <span className="text-muted-foreground">Ingresos:</span>
+                                                                <span className="font-semibold text-foreground">
+                                                                    {formatCurrency((payload.find(p => p.dataKey === 'income')?.value as number) || 0, primaryCurrency)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {totalExpense > 0 && (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full bg-rose-500" />
+                                                                <span className="text-muted-foreground">Gastos:</span>
+                                                                <span className="font-semibold text-foreground">
+                                                                    {formatCurrency((payload.find(p => p.dataKey === 'expense')?.value as number) || 0, primaryCurrency)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {totalWithdrawal > 0 && (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#0284c7" }} />
+                                                                <span className="text-muted-foreground">Retiros:</span>
+                                                                <span className="font-semibold text-foreground">
+                                                                    {formatCurrency((payload.find(p => p.dataKey === 'withdrawal')?.value as number) || 0, primaryCurrency)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {totalOther > 0 && (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                                <span className="text-muted-foreground">Transferencias:</span>
+                                                                <span className="font-semibold text-foreground">
+                                                                    {formatCurrency((payload.find(p => p.dataKey === 'other')?.value as number) || 0, primaryCurrency)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    {totalIncome > 0 && <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />}
+                                    {totalExpense > 0 && <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />}
+                                    {totalWithdrawal > 0 && <Area type="monotone" dataKey="withdrawal" stroke="#0284c7" strokeWidth={2} fillOpacity={1} fill="url(#colorWithdrawal)" />}
+                                    {totalOther > 0 && <Area type="monotone" dataKey="other" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorOther)" />}
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
-                </div>
                 </div>
 
                 {/* ── Per-type totals ── computed from the same (filtered) transactions
                     that feed the charts, placed below so the charts never resize. */}
                 {pieData.length > 0 && (
-                    <div className="relative z-10 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-white/5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                            Totales
-                        </span>
-                        {pieData.map((item) => (
-                            <div key={item.name} className="flex items-center gap-2 min-w-0">
-                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
-                                <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">{item.name}</span>
-                                <span className="text-xs sm:text-sm font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
-                                    {formatCurrency(item.value, primaryCurrency)}
-                                </span>
-                            </div>
-                        ))}
+                    <div className="relative z-10 mb-5 sm:mb-0 sm:mt-6 pb-4 sm:pb-0 sm:pt-5 border-b sm:border-b-0 sm:border-t border-white/5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 order-1 sm:order-2">
+                        {pieData.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <div key={item.name} className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                                    {/* Icon for mobile, dot for desktop */}
+                                    <Icon className="w-4 h-4 sm:hidden" style={{ color: item.fill }} />
+                                    <span className="hidden sm:inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
+                                    
+                                    <span className="hidden sm:inline text-[11px] font-medium text-muted-foreground whitespace-nowrap">{item.name}</span>
+                                    <span className="text-xs sm:text-sm font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
+                                        {formatCurrency(item.value, primaryCurrency)}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 

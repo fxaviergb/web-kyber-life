@@ -19,6 +19,8 @@ import { toast } from "sonner";
 interface TransactionTimelineProps {
     /** Server-rendered first page */
     initialTransactions: FinancialTransaction[];
+    /** All transactions matching current filters, regardless of pagination */
+    allFilteredTransactions?: FinancialTransaction[];
     /** Current URL search-params so infinite scroll can re-apply the same filters */
     searchFilters?: Record<string, any>;
 }
@@ -110,7 +112,7 @@ const PAGE_SIZE = 20;
 
 // ─── Component ───────────────────────────────────────────────
 
-export function TransactionTimeline({ initialTransactions, searchFilters }: TransactionTimelineProps) {
+export function TransactionTimeline({ initialTransactions, allFilteredTransactions, searchFilters }: TransactionTimelineProps) {
     const [transactions, setTransactions] = useState<FinancialTransaction[]>(initialTransactions);
     const [isFromCache, setIsFromCache] = useState(false);
     const [page, setPage] = useState(1);
@@ -383,7 +385,8 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                 </div>
             )}
 
-            <TransactionSummary transactions={visibleTransactions} />
+            {/* Use allFilteredTransactions for the summary if available, otherwise fallback to visible */}
+            <TransactionSummary transactions={allFilteredTransactions || visibleTransactions} />
 
             {visibleTransactions.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -395,7 +398,7 @@ export function TransactionTimeline({ initialTransactions, searchFilters }: Tran
                         <h3 className="text-sm font-medium text-muted-foreground tracking-tight sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10">
                             {dateLabel}
                         </h3>
-                        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="flex flex-col gap-2">
                             {items.map(t => (
                                 <TransactionCard 
                                     key={t.id} 

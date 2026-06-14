@@ -49,6 +49,7 @@ describe("FinancialTransactionService", () => {
                 currency: "USD",
                 date: "2026-05-18T10:00:00Z",
                 merchant: "Test",
+                description: "Test description",
             };
 
             const result = await service.createTransaction(dto);
@@ -87,6 +88,7 @@ describe("FinancialTransactionService", () => {
                 currency: "USD",
                 date: "2026-05-18T10:00:00Z", // Same day
                 merchant: "Test", 
+                description: "Test description",
             };
 
             const result = await service.createTransaction(dto);
