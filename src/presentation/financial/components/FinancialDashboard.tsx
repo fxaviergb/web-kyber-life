@@ -23,8 +23,17 @@ function formatCurrency(value: number): string {
 
 export function FinancialDashboard() {
     const [filterType, setFilterType] = useState<"all" | "today" | "week" | "month" | "custom">("month");
-    const [customStartDate, setCustomStartDate] = useState<string>("");
-    const [customEndDate, setCustomEndDate] = useState<string>("");
+    const [customStartDate, setCustomStartDate] = useState<string>(() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        d.setDate(22);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
+    const [customEndDate, setCustomEndDate] = useState<string>(() => {
+        const d = new Date();
+        d.setDate(21);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [categoryLimit, setCategoryLimit] = useState<number>(5);
     const [institutionLimit, setInstitutionLimit] = useState<number>(5);
 

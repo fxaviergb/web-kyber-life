@@ -4,18 +4,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, SlidersHorizontal, CalendarDays, X, ChevronDown, Filter } from "lucide-react";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuCheckboxItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { FinancialCategory, FinancialInstitution } from "@/domain/entities/financial";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -76,17 +76,43 @@ function toLocalDateValue(iso: string): string {
     return `${year}-${month}-${day}`;
 }
 
+function getDefaultCustomDates() {
+    const now = new Date();
+    // Previous month 22nd
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 22);
+    // Current month 21st
+    const currMonth = new Date(now.getFullYear(), now.getMonth(), 21);
+    
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const formatStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    
+    return {
+        from: formatStr(prevMonth),
+        to: formatStr(currMonth)
+    };
+}
+
 // ─── Component ───────────────────────────────────────────────
 
-export function TransactionFilters() {
+export interface TransactionFiltersProps {
+    categories?: FinancialCategory[];
+    institutions?: FinancialInstitution[];
+}
+
+export function TransactionFilters({ categories = [], institutions = [] }: TransactionFiltersProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     // ── Text search ──────────────────────────────────────────
     const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "");
-    const initialStatus = searchParams.getAll("status");
-    const [statusFilter, setStatusFilter] = useState<string[]>(initialStatus);
+    const initialCategoryId = searchParams.get("categoryId") || "all";
+    const [categoryId, setCategoryId] = useState<string>(initialCategoryId);
+    
+    const initialInstitutionId = searchParams.get("institutionId") || "all";
+    const [institutionId, setInstitutionId] = useState<string>(initialInstitutionId);
+    
+    const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
     // ── Date filter ──────────────────────────────────────────
@@ -98,8 +124,9 @@ export function TransactionFilters() {
     const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
     // ── Custom date inputs (local YYYY-MM-DD) ────────────────
-    const [customFrom, setCustomFrom] = useState(urlDateFrom ? toLocalDateValue(urlDateFrom) : "");
-    const [customTo, setCustomTo] = useState(urlDateTo ? toLocalDateValue(urlDateTo) : "");
+    const defaultCustom = getDefaultCustomDates();
+    const [customFrom, setCustomFrom] = useState(urlDateFrom ? toLocalDateValue(urlDateFrom) : defaultCustom.from);
+    const [customTo, setCustomTo] = useState(urlDateTo ? toLocalDateValue(urlDateTo) : defaultCustom.to);
 
     // Debounce search update
     useEffect(() => {
@@ -119,19 +146,27 @@ export function TransactionFilters() {
         return () => clearTimeout(timer);
     }, [searchQuery, pathname, router, searchParams]);
 
-    const handleStatusChange = useCallback((status: string, checked: boolean) => {
-        const newStatusFilter = checked
-            ? [...statusFilter, status]
-            : statusFilter.filter(s => s !== status);
-
-        setStatusFilter(newStatusFilter);
-
+    const handleCategoryChange = useCallback((val: string) => {
+        setCategoryId(val);
         const params = new URLSearchParams(searchParams.toString());
-        params.delete("status");
-        newStatusFilter.forEach(s => params.append("status", s));
-
+        if (val && val !== "all") {
+            params.set("categoryId", val);
+        } else {
+            params.delete("categoryId");
+        }
         router.push(`${pathname}?${params.toString()}`);
-    }, [statusFilter, pathname, router, searchParams]);
+    }, [pathname, router, searchParams]);
+
+    const handleInstitutionChange = useCallback((val: string) => {
+        setInstitutionId(val);
+        const params = new URLSearchParams(searchParams.toString());
+        if (val && val !== "all") {
+            params.set("institutionId", val);
+        } else {
+            params.delete("institutionId");
+        }
+        router.push(`${pathname}?${params.toString()}`);
+    }, [pathname, router, searchParams]);
 
     // ── Date Filter Actions ──────────────────────────────────
 
@@ -176,43 +211,54 @@ export function TransactionFilters() {
     const clearDateFilter = () => {
         setDateFrom("");
         setDateTo("");
-        setActivePreset(null);
-        setCustomFrom("");
-        setCustomTo("");
+        setActivePreset("all");
+        setCustomFrom(defaultCustom.from);
+        setCustomTo(defaultCustom.to);
         const params = new URLSearchParams(searchParams.toString());
         params.delete("dateFrom");
         params.delete("dateTo");
-        params.delete("range");
+        params.set("range", "all");
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    // ── Global clear ─────────────────────────────────────────
+    const urlRange = searchParams.get("range");
+    const isDefaultMonth = !dateFrom && !dateTo && urlRange !== 'all';
+    const hasDateFilter = Boolean(dateFrom || dateTo || isDefaultMonth);
 
-    const hasAnyFilter = statusFilter.length > 0
+    const hasAnyFilter = (categoryId && categoryId !== "all")
+        || (institutionId && institutionId !== "all")
         || searchParams.has("query")
         || searchParams.has("currency")
-        || searchParams.has("dateFrom")
-        || searchParams.has("dateTo")
-        || searchParams.has("range");
+        || hasDateFilter;
+
+    const activeFilterNames = [];
+    if (searchParams.has("query")) activeFilterNames.push("búsqueda");
+    if (categoryId && categoryId !== "all") activeFilterNames.push("categoría");
+    if (institutionId && institutionId !== "all") activeFilterNames.push("institución");
+    if (hasDateFilter) activeFilterNames.push("fecha");
+    if (searchParams.has("currency")) activeFilterNames.push("moneda");
+
+    const activeFiltersText = activeFilterNames.length > 0 
+        ? `Filtros para: ${activeFilterNames.join(", ")}` 
+        : "Sin filtros aplicados";
 
     const clearAllFilters = () => {
-        setStatusFilter([]);
+        setCategoryId("all");
+        setInstitutionId("all");
         setSearchQuery("");
-        clearDateFilter();
+        clearDateFilter(); // This already sets range to 'all'
         const params = new URLSearchParams(searchParams.toString());
-        params.delete("status");
+        params.delete("categoryId");
+        params.delete("institutionId");
         params.delete("query");
         params.delete("currency");
         params.delete("dateFrom");
         params.delete("dateTo");
-        params.delete("range");
+        params.set("range", "all");
         router.push(`${pathname}?${params.toString()}`);
     };
 
     // ── Build label for date button ──────────────────────────
-
-    const urlRange = searchParams.get("range");
-    const isDefaultMonth = !dateFrom && !dateTo && urlRange !== 'all';
 
     const getDateButtonLabel = (): string => {
         if (isDefaultMonth) return "Este mes";
@@ -221,8 +267,6 @@ export function TransactionFilters() {
         if (dateFrom && dateTo) return `${formatShortDate(dateFrom)} – ${formatShortDate(dateTo)}`;
         return "Fecha";
     };
-
-    const hasDateFilter = Boolean(dateFrom || dateTo || urlRange === 'all');
 
     return (
         <div className="flex flex-col gap-3 w-full mb-4">
@@ -243,8 +287,8 @@ export function TransactionFilters() {
                         <span className="text-lg font-bold tracking-tight leading-none text-foreground/90">
                             Filtros de Búsqueda
                         </span>
-                        <p className="text-[10px] text-muted-foreground font-medium leading-none uppercase tracking-wider">
-                            {hasAnyFilter ? "Filtros activos" : "Sin filtros aplicados"}
+                        <p className="text-[10px] text-muted-foreground font-medium leading-none uppercase tracking-wider truncate max-w-[200px] sm:max-w-none">
+                            {activeFiltersText}
                         </p>
                     </div>
                 </div>
@@ -273,33 +317,55 @@ export function TransactionFilters() {
                 <div className="h-6 w-px bg-white/10 hidden sm:block shrink-0" />
 
                 <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto shrink-0 pl-0 sm:pl-1 mt-2 sm:mt-0">
-                    {/* Status Filter Dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                    {/* Advanced Filters Dropdown (Category & Institution) */}
+                    <Popover open={filtersPopoverOpen} onOpenChange={setFiltersPopoverOpen}>
+                        <PopoverTrigger asChild>
                             <Button variant="ghost" className="w-full sm:w-auto gap-2 hover:bg-white/5 justify-start sm:justify-center">
                                 <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0" />
                                 <span className="text-muted-foreground truncate">Filtros</span>
-                                {statusFilter.length > 0 && (
+                                {((categoryId && categoryId !== "all" ? 1 : 0) + (institutionId && institutionId !== "all" ? 1 : 0)) > 0 && (
                                     <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-primary/20 text-[10px] font-medium text-accent-primary">
-                                        {statusFilter.length}
+                                        {(categoryId && categoryId !== "all" ? 1 : 0) + (institutionId && institutionId !== "all" ? 1 : 0)}
                                     </span>
                                 )}
                             </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel>Filtrar por estado</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {['DETECTED', 'REVIEWED', 'CONFIRMED', 'REJECTED', 'DUPLICATE', 'MANUAL', 'ARCHIVED'].map(status => (
-                                <DropdownMenuCheckboxItem
-                                    key={status}
-                                    checked={statusFilter.includes(status)}
-                                    onCheckedChange={(checked) => handleStatusChange(status, checked)}
-                                >
-                                    {status}
-                                </DropdownMenuCheckboxItem>
-                            ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-72 p-4 space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                                    Categoría
+                                </label>
+                                <Select value={categoryId} onValueChange={handleCategoryChange}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Todas las categorías" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todas las categorías</SelectItem>
+                                        {categories.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                                    Institución
+                                </label>
+                                <Select value={institutionId} onValueChange={handleInstitutionChange}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Todas las instituciones" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todas las instituciones</SelectItem>
+                                        {institutions.map(i => (
+                                            <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
 
                     {/* Date Range Filter */}
                     <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>

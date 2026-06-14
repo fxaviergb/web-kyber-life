@@ -205,10 +205,32 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
      * Shared filter builder used by both `search` and `findPaginated`.
      * Keeps all SQL-level filtering in a single place.
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private applyFilters(qb: any, query?: string, filters?: TransactionSearchFilters) {
-        if (query) {
-            qb = qb.ilike('merchant', `%${query}%`);
+    private applyFilters(qb: any, query?: string, filters?: TransactionSearchFilters & any) {
+        if (filters?.words && filters.words.length > 0) {
+            filters.words.forEach((word: string, index: number) => {
+                const safeWord = word.replace(/,/g, '');
+                if (safeWord) {
+                    // PostgREST uses '*' for wildcards in URL query strings (used by .or)
+                    const pattern = `*${safeWord}*`;
+                    let orConditions = `merchant.ilike.${pattern},description.ilike.${pattern}`;
+                    
+                    const catIds = filters.wordCategoryIds?.[index] || [];
+                    if (catIds.length > 0) {
+                        orConditions += `,category_id.in.(${catIds.join(',')})`;
+                    }
+                    
+                    const instIds = filters.wordInstitutionIds?.[index] || [];
+                    if (instIds.length > 0) {
+                        orConditions += `,institution_id.in.(${instIds.join(',')})`;
+                    }
+
+                    qb = qb.or(orConditions);
+                }
+            });
+        } else if (query) {
+            // Fallback just in case `words` wasn't populated (e.g. from non-paginated search endpoint)
+            const safeWord = query.replace(/,/g, '');
+            qb = qb.or(`merchant.ilike.*${safeWord}*,description.ilike.*${safeWord}*`);
         }
         if (filters?.status) {
             qb = qb.eq('status', filters.status);

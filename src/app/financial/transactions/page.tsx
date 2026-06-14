@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { TransactionTimeline } from "@/presentation/financial/components/TransactionTimeline";
 import { TransactionFilters } from "@/presentation/financial/components/TransactionFilters";
-import { searchPaginatedTransactionsAction } from "@/app/actions/financial-transactions";
+import { searchPaginatedTransactionsAction, searchAllFilteredTransactionsAction } from "@/app/actions/financial-transactions";
+import { getCategoriesAction, getInstitutionsAction } from "@/app/actions/financial-settings";
 import { Button } from "@/components/ui/button";
 import { Plus, Inbox as InboxIcon } from "lucide-react";
 import Link from "next/link";
@@ -25,6 +26,9 @@ export default async function TransactionsPage({
         ? typeParam.split(',') 
         : Array.isArray(typeParam) ? typeParam : undefined;
 
+    const categoryId = typeof params.categoryId === 'string' ? params.categoryId : undefined;
+    const institutionId = typeof params.institutionId === 'string' ? params.institutionId : undefined;
+
     const currency = typeof params.currency === 'string' ? params.currency : undefined;
     const range = typeof params.range === 'string' ? params.range : undefined;
     let dateFrom = typeof params.dateFrom === 'string' ? params.dateFrom : undefined;
@@ -37,24 +41,43 @@ export default async function TransactionsPage({
         dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
     }
 
-    // Server-side paginated first page
-    const initialResult = await searchPaginatedTransactionsAction({
-        query,
-        status,
-        types,
-        currency,
-        dateFrom,
-        dateTo,
-        page: 1,
-        pageSize: 20,
-    });
+    const [initialResult, allFilteredResult, categories, institutions] = await Promise.all([
+        searchPaginatedTransactionsAction({
+            query,
+            status,
+            types,
+            currency,
+            dateFrom,
+            dateTo,
+            categoryId,
+            institutionId,
+            page: 1,
+            pageSize: 20,
+        }),
+        searchAllFilteredTransactionsAction({
+            query,
+            status,
+            types,
+            currency,
+            dateFrom,
+            dateTo,
+            categoryId,
+            institutionId,
+        }),
+        getCategoriesAction(),
+        getInstitutionsAction()
+    ]);
 
     const initialTransactions = initialResult.success && initialResult.data
         ? initialResult.data.data
         : [];
 
+    const allFilteredTransactions = allFilteredResult.success && allFilteredResult.data
+        ? allFilteredResult.data as any[] // we know it's FinancialTransaction[]
+        : [];
+
     // Pass URL filters so the infinite-scroll can re-apply them
-    const searchFilters = { query, status, types, currency, dateFrom, dateTo, range };
+    const searchFilters = { query, status, types, currency, dateFrom, dateTo, range, categoryId, institutionId };
 
     return (
         <div className="flex flex-col gap-6">
@@ -84,13 +107,14 @@ export default async function TransactionsPage({
             <Suspense fallback={<div className="h-10 animate-pulse bg-muted rounded-md" />}>
                 <TransactionTabs>
                     <Suspense fallback={<div className="h-10 animate-pulse bg-muted rounded-md" />}>
-                        <TransactionFilters />
+                        <TransactionFilters categories={categories} institutions={institutions} />
                     </Suspense>
 
                     <Suspense fallback={<div className="h-40 flex items-center justify-center">Cargando transacciones...</div>}>
                         <TransactionTimeline
                             key={JSON.stringify(params)}
                             initialTransactions={initialTransactions}
+                            allFilteredTransactions={allFilteredTransactions}
                             searchFilters={searchFilters}
                         />
                     </Suspense>

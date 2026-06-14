@@ -22,7 +22,18 @@ import {
     ChevronDown,
     ChevronUp,
     MoreVertical,
-    Clock
+    Clock,
+    TrendingDown,
+    TrendingUp,
+    ArrowRightLeft,
+    Wallet,
+    Repeat,
+    CreditCard,
+    Undo2,
+    ArrowDownToLine,
+    Receipt,
+    Landmark,
+    MoreHorizontal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -49,20 +60,21 @@ interface TypeStyle {
     label: string;
     badge: string;
     amount: string;
+    icon: React.ElementType;
 }
 
 const TYPE_STYLE: Record<string, TypeStyle> = {
-    EXPENSE:      { label: "Gasto",         badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",          amount: "text-rose-500" },
-    INCOME:       { label: "Ingreso",       badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", amount: "text-emerald-500" },
-    TRANSFER:     { label: "Transferencia", badge: "bg-sky-500/10 text-sky-400 border-sky-500/20",             amount: "text-sky-400" },
-    WITHDRAWAL:   { label: "Retiro",        badge: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",    amount: "text-indigo-400" },
-    SUBSCRIPTION: { label: "Suscripción",   badge: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20", amount: "text-rose-500" },
-    PAYMENT:      { label: "Pago",          badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",          amount: "text-rose-500" },
-    REFUND:       { label: "Reembolso",     badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", amount: "text-emerald-500" },
-    DEPOSIT:      { label: "Depósito",      badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", amount: "text-emerald-500" },
-    FEE:          { label: "Comisión",      badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",       amount: "text-amber-500" },
-    TAX:          { label: "Impuesto",      badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",       amount: "text-amber-500" },
-    OTHER:        { label: "Otro",          badge: "bg-zinc-500/10 text-zinc-300 border-zinc-500/20",          amount: "text-zinc-300" },
+    EXPENSE:      { label: "Gasto",         badge: "bg-rose-500/10 text-rose-500 dark:text-rose-400 border-rose-500/20",          amount: "text-rose-500 dark:text-rose-400", icon: TrendingDown },
+    INCOME:       { label: "Ingreso",       badge: "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20", amount: "text-emerald-500 dark:text-emerald-400", icon: TrendingUp },
+    TRANSFER:     { label: "Transferencia", badge: "bg-yellow-500/10 text-yellow-500 dark:text-yellow-400 border-yellow-500/20",             amount: "text-yellow-500 dark:text-yellow-400", icon: ArrowRightLeft },
+    WITHDRAWAL:   { label: "Retiro",        badge: "bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border-indigo-500/20",    amount: "text-indigo-500 dark:text-indigo-400", icon: Wallet },
+    SUBSCRIPTION: { label: "Suscripción",   badge: "bg-fuchsia-500/10 text-fuchsia-500 dark:text-fuchsia-400 border-fuchsia-500/20", amount: "text-fuchsia-500 dark:text-rose-400", icon: Repeat },
+    PAYMENT:      { label: "Pago",          badge: "bg-rose-500/10 text-rose-500 dark:text-rose-400 border-rose-500/20",          amount: "text-rose-500 dark:text-rose-400", icon: CreditCard },
+    REFUND:       { label: "Reembolso",     badge: "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20", amount: "text-emerald-500 dark:text-emerald-400", icon: Undo2 },
+    DEPOSIT:      { label: "Depósito",      badge: "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20", amount: "text-emerald-500 dark:text-emerald-400", icon: ArrowDownToLine },
+    FEE:          { label: "Comisión",      badge: "bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20",       amount: "text-amber-500 dark:text-amber-400", icon: Receipt },
+    TAX:          { label: "Impuesto",      badge: "bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20",       amount: "text-amber-500 dark:text-amber-400", icon: Landmark },
+    OTHER:        { label: "Otro",          badge: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300 border-zinc-500/20",          amount: "text-zinc-600 dark:text-zinc-300", icon: MoreHorizontal },
 };
 
 const DEFAULT_TYPE_STYLE: TypeStyle = TYPE_STYLE.OTHER;
@@ -174,104 +186,89 @@ export function TransactionCard({
             {/* ── Nivel 1: Resumen (Siempre visible) ───────────────── */}
             <CardHeader
                 className={cn(
-                    "flex flex-col flex-1 w-full min-h-0 !space-y-0 !px-4 !py-4 sm:!px-5 select-none bg-bg-secondary/50 transition-colors",
+                    "flex flex-row items-center justify-between w-full !space-y-0 !px-3 !py-3 sm:!px-4 select-none bg-bg-secondary/50 transition-colors gap-3",
                     isExpanded && "border-b border-border/50",
                     hasContext && "cursor-pointer hover:bg-bg-secondary"
                 )}
                 onClick={() => hasContext && setIsExpanded(!isExpanded)}
             >
-                {/* Main Content */}
-                <div className="flex-1 w-full min-w-0 pb-3 flex flex-col gap-2">
-                    {/* Row 1: Type badge (left) + Amount (right) */}
-                    <div className="flex items-center justify-between gap-3 w-full">
-                        <span
+                {/* Left Side: Badge + Title/Subtitle */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {/* Badge and Time */}
+                    <div className="shrink-0 flex flex-col items-center justify-center gap-1.5">
+                        <div
                             className={cn(
-                                "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-tight whitespace-nowrap shrink-0",
+                                "flex items-center justify-center rounded-2xl w-11 h-11 border",
                                 style.badge
                             )}
+                            title={typeLabel}
                         >
-                            {typeLabel}
-                        </span>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                            {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
-                                <AlertCircle className="h-4 w-4 text-warning-text shrink-0" />
-                            )}
-                            <span
-                                className={cn(
-                                    "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap",
-                                    style.amount
-                                )}
-                                title={formatAmount(transaction.amount, transaction.currency)}
-                            >
-                                {amountSign}{formatAmount(transaction.amount, transaction.currency)}
-                            </span>
+                            {(() => {
+                                const Icon = style.icon;
+                                return <Icon className="w-5 h-5" strokeWidth={2.5} />;
+                            })()}
                         </div>
+                        <span className="text-[10px] font-medium text-muted-foreground leading-none">
+                            {formatTime(transaction.date)}
+                        </span>
                     </div>
 
-                    {/* Row 2: Title (Description) — full width, up to 3 lines */}
-                    <CardTitle
-                        className={cn(
-                            "text-base sm:text-lg tracking-tight line-clamp-3 font-semibold break-words transition-colors leading-tight w-full",
-                            hasContext && "group-hover/card:text-accent-primary"
-                        )}
-                        title={displayTitle}
-                    >
-                        {displayTitle}
-                    </CardTitle>
-
-                    {/* Row 3: Subtitle (Institution / Merchant) — full width, up to 3 lines */}
-                    <span className="line-clamp-3 break-words text-sm font-medium text-zinc-300 w-full" title={transaction.merchant || typeLabel}>
-                        {transaction.merchant || typeLabel}
-                    </span>
-                </div>
-
-                {/* Separator - Pushed to bottom by flex-1 on Main Content */}
-                <div className="w-full h-px bg-border/80 shrink-0 mt-auto" />
-
-                {/* Footer */}
-                <div className="flex w-full items-center justify-between gap-3 min-w-0 pt-3 shrink-0">
-                    <div className="flex items-center gap-x-3 text-xs text-muted-foreground shrink-0">
-                            <span className="flex items-center gap-1 shrink-0">
-                                <Clock className="h-3.5 w-3.5 opacity-70" />
-                                {formatTime(transaction.date)}
+                    {/* Text content */}
+                    <div className="flex flex-col min-w-0 justify-center">
+                        <CardTitle
+                            className={cn(
+                                "text-sm sm:text-base tracking-tight line-clamp-3 break-words font-semibold transition-colors leading-tight",
+                                hasContext && "group-hover:text-accent-primary"
+                            )}
+                            title={displayTitle}
+                        >
+                            {transaction.possibleDuplicate && transaction.status !== "DUPLICATE" && (
+                                <AlertCircle className="inline-block h-3.5 w-3.5 text-warning-text mr-1" />
+                            )}
+                            {displayTitle}
+                        </CardTitle>
+                        <div className="flex items-start gap-2 mt-0.5 min-w-0">
+                            <span className="line-clamp-3 break-words text-[13px] font-medium text-zinc-400" title={transaction.merchant || typeLabel}>
+                                {transaction.merchant || typeLabel}
                             </span>
-
-                            {hasContext && (
-                                <>
-                                    <span className="w-1 h-1 rounded-full bg-border shrink-0" />
-                                    <span className="flex items-center gap-1 font-medium hover:text-foreground transition-colors truncate">
-                                        {isExpanded ? (
-                                            <><ChevronUp className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Ocultar</span></>
-                                        ) : (
-                                            <><ChevronDown className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Resumen</span></>
-                                        )}
-                                    </span>
-                                </>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 min-w-0">
+                            {/* Category */}
+                            {transaction.categoryName && (
+                                <span className="text-[11px] text-muted-foreground truncate" title={transaction.categoryName}>
+                                    {transaction.categoryName}
+                                </span>
                             )}
                         </div>
+                    </div>
+                </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0"
-                                disabled={isLoading}
-                                asChild
-                            >
-                                <NextLink href={`/financial/transactions/${transaction.id}`}>
-                                    <Eye className="h-4 w-4" />
-                                    <span className="sr-only">Detalles</span>
-                                </NextLink>
-                            </Button>
+                {/* Right Side: Amount + Actions */}
+                <div className="flex flex-col items-end shrink-0 gap-1.5 ml-2">
+                    <span
+                        className={cn(
+                            "text-sm sm:text-base font-bold tracking-tight whitespace-nowrap leading-none",
+                            style.amount
+                        )}
+                        title={formatAmount(transaction.amount, transaction.currency)}
+                    >
+                        {amountSign}{formatAmount(transaction.amount, transaction.currency)}
+                    </span>
+
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1">
+
+                        <div className="flex items-center gap-1.5 ml-1" onClick={(e) => e.stopPropagation()}>
+                            <NextLink href={`/financial/transactions/${transaction.id}`} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+                                <Eye className="h-[18px] w-[18px]" />
+                                <span className="sr-only">Detalles</span>
+                            </NextLink>
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-bg-primary hover:text-foreground shrink-0">
-                                        <MoreVertical className="h-4 w-4" />
+                                    <button className="text-muted-foreground hover:text-foreground transition-colors p-1 -mr-1">
+                                        <MoreVertical className="h-5 w-5" />
                                         <span className="sr-only">Opciones</span>
-                                    </Button>
+                                    </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-40 rounded-xl">
                                     {transaction.status === "DETECTED" && (
@@ -301,6 +298,7 @@ export function TransactionCard({
                             </DropdownMenu>
                         </div>
                     </div>
+                </div>
             </CardHeader>
 
             {/* ── Nivel 2: Detalles Extensos (Desplegable) ──────────────────── */}

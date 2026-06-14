@@ -95,6 +95,27 @@ export async function searchPaginatedTransactionsAction(params: Record<string, u
     }
 }
 
+export async function searchAllFilteredTransactionsAction(params: Record<string, unknown>) {
+    try {
+        const validated = paginatedSearchSchema.parse(params);
+        const userId = await getAuthUserId();
+
+        const { page, pageSize, ...filters } = validated;
+        const result = await financialTransactionService.searchAllFiltered(
+            userId,
+            filters,
+        );
+
+        return { success: true, data: result };
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return { success: false, error: `Validation failed: ${formatZodError(error)}` };
+        }
+        console.error("Error in searchAllFiltered:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
 // ─── Get By ID ───────────────────────────────────────────────
 
 export async function getTransactionByIdAction(id: string) {
