@@ -249,10 +249,10 @@ export class FinancialDashboardService {
 
     async getCategoryBreakdown(userId: UUID, startDate?: Date, endDate?: Date): Promise<CategoryBreakdown[]> {
         const transactions = await this.transactionRepo.findByOwnerId(userId);
-        // Usually, category breakdown makes sense for expenses, but we can include all active
-        // Let's filter to expenses to be more useful, or return all grouped.
-        // We'll group expenses.
-        const confirmed = this.filterActive(transactions, startDate, endDate).filter(t => !this.isIncomeType(t.type));
+        // Category breakdown is about spending: keep strictly expense-type transactions,
+        // excluding income, transfers and withdrawals (same definition as the "Gastos" KPI).
+        const confirmed = this.filterActive(transactions, startDate, endDate)
+            .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type) && t.type !== "TRANSFER");
         const categories = await this.categoryRepo.findAllBaseAndUser(userId);
         const catMap = new Map(categories.map(c => [c.id, c]));
 

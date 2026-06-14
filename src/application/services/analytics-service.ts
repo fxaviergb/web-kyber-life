@@ -63,6 +63,36 @@ export class AnalyticsService {
     }
 
     /**
+     * Daily spend series for a date range (single-series, market equivalent of
+     * the financial DailyBreakdown). Powers the dashboard hub spend trend, which
+     * buckets these daily points by day/week/month on the client.
+     */
+    async getDailyExpenses(userId: UUID, startDate?: Date, endDate?: Date) {
+        const purchases = (await this.purchaseRepo.findByOwnerId(userId))
+            .filter(p => p.status === 'completed' && p.totalPaid !== null)
+            .filter(p => this.isWithinRange(p.date, startDate, endDate));
+
+        const grouped = new Map<string, number>();
+        purchases.forEach(p => {
+            const dayKey = p.date.slice(0, 10); // YYYY-MM-DD
+            grouped.set(dayKey, (grouped.get(dayKey) || 0) + (p.totalPaid || 0));
+        });
+
+        return Array.from(grouped.entries())
+            .map(([date, total]) => ({ date, total: Math.round(total * 100) / 100 }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    /** Whether an ISO purchase date falls within an optional [start, end] range. */
+    private isWithinRange(dateStr: string, startDate?: Date, endDate?: Date): boolean {
+        if (!startDate && !endDate) return true;
+        const d = new Date(dateStr);
+        if (startDate && d < startDate) return false;
+        if (endDate && d > endDate) return false;
+        return true;
+    }
+
+    /**
      * Flow 20: Category Spending
      */
     /**
@@ -192,9 +222,10 @@ export class AnalyticsService {
     /**
      * Get top products by total amount spent.
      */
-    async getTopSpendingProducts(userId: UUID, limit: number = 5) {
+    async getTopSpendingProducts(userId: UUID, limit: number = 5, startDate?: Date, endDate?: Date) {
         const purchases = (await this.purchaseRepo.findByOwnerId(userId))
-            .filter(p => p.status === 'completed');
+            .filter(p => p.status === 'completed')
+            .filter(p => this.isWithinRange(p.date, startDate, endDate));
 
         const genericSpending = new Map<UUID, number>();
 

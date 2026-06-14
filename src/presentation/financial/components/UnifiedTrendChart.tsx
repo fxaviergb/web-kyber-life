@@ -2,95 +2,90 @@
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import { ResponsiveContainer, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
-import { BarChart3, Activity } from "lucide-react";
+import { BarChart3, Activity, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, type LucideIcon } from "lucide-react";
 import { DailyBreakdown } from "@/application/services/financial-dashboard-service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    formatDay,
+    formatMonth,
+    formatWeek,
+    getMonthKey,
+    getStartOfWeek,
+    suggestViewMode,
+    formatChartCurrency as formatCurrency,
+} from "@/lib/date-bucketing";
 
 interface UnifiedTrendChartProps {
     data: DailyBreakdown[];
+    /** Render a custom legend with the per-type icon + color used by the KPIs. */
+    iconLegend?: boolean;
 }
 
 type ViewMode = "day" | "week" | "month";
 
-const MONTH_LABELS: Record<string, string> = {
-    "01": "Ene", "02": "Feb", "03": "Mar", "04": "Abr",
-    "05": "May", "06": "Jun", "07": "Jul", "08": "Ago",
-    "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dic",
-};
-
-// Helper: Get the start of the week (Monday) for a given date
-function getStartOfWeek(dateStr: string): string {
-    const d = new Date(dateStr + "T00:00:00");
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const start = new Date(d.setDate(diff));
-    return start.toISOString().split("T")[0];
+interface TypeTotals {
+    income: number;
+    expenses: number;
+    withdrawals: number;
+    other: number;
 }
 
-// Helper: Get month key (YYYY-MM)
-function getMonthKey(dateStr: string): string {
-    return dateStr.substring(0, 7);
+// Legend entries aligned with the KPI cards (color + icon per transaction type).
+const TYPE_LEGEND: { key: keyof TypeTotals; label: string; color: string; Icon: LucideIcon }[] = [
+    { key: "income", label: "Ingresos", color: "hsl(142, 71%, 45%)", Icon: TrendingUp },
+    { key: "expenses", label: "Gastos", color: "hsl(0, 84%, 60%)", Icon: TrendingDown },
+    { key: "withdrawals", label: "Retiros", color: "#0284c7", Icon: Wallet },
+    { key: "other", label: "Transferencias", color: "#f59e0b", Icon: ArrowRightLeft },
+];
+
+/** Bottom legend: per-type icon + period total (no text labels), tied by color. */
+function TypeLegend({ totals }: { totals?: TypeTotals }) {
+    return (
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-5">
+            {TYPE_LEGEND.map(({ key, label, color, Icon }) => (
+                <div key={key} className="flex items-center gap-1.5" title={label} aria-label={label}>
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
+                        <Icon className="h-3 w-3" />
+                    </span>
+                    <span className="text-xs font-semibold tabular-nums" style={{ color }}>
+                        {formatCurrency(totals?.[key] ?? 0)}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
 }
 
-// Formatting helpers
-function formatMonth(monthKey: string): string {
-    const [year, month] = monthKey.split("-");
-    return `${MONTH_LABELS[month] ?? month} ${year.slice(2)}`;
-}
-
-function formatDay(dateStr: string): string {
-    const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
-}
-
-function formatWeek(dateStr: string): string {
-    const start = new Date(dateStr + "T00:00:00");
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    
-    const startStr = start.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
-    // If same month, don't repeat month
-    if (start.getMonth() === end.getMonth()) {
-        return `${startStr.split(" ")[0]} - ${end.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}`;
-    }
-    return `${startStr} - ${end.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}`;
-}
-
-function formatCurrency(value: number): string {
-    return `$${value.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-export function UnifiedTrendChart({ data }: UnifiedTrendChartProps) {
-    const [viewMode, setViewMode] = useState<ViewMode>("month");
+export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChartProps) {
     const [chartType, setChartType] = useState<"bar" | "curve">("curve");
-    const [userSelected, setUserSelected] = useState<boolean>(false);
+    const [userMode, setUserMode] = useState<ViewMode | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Intelligent default: compute the best view based on the dataset's date range
-    useEffect(() => {
-        if (userSelected || data.length === 0) return;
+    // Intelligent default granularity based on the dataset span, overridable by
+    // the user. Derived (not effect-driven) to avoid cascading renders.
+    const suggestedMode = useMemo<ViewMode>(
+        () => (data.length > 0 ? suggestViewMode(data[0].date, data[data.length - 1].date) : "month"),
+        [data],
+    );
+    const viewMode = userMode ?? suggestedMode;
 
-        const start = new Date(data[0].date + "T00:00:00");
-        const end = new Date(data[data.length - 1].date + "T00:00:00");
-        const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const handleViewChange = (mode: ViewMode) => setUserMode(mode);
 
-        let suggested: ViewMode = "month";
-        if (diffDays <= 31) {
-            suggested = "day";
-        } else if (diffDays <= 90) {
-            suggested = "week";
-        }
-
-        if (viewMode !== suggested) {
-            setViewMode(suggested);
-        }
-    }, [data, userSelected]);
-
-    const handleViewChange = (mode: ViewMode) => {
-        setViewMode(mode);
-        setUserSelected(true);
-    };
+    // Per-type totals over the displayed period (for the icon legend).
+    const totals = useMemo<TypeTotals>(
+        () =>
+            data.reduce<TypeTotals>(
+                (acc, d) => ({
+                    income: acc.income + d.income,
+                    expenses: acc.expenses + d.expenses,
+                    withdrawals: acc.withdrawals + (d.withdrawals || 0),
+                    other: acc.other + (d.other || 0),
+                }),
+                { income: 0, expenses: 0, withdrawals: 0, other: 0 },
+            ),
+        [data],
+    );
 
     const chartData = useMemo(() => {
         if (viewMode === "day") {
@@ -131,8 +126,10 @@ export function UnifiedTrendChart({ data }: UnifiedTrendChartProps) {
             }));
     }, [data, viewMode]);
 
-    // Calculate dynamic minimum width to allow horizontal scrolling
-    const minChartWidth = Math.max(100, chartData.length * (viewMode === "day" ? 40 : viewMode === "week" ? 60 : 80));
+    // Calculate dynamic minimum width to allow horizontal scrolling.
+    // Tighter per-bucket spacing keeps the scroll length manageable; Recharts
+    // auto-hides overlapping axis labels so narrower spacing stays legible.
+    const minChartWidth = Math.max(100, chartData.length * (viewMode === "day" ? 26 : viewMode === "week" ? 46 : 68));
 
     // Scroll to end when data changes
     useEffect(() => {
@@ -223,7 +220,7 @@ export function UnifiedTrendChart({ data }: UnifiedTrendChartProps) {
                                             itemStyle={{ paddingTop: "4px", fontSize: "13px", fontWeight: 500 }}
                                             labelStyle={{ color: "var(--color-text-secondary)", marginBottom: "4px", fontSize: "12px", fontWeight: 500 }}
                                         />
-                                        <Legend wrapperStyle={{ paddingTop: "20px", fontSize: "12px", fontWeight: 500 }} iconType="circle" />
+                                        <Legend content={iconLegend ? <TypeLegend totals={totals} /> : undefined} wrapperStyle={{ paddingTop: "20px", fontSize: "12px", fontWeight: 500 }} iconType="circle" />
                                         <Bar dataKey="income" name="Ingresos" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                         <Bar dataKey="expenses" name="Gastos" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                         <Bar dataKey="withdrawals" name="Retiros" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -281,7 +278,7 @@ export function UnifiedTrendChart({ data }: UnifiedTrendChartProps) {
                                             itemStyle={{ paddingTop: "4px", fontSize: "13px", fontWeight: 500 }}
                                             labelStyle={{ color: "var(--color-text-secondary)", marginBottom: "4px", fontSize: "12px", fontWeight: 500 }}
                                         />
-                                        <Legend wrapperStyle={{ paddingTop: "20px", fontSize: "12px", fontWeight: 500 }} iconType="circle" />
+                                        <Legend content={iconLegend ? <TypeLegend totals={totals} /> : undefined} wrapperStyle={{ paddingTop: "20px", fontSize: "12px", fontWeight: 500 }} iconType="circle" />
                                         <Area type="monotone" dataKey="income" name="Ingresos" stroke="hsl(142, 71%, 45%)" fillOpacity={1} fill="url(#colorIncome)" strokeWidth={2} />
                                         <Area type="monotone" dataKey="expenses" name="Gastos" stroke="hsl(0, 84%, 60%)" fillOpacity={1} fill="url(#colorExpenses)" strokeWidth={2} />
                                         <Area type="monotone" dataKey="withdrawals" name="Retiros" stroke="#0284c7" fillOpacity={1} fill="url(#colorWithdrawals)" strokeWidth={2} />
