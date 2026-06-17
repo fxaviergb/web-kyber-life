@@ -14,6 +14,7 @@ export interface FinancialInstitutionType extends BaseEntity {
 export interface FinancialInstitution extends BaseEntity {
     ownerUserId: UUID;
     name: string;
+    description?: string | null;
     logoUrl?: string | null;
     institutionTypeId?: UUID | null;
     institutionTypeObj?: FinancialInstitutionType | null;

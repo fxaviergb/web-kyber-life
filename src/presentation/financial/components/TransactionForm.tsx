@@ -10,12 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createTransactionAction } from "@/app/actions/financial-transactions";
-import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
-import { FinancialTransactionType } from "@/domain/entities/financial";
+import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction } from "@/app/actions/financial-settings";
+import { FinancialTransactionType, FinancialInstitution, FinancialInstitutionType } from "@/domain/entities/financial";
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
+import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
 import { toDateTimeLocalValue } from "@/lib/date-range";
-import { Building2, Landmark, FolderGit2, FileText } from "lucide-react";
+import { Building2, Landmark, FolderGit2, FileText, Pencil } from "lucide-react";
 
 // Lowercase type labels for natural-reading auto notes.
 const NOTE_TYPE_LABELS: Record<string, string> = {
@@ -78,24 +79,36 @@ export function TransactionForm() {
     const [accountName, setAccountName] = useState("");
     const [categoryName, setCategoryName] = useState("");
 
-    const [institutionsList, setInstitutionsList] = useState<string[]>([]);
+    const [institutions, setInstitutions] = useState<FinancialInstitution[]>([]);
+    const [institutionTypes, setInstitutionTypes] = useState<FinancialInstitutionType[]>([]);
     const [accountsList, setAccountsList] = useState<string[]>([]);
     const [categoriesList, setCategoriesList] = useState<string[]>([]);
+
+    // Institution inline-edit (staged; persisted on submit).
+    const [pendingInstitutionEdit, setPendingInstitutionEdit] = useState<PendingInstitutionEdit | null>(null);
+    const [instDialogOpen, setInstDialogOpen] = useState(false);
+
+    const institutionNames = useMemo(
+        () => institutions.filter(i => !i.isDeleted).map(i => i.name),
+        [institutions],
+    );
 
     // Load draft and lists on mount
     useEffect(() => {
         const loadDraftAndData = async () => {
             try {
                 // Fetch settings for datalist
-                const [instRes, accRes, catRes] = await Promise.all([
+                const [instRes, accRes, catRes, typesRes] = await Promise.all([
                     getInstitutionsAction(),
                     getAccountsAction(),
-                    getCategoriesAction()
+                    getCategoriesAction(),
+                    getInstitutionTypesAction(),
                 ]);
 
-                setInstitutionsList(instRes.map(i => i.name));
+                setInstitutions(instRes);
                 setAccountsList(accRes.map(a => a.name));
                 setCategoriesList(catRes.map(c => c.name));
+                setInstitutionTypes(typesRes);
 
                 // Load draft
                 const drafts = await financialOfflineStore.drafts.getAll();
@@ -184,6 +197,35 @@ export function TransactionForm() {
         }
     }, [autoNotes, notesEdited]);
 
+    // The existing institution matching the typed name (editable via the dialog).
+    const matchedInstitution = useMemo(
+        () => institutions.find(i => !i.isDeleted && i.name.trim().toLowerCase() === institutionName.trim().toLowerCase()) ?? null,
+        [institutions, institutionName],
+    );
+
+    // The institution passed to the dialog, with any staged edit already applied.
+    const institutionForDialog = useMemo(() => {
+        if (!matchedInstitution) return null;
+        if (pendingInstitutionEdit && pendingInstitutionEdit.id === matchedInstitution.id) {
+            return {
+                ...matchedInstitution,
+                name: pendingInstitutionEdit.name,
+                institutionTypeId: pendingInstitutionEdit.institutionTypeId,
+                description: pendingInstitutionEdit.description,
+            };
+        }
+        return matchedInstitution;
+    }, [matchedInstitution, pendingInstitutionEdit]);
+
+    const handleInstitutionEditApply = (edit: PendingInstitutionEdit) => {
+        setPendingInstitutionEdit(edit);
+        setInstitutionName(edit.name);
+        // Optimistically reflect the staged rename so the field still matches.
+        setInstitutions(prev => prev.map(i => i.id === edit.id
+            ? { ...i, name: edit.name, institutionTypeId: edit.institutionTypeId, description: edit.description }
+            : i));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -237,6 +279,21 @@ export function TransactionForm() {
         }
 
         try {
+            // Persist a staged institution edit first (deferred until save).
+            if (pendingInstitutionEdit && institutionName.trim().toLowerCase() === pendingInstitutionEdit.name.trim().toLowerCase()) {
+                try {
+                    await updateInstitutionAction(pendingInstitutionEdit.id, {
+                        name: pendingInstitutionEdit.name,
+                        institutionTypeId: pendingInstitutionEdit.institutionTypeId,
+                        description: pendingInstitutionEdit.description,
+                    });
+                } catch {
+                    toast.error("No se pudo actualizar la institución", { id: "inst-update-error" });
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             const result = await createTransactionAction(transactionData);
 
             if (result.success) {
@@ -291,14 +348,30 @@ export function TransactionForm() {
                             <Building2 className="w-4 h-4 text-blue-500" />
                             Institución
                         </Label>
-                        <AutocompleteInput
-                            id="institutionName"
-                            value={institutionName}
-                            onChange={setInstitutionName}
-                            options={institutionsList}
-                            className="bg-background border-border/50"
-                            placeholder="Ej. Banco de Chile, Sodexo, Amazon..."
-                        />
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                                <AutocompleteInput
+                                    id="institutionName"
+                                    value={institutionName}
+                                    onChange={setInstitutionName}
+                                    options={institutionNames}
+                                    className="bg-background border-border/50"
+                                    placeholder="Ej. Banco de Chile, Sodexo, Amazon..."
+                                />
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="shrink-0"
+                                disabled={!matchedInstitution}
+                                title={matchedInstitution ? "Editar institución" : "Elige una institución existente para editar su registro"}
+                                onClick={() => setInstDialogOpen(true)}
+                            >
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Editar institución</span>
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
@@ -406,6 +479,14 @@ export function TransactionForm() {
                     </Button>
                 </CardFooter>
             </form>
+
+            <InstitutionEditDialog
+                open={instDialogOpen}
+                onOpenChange={setInstDialogOpen}
+                institution={institutionForDialog}
+                types={institutionTypes}
+                onApply={handleInstitutionEditApply}
+            />
         </Card>
     );
 }
