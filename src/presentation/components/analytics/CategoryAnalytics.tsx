@@ -11,9 +11,9 @@ const COLORS = ['#D4AF37', '#98FF98', '#E6E6FA', '#F08080', '#87CEEB', '#FFB6C1'
 
 export function CategoryAnalytics({ data }: CategoryAnalyticsProps) {
     return (
-        <Card className="bg-bg-2 border-border">
+        <Card className="bg-bg-primary rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-border-base">
             <CardHeader>
-                <CardTitle className="text-text-1">Gasto por Categoría</CardTitle>
+                <CardTitle className="text-lg font-bold text-text-primary">Gasto por Categoría</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="h-[300px] w-full">
@@ -29,7 +29,7 @@ export function CategoryAnalytics({ data }: CategoryAnalyticsProps) {
                                 axisLine={false}
                             />
                             <Tooltip
-                                contentStyle={{ backgroundColor: '#1E1E2E', borderColor: '#333', color: '#FFF' }}
+                                contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-base)', color: 'var(--text-primary)', borderRadius: '12px' }}
                                 cursor={{ fill: 'transparent' }}
                                 formatter={(value: number | undefined) => [`$${(value || 0).toFixed(2)}`, "Gasto"]}
                             />
@@ -47,11 +47,11 @@ export function CategoryAnalytics({ data }: CategoryAnalyticsProps) {
                         <div key={cat.id} className="flex justify-between items-center text-sm">
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                                <span className="text-text-2">{cat.name}</span>
+                                <span className="text-text-secondary">{cat.name}</span>
                             </div>
                             <div className="flex items-center gap-4">
-                                <span className="text-text-1 font-bold">${cat.value.toFixed(2)}</span>
-                                <span className="text-text-3 w-12 text-right">{cat.percentage.toFixed(1)}%</span>
+                                <span className="text-text-primary font-bold">${cat.value.toFixed(2)}</span>
+                                <span className="text-text-tertiary w-12 text-right">{cat.percentage.toFixed(1)}%</span>
                             </div>
                         </div>
                     ))}

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +14,53 @@ import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@
 import { FinancialTransactionType } from "@/domain/entities/financial";
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
+import { toDateTimeLocalValue } from "@/lib/date-range";
 import { Building2, Landmark, FolderGit2, FileText } from "lucide-react";
+
+// Lowercase type labels for natural-reading auto notes.
+const NOTE_TYPE_LABELS: Record<string, string> = {
+    EXPENSE: "gasto",
+    INCOME: "ingreso",
+    TRANSFER: "transferencia",
+    WITHDRAWAL: "retiro",
+    SUBSCRIPTION: "suscripción",
+};
+
+/** Format a datetime-local string as "DD/MM/YYYY HH:mm". */
+function formatNotesDateTime(dtLocal: string): string {
+    if (!dtLocal) return "";
+    const d = new Date(dtLocal);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+interface AutoNotesInput {
+    type: string;
+    description: string;
+    institutionName: string;
+    amount: string;
+    date: string;
+    accountName: string;
+}
+
+/**
+ * Build the auto-generated notes sentence from the current form fields.
+ * Clauses are appended only when their value exists, so the sentence stays
+ * clean while the form is being filled. The "desde la cuenta ..." clause is
+ * included only when an account/card has been entered.
+ */
+function buildAutoNotes(p: AutoNotesInput): string {
+    const typeLabel = NOTE_TYPE_LABELS[p.type] ?? p.type.toLowerCase();
+    let s = `Registro de ${typeLabel}`;
+    if (p.description.trim()) s += ` por ${p.description.trim()}`;
+    if (p.institutionName.trim()) s += ` en ${p.institutionName.trim()}`;
+    if (p.amount && Number(p.amount) > 0) s += ` por un monto de $${p.amount}`;
+    const dateStr = formatNotesDateTime(p.date);
+    if (dateStr) s += ` el ${dateStr}`;
+    if (p.accountName.trim()) s += ` desde la cuenta ${p.accountName.trim()}`;
+    return s;
+}
 
 export function TransactionForm() {
     const router = useRouter();
@@ -23,8 +70,10 @@ export function TransactionForm() {
     const [type, setType] = useState<FinancialTransactionType>("EXPENSE");
     const [amount, setAmount] = useState("");
     const [description, setDescription] = useState("");
-    const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+    const [date, setDate] = useState(toDateTimeLocalValue(new Date()));
     const [notes, setNotes] = useState("");
+    // Whether the user has manually customised the notes (stops auto-generation).
+    const [notesEdited, setNotesEdited] = useState(false);
     const [institutionName, setInstitutionName] = useState("");
     const [accountName, setAccountName] = useState("");
     const [categoryName, setCategoryName] = useState("");
@@ -54,14 +103,35 @@ export function TransactionForm() {
 
                 if (latestDraft) {
                     const data = latestDraft.data as any;
+                    const draftType = data.type || "EXPENSE";
+                    const draftAmount = data.amount ? data.amount.toString() : "";
+                    const draftDescription = data.description || "";
+                    const draftInstitution = data.institutionName || "";
+                    const draftAccount = data.accountName || "";
+                    const draftDate = data.date ? toDateTimeLocalValue(new Date(data.date)) : "";
+
                     if (data.type) setType(data.type);
-                    if (data.amount) setAmount(data.amount.toString());
-                    if (data.description) setDescription(data.description);
-                    if (data.date) setDate(data.date.split("T")[0]);
-                    if (data.notes) setNotes(data.notes);
-                    if (data.institutionName) setInstitutionName(data.institutionName);
-                    if (data.accountName) setAccountName(data.accountName);
+                    if (data.amount) setAmount(draftAmount);
+                    if (data.description) setDescription(draftDescription);
+                    if (draftDate) setDate(draftDate);
+                    if (data.institutionName) setInstitutionName(draftInstitution);
+                    if (data.accountName) setAccountName(draftAccount);
                     if (data.categoryName) setCategoryName(data.categoryName);
+
+                    if (data.notes) {
+                        // Resume auto-generation only if the draft notes still match what
+                        // we'd auto-generate; otherwise treat them as user-customised.
+                        const draftAuto = buildAutoNotes({
+                            type: draftType,
+                            description: draftDescription,
+                            institutionName: draftInstitution,
+                            amount: draftAmount,
+                            date: draftDate,
+                            accountName: draftAccount,
+                        });
+                        setNotes(data.notes);
+                        setNotesEdited(data.notes.trim() !== draftAuto.trim());
+                    }
                 }
             } catch (e) {
                 console.error("Failed to load transaction draft or settings", e);
@@ -101,6 +171,18 @@ export function TransactionForm() {
         const timeoutId = setTimeout(saveDraft, 500);
         return () => clearTimeout(timeoutId);
     }, [type, amount, description, date, notes, institutionName, accountName, categoryName]);
+
+    // Auto-generate the notes from the form fields until the user customises them.
+    const autoNotes = useMemo(
+        () => buildAutoNotes({ type, description, institutionName, amount, date, accountName }),
+        [type, description, institutionName, amount, date, accountName],
+    );
+
+    useEffect(() => {
+        if (!notesEdited) {
+            setNotes(autoNotes);
+        }
+    }, [autoNotes, notesEdited]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -283,11 +365,11 @@ export function TransactionForm() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="date">Fecha</Label>
+                            <Label htmlFor="date">Fecha y hora</Label>
                             <Input
                                 id="date"
                                 name="date"
-                                type="date"
+                                type="datetime-local"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
                                 required
@@ -299,19 +381,23 @@ export function TransactionForm() {
 
                         <div className="space-y-2">
                             <Label htmlFor="notes">Notas (opcional)</Label>
-                            <Input
+                            <Textarea
                                 id="notes"
                                 name="notes"
-                                type="text"
-                                placeholder="Detalles adicionales..."
+                                rows={4}
+                                placeholder="Se completa automáticamente con los datos del formulario. Puedes editarlo libremente."
                                 value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setNotes(val);
+                                    setNotesEdited(val.trim().length > 0);
+                                }}
                                 autoComplete="off"
                             />
                         </div>
                     </div>
                 </CardContent>
-                <CardFooter className="flex justify-between">
+                <CardFooter className="flex justify-between gap-3 pt-6">
                     <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                         Cancelar
                     </Button>

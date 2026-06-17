@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { updateTransactionAction, getUniqueTagsAction } from "@/app/actions/financial-transactions";
 import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
 import { cn } from "@/lib/utils";
+import { toDateTimeLocalValue } from "@/lib/date-range";
 import { TagInput } from "@/components/ui/tag-input";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { Landmark, FolderGit2 } from "lucide-react";
@@ -153,7 +154,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         categoryName: "",
         type: transaction.type || "EXPENSE",
         amount: transaction.amount ?? null,
-        date: transaction.date ? new Date(transaction.date).toISOString().slice(0, 16) : "",
+        date: transaction.date ? toDateTimeLocalValue(new Date(transaction.date)) : "",
         notes: extractContext(transaction),
         tags: transaction.tags || [],
     });
@@ -176,7 +177,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                 categoryName: displayNames.category,
                 type: transaction.type || "EXPENSE",
                 amount: transaction.amount ?? null,
-                date: transaction.date ? new Date(transaction.date).toISOString().slice(0, 16) : "",
+                date: transaction.date ? toDateTimeLocalValue(new Date(transaction.date)) : "",
                 notes: extractContext(transaction),
                 tags: transaction.tags || [],
             });

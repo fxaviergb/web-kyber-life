@@ -18,6 +18,16 @@ export function toDateInputValue(d: Date): string {
 }
 
 /**
+ * Format a Date as a local `YYYY-MM-DDTHH:mm` string for <input type="datetime-local">.
+ * Uses local wall-clock components (NOT toISOString, which is UTC) so the value
+ * round-trips correctly: `new Date(value).toISOString()` recovers the right instant.
+ */
+export function toDateTimeLocalValue(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
  * Convert a filter selection into an ISO date range.
  * - "all": no bounds.
  * - "today": start/end of the current day.

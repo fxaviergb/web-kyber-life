@@ -1,5 +1,4 @@
-
-import { analyticsService, productService, purchaseRepository, genericItemRepository, userRepository, initializeContainer } from "@/infrastructure/container";
+import { analyticsService, productService, purchaseRepository, masterDataService, userRepository, initializeContainer } from "@/infrastructure/container";
 import { cookies } from "next/headers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseAnalytics } from "@/presentation/components/analytics/ExpenseAnalytics";
@@ -44,7 +43,7 @@ export default async function AnalyticsPage() {
         topCategories,
         topSpending,
         recentPurchases,
-        genericItems,
+        supermarkets,
     ] = await Promise.all([
         analyticsService.getMonthlyExpenses(userId, 6),
         analyticsService.getCategorySpending(userId),
@@ -56,12 +55,13 @@ export default async function AnalyticsPage() {
         analyticsService.getTopCategories(userId, 5),
         analyticsService.getTopSpendingProducts(userId, 5),
         purchaseRepository.findRecent(userId, 5),
-        genericItemRepository.findByOwnerId(userId),
+        masterDataService.getSupermarkets(userId),
     ]);
 
-    const allProducts = genericItems
-        .sort((a, b) => a.canonicalName.localeCompare(b.canonicalName))
-        .map(p => ({ id: p.id, name: p.canonicalName }));
+    const recentPurchasesMapped = recentPurchases.map(p => ({
+        ...p,
+        supermarketName: supermarkets.find(s => s.id === p.supermarketId)?.name || 'Sin supermercado'
+    }));
 
     return (
         <div className="p-4 md:p-8 space-y-6 pb-24">
@@ -76,27 +76,29 @@ export default async function AnalyticsPage() {
                     <TabsTrigger value="expenses" className="flex-1 md:flex-none">Gastos</TabsTrigger>
                     <TabsTrigger value="categories" className="flex-1 md:flex-none">Categorías</TabsTrigger>
                     <TabsTrigger value="products" className="flex-1 md:flex-none">Productos</TabsTrigger>
-                    <TabsTrigger value="prices" className="flex-1 md:flex-none">Precios</TabsTrigger>
                 </TabsList>
 
-                {/* Resumen: relocated dashboard overview (Market's own dashboard) */}
+                {/* Flow 18: Global metrics */}
                 <TabsContent value="resumen" className="animate-in fade-in duration-500">
                     <MarketOverview
                         monthly={overviewMonthly.history}
                         frequentProducts={freqCountData.generics}
                         topCategories={topCategories}
                         topSpending={topSpending}
-                        recentPurchases={recentPurchases}
-                        allProducts={allProducts}
+                        recentPurchases={recentPurchasesMapped as any}
                         userFirstName={userFirstName}
                     />
                 </TabsContent>
 
-                {/* Flow 19: Expenses */}
-                <TabsContent value="expenses" className="animate-in fade-in duration-500">
+                {/* Flow 19: Expenses + Price Analysis */}
+                <TabsContent value="expenses" className="animate-in fade-in duration-500 space-y-6">
                     <ExpenseAnalytics
                         data={monthlyData.history}
                         average={monthlyData.average}
+                    />
+                    <PriceAnalytics
+                        searchableProducts={allBrandProducts}
+                        searchableGenericItems={allGenericItems}
                     />
                 </TabsContent>
 
@@ -105,20 +107,12 @@ export default async function AnalyticsPage() {
                     <CategoryAnalytics data={categoryData} />
                 </TabsContent>
 
-                {/* Flow 21: Products */}
-                <TabsContent value="products" className="animate-in fade-in duration-500">
+                {/* Flow 21 & 22: Products */}
+                <TabsContent value="products" className="animate-in fade-in duration-500 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <ProductAnalytics data={freqCountData} mode="count" />
                         <ProductAnalytics data={freqUnitsData} mode="units" />
                     </div>
-                </TabsContent>
-
-                {/* Flow 22 & 23: Prices */}
-                <TabsContent value="prices" className="animate-in fade-in duration-500">
-                    <PriceAnalytics
-                        searchableProducts={allBrandProducts}
-                        searchableGenericItems={allGenericItems}
-                    />
                 </TabsContent>
             </Tabs>
         </div>

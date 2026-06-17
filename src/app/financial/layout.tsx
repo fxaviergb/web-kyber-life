@@ -21,11 +21,10 @@ export default async function FinancialLayout({
     let user = null;
 
     if (dataSource === 'SUPABASE') {
-        const { createClient } = await import("@/infrastructure/supabase/server");
-        const supabase = await createClient();
-        const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
+        const { getAuthUser } = await import("@/infrastructure/supabase/auth-user");
+        const supabaseUser = await getAuthUser();
 
-        if (error || !supabaseUser) {
+        if (!supabaseUser) {
             redirect("/auth/login");
         }
 

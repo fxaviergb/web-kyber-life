@@ -1,7 +1,7 @@
 "use server";
 
 import { financialDashboardService } from "@/infrastructure/container";
-import { createClient } from "@/infrastructure/supabase/server";
+import { requireUserId } from "@/infrastructure/supabase/auth-user";
 import {
     monthlyBreakdownSchema,
     recentTransactionsSchema,
@@ -10,10 +10,7 @@ import {
 import { z } from "zod";
 
 async function getAuthUserId(): Promise<string> {
-    const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user?.id) throw new Error("Unauthorized");
-    return user.id;
+    return requireUserId();
 }
 
 function formatZodError(error: z.ZodError): string {

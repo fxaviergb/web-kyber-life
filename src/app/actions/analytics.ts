@@ -46,7 +46,7 @@ export async function getFrequentProductsAction(mode: 'count' | 'units') {
 // ... existing code ...
 export async function getPriceAnalyticsAction(brandProductId: string) {
     try {
-        const userId = await getUserId();
+        const userId = await resolveUserId();
         // Run parallel
         const [history, latest] = await Promise.all([
             analyticsService.getPriceHistory(userId, brandProductId),
@@ -54,20 +54,20 @@ export async function getPriceAnalyticsAction(brandProductId: string) {
         ]);
         return { success: true, data: { history, latest } };
     } catch (e: any) {
-        return { error: e.message };
+        return { success: false, error: e.message };
     }
 }
 
 export async function getGenericPriceAnalyticsAction(genericItemId: string) {
     try {
-        const userId = await getUserId();
+        const userId = await resolveUserId();
         const [history, latest] = await Promise.all([
             analyticsService.getGenericPriceHistory(userId, genericItemId),
             analyticsService.getGenericLatestPrices(userId, genericItemId)
         ]);
         return { success: true, data: { history, latest } };
     } catch (e: any) {
-        return { error: e.message };
+        return { success: false, error: e.message };
     }
 }
 

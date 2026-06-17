@@ -422,8 +422,8 @@ export function FinancialDashboard() {
                                                 <IconComponent className="w-5 h-5" />
                                             </div>
                                             <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                                                <span className="font-semibold text-sm sm:text-base leading-none group-hover:text-primary transition-colors truncate" title={tx.description || tx.merchant || tx.type}>
-                                                    {tx.description || tx.merchant || tx.type}
+                                                <span className="font-semibold text-sm sm:text-base leading-none group-hover:text-primary transition-colors truncate" title={tx.description || tx.institutionName || tx.merchant || tx.type}>
+                                                    {tx.description || tx.institutionName || tx.merchant || tx.type}
                                                 </span>
                                                 <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                                                     {tx.institutionName && (
