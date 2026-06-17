@@ -15,7 +15,7 @@ export const MENU_ITEMS: MenuItem[] = [
         label: "Finanzas",
         isSection: true,
         items: [
-            { label: "Resumen", icon: Wallet, href: "/financial" },
+            { label: "Resumen", icon: BarChart2, href: "/financial" },
             { label: "Transacciones", icon: Receipt, href: "/financial/transactions" },
             { label: "Escaneos", icon: Inbox, href: "/financial/scans", activeAliases: ["/financial/scanner"] },
             { label: "Configuración", icon: Settings, href: "/financial/settings" },
@@ -25,19 +25,16 @@ export const MENU_ITEMS: MenuItem[] = [
         label: "Market",
         isSection: true,
         items: [
+            { label: "Resumen", icon: BarChart2, href: "/market/analytics" },
             { label: "Compras", icon: ShoppingCart, href: "/market/purchases" },
             { label: "Plantillas", icon: FileText, href: "/market/templates" },
             { label: "Productos", icon: Package, href: "/market/items" },
             {
                 label: "Configuración",
                 icon: Settings,
-                items: [
-                    { label: "Supermercados", icon: Store, href: "/market/supermarkets" },
-                    { label: "Categorías", icon: Tag, href: "/market/categories" },
-                    { label: "Unidades", icon: Scale, href: "/market/units" },
-                ]
+                href: "/market/settings",
+                activeAliases: ["/market/supermarkets", "/market/categories", "/market/units"]
             },
-            { label: "Analítica", icon: BarChart2, href: "/market/analytics" },
         ]
     },
     {

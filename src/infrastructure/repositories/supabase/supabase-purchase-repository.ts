@@ -44,26 +44,45 @@ export class SupabasePurchaseRepository implements IPurchaseRepository {
         return [];
     }
 
-    async findByOwnerId(userId: string): Promise<Purchase[]> {
+    async findByOwnerId(userId: string, startDate?: string, endDate?: string): Promise<Purchase[]> {
         const supabase = await createClient();
-        const { data, error } = await supabase
+        let query = supabase
             .from('market_purchases')
             .select('*')
             .eq('owner_user_id', userId)
-            .eq('is_deleted', false)
-            .order('date', { ascending: false });
+            .eq('is_deleted', false);
+            
+        if (startDate) {
+            query = query.gte('date', startDate);
+        }
+        if (endDate) {
+            const endDateTime = endDate.length === 10 ? `${endDate}T23:59:59.999Z` : endDate;
+            query = query.lte('date', endDateTime);
+        }
+        
+        const { data, error } = await query.order('date', { ascending: false });
 
         if (error) throw new Error(error.message);
         return (data || []).map(this.mapToEntity);
     }
 
-    async findRecent(userId: string, limit: number): Promise<Purchase[]> {
+    async findRecent(userId: string, limit: number, startDate?: string, endDate?: string): Promise<Purchase[]> {
         const supabase = await createClient();
-        const { data, error } = await supabase
+        let query = supabase
             .from('market_purchases')
             .select('*')
             .eq('owner_user_id', userId)
-            .eq('is_deleted', false)
+            .eq('is_deleted', false);
+            
+        if (startDate) {
+            query = query.gte('date', startDate);
+        }
+        if (endDate) {
+            const endDateTime = endDate.length === 10 ? `${endDate}T23:59:59.999Z` : endDate;
+            query = query.lte('date', endDateTime);
+        }
+        
+        const { data, error } = await query
             .order('date', { ascending: false })
             .limit(limit);
 

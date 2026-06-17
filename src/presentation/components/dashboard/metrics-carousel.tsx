@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { TrendingUp, CreditCard } from "lucide-react";
+import { TrendingUp, CreditCard, Wallet } from "lucide-react";
 import { MetricCard } from "@/presentation/components/dashboard/metric-card";
 
 interface MetricsCarouselProps {
@@ -9,9 +9,12 @@ interface MetricsCarouselProps {
     currentMonthSpending: number;
     avgTrend: number;
     currentTrend: number;
+    totalSpend: number;
+    validMonthsCount: number;
+    validPastMonthsCount: number;
 }
 
-export function MetricsCarousel({ averageSpending, currentMonthSpending, avgTrend, currentTrend }: MetricsCarouselProps) {
+export function MetricsCarousel({ averageSpending, currentMonthSpending, avgTrend, currentTrend, totalSpend, validMonthsCount, validPastMonthsCount }: MetricsCarouselProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -47,11 +50,19 @@ export function MetricsCarousel({ averageSpending, currentMonthSpending, avgTren
     return (
         <div
             ref={scrollContainerRef}
-            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:pb-0 lg:mx-0 lg:px-0 no-scrollbar"
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:pb-0 lg:mx-0 lg:px-0 no-scrollbar"
         >
             <div className="min-w-[85vw] sm:min-w-0 snap-center h-full">
                 <MetricCard
-                    title="Promedio (6 meses)"
+                    title={`Gasto Total (${validMonthsCount} meses)`}
+                    value={`$${totalSpend.toFixed(2)}`}
+                    icon={Wallet}
+                    iconClassName="bg-accent-success/10 text-accent-success"
+                />
+            </div>
+            <div className="min-w-[85vw] sm:min-w-0 snap-center h-full">
+                <MetricCard
+                    title={`Promedio (${validPastMonthsCount} meses)`}
                     value={`$${averageSpending.toFixed(2)}`}
                     icon={TrendingUp}
                     iconClassName="bg-accent-info/10 text-accent-info"

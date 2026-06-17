@@ -30,7 +30,7 @@ export async function createSupermarketAction(prevState: any, formData: FormData
 
         const supermarket = await masterDataService.createSupermarket(userId, name);
         revalidatePath("/market/purchases/new");
-        revalidatePath("/market/supermarkets");
+        revalidatePath("/market/settings");
         return { success: true, data: supermarket };
     } catch (e: any) {
         return { error: e.message };
@@ -41,7 +41,7 @@ export async function deleteSupermarketAction(id: string) {
     try {
         const userId = await getUserId();
         await masterDataService.deleteSupermarket(userId, id);
-        revalidatePath("/market/supermarkets");
+        revalidatePath("/market/settings");
         revalidatePath("/market/purchases/new");
         return { success: true };
     } catch (e: any) {
@@ -55,7 +55,7 @@ export async function updateSupermarketAction(id: string, prevState: any, formDa
         const name = formData.get("name") as string;
         const address = formData.get("address") as string;
         await masterDataService.updateSupermarket(userId, id, { name, address });
-        revalidatePath("/market/supermarkets");
+        revalidatePath("/market/settings");
         return { success: true };
     } catch (e: any) {
         return { error: e.message };
@@ -70,7 +70,7 @@ export async function createCategoryAction(prevState: any, formData: FormData) {
         if (!name) throw new Error("Name is required");
 
         await masterDataService.createCategory(userId, name);
-        revalidatePath("/market/categories");
+        revalidatePath("/market/settings");
         return { success: true };
     } catch (e: any) {
         return { error: e.message };
@@ -85,7 +85,7 @@ export async function updateCategoryAction(prevState: any, formData: FormData) {
         if (!id || !name) throw new Error("ID and Name are required");
 
         await masterDataService.updateCategory(userId, id, name);
-        revalidatePath("/market/categories");
+        revalidatePath("/market/settings");
         return { success: true };
     } catch (e: any) {
         return { error: e.message };
@@ -96,7 +96,7 @@ export async function deleteCategoryAction(id: string) {
     try {
         const userId = await getUserId();
         await masterDataService.deleteCategory(userId, id);
-        revalidatePath("/market/categories");
+        revalidatePath("/market/settings");
         return { success: true };
     } catch (e: any) {
         return { error: e.message };
@@ -112,7 +112,7 @@ export async function createUnitAction(prevState: any, formData: FormData) {
         if (!name) throw new Error("Name is required");
 
         await masterDataService.createUnit(userId, name, symbol);
-        revalidatePath("/market/units");
+        revalidatePath("/market/settings");
         return { success: true };
     } catch (e: any) {
         return { error: e.message };
@@ -128,7 +128,7 @@ export async function updateUnitAction(prevState: any, formData: FormData) {
         if (!id || !name) throw new Error("ID and Name are required");
 
         await masterDataService.updateUnit(userId, id, name, symbol);
-        revalidatePath("/market/units");
+        revalidatePath("/market/settings");
         return { success: true };
     } catch (e: any) {
         return { error: e.message };
@@ -139,7 +139,7 @@ export async function deleteUnitAction(id: string) {
     try {
         const userId = await getUserId();
         await masterDataService.deleteUnit(userId, id);
-        revalidatePath("/market/units");
+        revalidatePath("/market/settings");
         return { success: true };
     } catch (e: any) {
         return { error: e.message };

@@ -10,10 +10,10 @@ interface ExpenseAnalyticsProps {
 
 export function ExpenseAnalytics({ data, average }: ExpenseAnalyticsProps) {
     return (
-        <Card className="bg-bg-2 border-border">
+        <Card className="bg-bg-primary rounded-3xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-border-base">
             <CardHeader>
-                <CardTitle className="text-text-1">Tendencia de Gastos</CardTitle>
-                <CardDescription className="text-text-3">
+                <CardTitle className="text-lg font-bold text-text-primary">Tendencia de Gastos</CardTitle>
+                <CardDescription className="text-sm text-text-tertiary">
                     Promedio mensual: <span className="text-accent-gold font-bold">${average.toFixed(2)}</span>
                 </CardDescription>
             </CardHeader>

@@ -8,6 +8,9 @@ interface Purchase {
     date: string;
     totalPaid: number | null;
     status: string;
+    completedAt?: string;
+    createdAt?: string;
+    supermarketName?: string;
 }
 
 interface RecentPurchasesCardProps {
@@ -32,22 +35,41 @@ export function RecentPurchasesCard({ purchases }: RecentPurchasesCardProps) {
                 ) : (
                     purchases.map((p) => {
                         const isCompleted = p.status.toLowerCase() === 'completed';
+                        const timestampToUse = p.completedAt || p.createdAt;
+                        
+                        let dateDisplay, timeDisplay;
+                        if (timestampToUse) {
+                            const d = new Date(timestampToUse);
+                            dateDisplay = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+                            timeDisplay = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                        } else {
+                            dateDisplay = new Date(p.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+                            timeDisplay = null;
+                        }
+
                         return (
                             <div key={p.id} className="flex items-center justify-between group">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center text-accent-primary group-hover:bg-accent-primary group-hover:text-white transition-colors">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center shrink-0 text-accent-primary group-hover:bg-accent-primary group-hover:text-white transition-colors">
                                         <ShoppingBag size={18} />
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-semibold text-text-primary">
-                                            {new Date(p.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
-                                        </p>
-                                        <p className="text-xs text-text-tertiary">
-                                            {new Date(p.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                    <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-semibold text-text-primary capitalize">
+                                                {dateDisplay}
+                                            </p>
+                                            {timeDisplay && (
+                                                <p className="text-xs text-text-tertiary">
+                                                    {timeDisplay}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <p className="text-xs font-medium text-text-secondary truncate">
+                                            {p.supermarketName || 'Sin supermercado'}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right shrink-0 ml-2">
                                     <p className="font-bold text-text-primary">${(p.totalPaid || 0).toFixed(2)}</p>
                                     <Badge
                                         variant={isCompleted ? 'success' : 'warning'}

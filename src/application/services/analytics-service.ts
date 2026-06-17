@@ -25,21 +25,31 @@ export class AnalyticsService {
      * Flow 19: Monthly Expenses
      * Aggregates completed purchases by month.
      */
-    async getMonthlyExpenses(userId: UUID, monthsBack: number = 6) {
-        // Fetch all user purchases (optimization: repo support date range filter later)
-        const purchases = (await this.purchaseRepo.findByOwnerId(userId))
+    async getMonthlyExpenses(userId: UUID, monthsBack: number = 6, startDate?: string, endDate?: string) {
+        // Fetch user purchases filtered by date range
+        const purchases = (await this.purchaseRepo.findByOwnerId(userId, startDate, endDate))
             .filter(p => p.status === 'completed' && p.totalPaid !== null);
 
         // Group by Month (YYYY-MM)
         const grouped = new Map<string, number>();
-        const now = new Date();
 
-        // Initialize last X months with 0
-        for (let i = 0; i < monthsBack; i++) {
-            // Use UTC to ensure consistency with ISO String
-            const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-            const key = d.toISOString().slice(0, 7); // YYYY-MM
-            grouped.set(key, 0);
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            // Initialize months in range with 0
+            for (let d = new Date(start.getFullYear(), start.getMonth(), 1); d <= end; d.setMonth(d.getMonth() + 1)) {
+                const key = new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1)).toISOString().slice(0, 7);
+                grouped.set(key, 0);
+            }
+        } else {
+            const now = new Date();
+            // Initialize last X months with 0
+            for (let i = 0; i < monthsBack; i++) {
+                // Use UTC to ensure consistency with ISO String
+                const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+                const key = d.toISOString().slice(0, 7); // YYYY-MM
+                grouped.set(key, 0);
+            }
         }
 
         purchases.forEach(p => {
@@ -98,8 +108,8 @@ export class AnalyticsService {
     /**
      * Flow 20: Category Spending
      */
-    async getCategorySpending(userId: UUID) {
-        const purchases = (await this.purchaseRepo.findByOwnerId(userId))
+    async getCategorySpending(userId: UUID, startDate?: string, endDate?: string) {
+        const purchases = (await this.purchaseRepo.findByOwnerId(userId, startDate, endDate))
             .filter(p => p.status === 'completed');
 
         const categoryMap = new Map<UUID, number>(); // CategoryID -> Amount
@@ -158,8 +168,8 @@ export class AnalyticsService {
             .map(r => ({ ...r, percentage: total > 0 ? (r.value / total) * 100 : 0 }));
     }
 
-    async getTopCategories(userId: UUID, limit: number = 5) {
-        const allCategories = await this.getCategorySpending(userId);
+    async getTopCategories(userId: UUID, limit: number = 5, startDate?: string, endDate?: string) {
+        const allCategories = await this.getCategorySpending(userId, startDate, endDate);
         return allCategories.slice(0, limit);
     }
 
@@ -167,13 +177,13 @@ export class AnalyticsService {
      * Flow 21: Frequent Products
      * mode: 'count' (frequency of purchase events) | 'units' (total quantity)
      */
-    async getFrequentProducts(userId: UUID, mode: 'count' | 'units' = 'count', monthsBack: number = 6) {
+    async getFrequentProducts(userId: UUID, mode: 'count' | 'units' = 'count', monthsBack: number = 6, startDate?: string, endDate?: string) {
         // Calculate start date
         const now = new Date();
-        const startDate = new Date(now.setMonth(now.getMonth() - monthsBack));
+        const defaultStartDate = new Date(now.setMonth(now.getMonth() - monthsBack));
 
-        const purchases = (await this.purchaseRepo.findByOwnerId(userId))
-            .filter(p => p.status === 'completed' && new Date(p.date) >= startDate);
+        const purchases = (await this.purchaseRepo.findByOwnerId(userId, startDate, endDate))
+            .filter(p => p.status === 'completed' && (startDate ? true : new Date(p.date) >= defaultStartDate));
 
         // Generic Item Frequency
         const genericFreq = new Map<UUID, number>();
@@ -222,10 +232,9 @@ export class AnalyticsService {
     /**
      * Get top products by total amount spent.
      */
-    async getTopSpendingProducts(userId: UUID, limit: number = 5, startDate?: Date, endDate?: Date) {
-        const purchases = (await this.purchaseRepo.findByOwnerId(userId))
-            .filter(p => p.status === 'completed')
-            .filter(p => this.isWithinRange(p.date, startDate, endDate));
+    async getTopSpendingProducts(userId: UUID, limit: number = 5, startDate?: string, endDate?: string) {
+        const purchases = (await this.purchaseRepo.findByOwnerId(userId, startDate, endDate))
+            .filter(p => p.status === 'completed');
 
         const genericSpending = new Map<UUID, number>();
 
@@ -362,6 +371,75 @@ export class AnalyticsService {
 
         // 3. Sort Combined History
         return historyPoints.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    async getAllGenericPriceHistories(userId: UUID) {
+        const historyPoints: Record<string, { date: string, price: number, supermarketId: string | null }[]> = {};
+
+        // 1. Fetch all generic items for the user to initialize keys
+        const generics = await this.genericItemRepo.findByOwnerId(userId);
+        generics.forEach(g => {
+            historyPoints[g.id] = [];
+        });
+
+        // 2. Fetch from Price Observations
+        const products = await this.brandProductRepo.findByOwnerId(userId);
+        const productToGeneric = new Map<UUID, UUID>();
+        products.forEach(p => productToGeneric.set(p.id, p.genericItemId));
+
+        const obs = await this.observationRepo.findByOwnerId(userId);
+        
+        obs.forEach(o => {
+            const genericId = productToGeneric.get(o.brandProductId);
+            if (genericId && historyPoints[genericId]) {
+                historyPoints[genericId].push({
+                    date: o.observedAt,
+                    price: o.unitPrice || 0,
+                    supermarketId: o.supermarketId
+                });
+            }
+        });
+
+        // 3. Fetch from Actual Purchases
+        const purchases = (await this.purchaseRepo.findByOwnerId(userId))
+            .filter(p => p.status === 'completed');
+
+        if (purchases.length > 0) {
+            const purchaseIds = purchases.map(p => p.id);
+            const lines = await this.lineRepo.findByPurchaseIds(purchaseIds);
+
+            const purchaseMap = new Map<UUID, { date: string, supermarketId: string | null }>();
+            purchases.forEach(p => purchaseMap.set(p.id, { date: p.date, supermarketId: p.supermarketId }));
+
+            for (const line of lines) {
+                if (line.genericItemId && historyPoints[line.genericItemId]) {
+                    let effectivePrice: number | null = null;
+                    if (line.unitPrice !== null && line.unitPrice > 0) {
+                        effectivePrice = line.unitPrice;
+                    } else if (line.lineAmountOverride !== null && line.qty !== null && line.qty > 0) {
+                        effectivePrice = line.lineAmountOverride / line.qty;
+                    }
+
+                    if (effectivePrice !== null && effectivePrice > 0) {
+                        const pInfo = purchaseMap.get(line.purchaseId);
+                        if (pInfo) {
+                            historyPoints[line.genericItemId].push({
+                                date: pInfo.date,
+                                price: effectivePrice,
+                                supermarketId: pInfo.supermarketId
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Sort Combined History
+        Object.keys(historyPoints).forEach(key => {
+            historyPoints[key] = historyPoints[key].sort((a, b) => a.date.localeCompare(b.date));
+        });
+
+        return historyPoints;
     }
 
     async getGenericLatestPrices(userId: UUID, genericItemId: UUID) {

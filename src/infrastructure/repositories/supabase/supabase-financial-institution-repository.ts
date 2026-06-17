@@ -49,6 +49,7 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
         
         const updateData = {
             name: entity.name,
+            description: entity.description ?? null,
             logo_url: entity.logoUrl,
             institution_type_id: entity.institutionTypeId ? entity.institutionTypeId : null,
             updated_at: new Date().toISOString()
@@ -104,6 +105,7 @@ export class SupabaseFinancialInstitutionRepository implements IFinancialInstitu
             id: row.id,
             ownerUserId: row.owner_user_id,
             name: row.name,
+            description: row.description ?? null,
             logoUrl: row.logo_url,
             institutionTypeId: row.institution_type_id ?? null,
             institutionTypeObj: typeObj,

@@ -14,6 +14,20 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
     // Take top 5 for the chart
     const chartData = data.slice(0, 5);
 
+    const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+        if (percent < 0.05) return null; // Hide small labels to avoid overlap
+        const RADIAN = Math.PI / 180;
+        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+        return (
+            <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={14} fontWeight="bold">
+                {`${Math.round(percent * 100)}%`}
+            </text>
+        );
+    };
+
     return (
         <div className="bg-bg-primary rounded-3xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-border-base h-full flex flex-col">
             <div className="flex justify-between items-center mb-2">
@@ -42,6 +56,8 @@ export function TopProductsChart({ data }: TopProductsChartProps) {
                                 outerRadius={140}
                                 paddingAngle={4}
                                 dataKey="value"
+                                label={renderCustomizedLabel}
+                                labelLine={false}
                             >
                                 {chartData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="var(--bg-primary)" strokeWidth={2} />

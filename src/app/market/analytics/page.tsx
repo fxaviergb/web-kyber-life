@@ -1,5 +1,4 @@
-
-import { analyticsService, productService, purchaseRepository, genericItemRepository, userRepository, initializeContainer } from "@/infrastructure/container";
+import { analyticsService, productService, purchaseRepository, masterDataService, userRepository, initializeContainer } from "@/infrastructure/container";
 import { cookies } from "next/headers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseAnalytics } from "@/presentation/components/analytics/ExpenseAnalytics";
@@ -7,8 +6,18 @@ import { CategoryAnalytics } from "@/presentation/components/analytics/CategoryA
 import { ProductAnalytics } from "@/presentation/components/analytics/ProductAnalytics";
 import { PriceAnalytics } from "@/presentation/components/analytics/PriceAnalytics";
 import { MarketOverview } from "@/presentation/components/analytics/MarketOverview";
+import { MarketDateFilterBar } from "@/presentation/components/analytics/MarketDateFilterBar";
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
 
-export default async function AnalyticsPage() {
+type Props = {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function AnalyticsPage({ searchParams }: Props) {
+    const resolvedSearchParams = await searchParams;
+    const startDate = typeof resolvedSearchParams.startDate === 'string' ? resolvedSearchParams.startDate : undefined;
+    const endDate = typeof resolvedSearchParams.endDate === 'string' ? resolvedSearchParams.endDate : undefined;
     await initializeContainer();
 
     let userId: string | undefined;
@@ -33,6 +42,42 @@ export default async function AnalyticsPage() {
         return <div className="p-8 text-white">Inicia sesión para ver analíticas.</div>;
     }
 
+    return (
+        <div className="p-4 md:p-8 space-y-6 pb-24">
+            <div>
+                <h1 className="text-2xl font-bold text-text-1">Analítica</h1>
+                <p className="text-text-3">Tu panel de Market: resumen e insights de tus compras y gastos.</p>
+            </div>
+
+            <MarketDateFilterBar />
+
+            <Suspense key={`${startDate}-${endDate}`} fallback={<DashboardLoading />}>
+                <AnalyticsContent userId={userId} userFirstName={userFirstName} startDate={startDate} endDate={endDate} />
+            </Suspense>
+        </div>
+    );
+}
+
+function DashboardLoading() {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-text-3 space-y-4 animate-in fade-in duration-500">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p>Cargando datos de analítica...</p>
+        </div>
+    );
+}
+
+async function AnalyticsContent({ 
+    userId, 
+    userFirstName, 
+    startDate, 
+    endDate 
+}: { 
+    userId: string; 
+    userFirstName?: string; 
+    startDate?: string; 
+    endDate?: string; 
+}) {
     const [
         monthlyData,
         categoryData,
@@ -44,83 +89,72 @@ export default async function AnalyticsPage() {
         topCategories,
         topSpending,
         recentPurchases,
-        genericItems,
+        supermarkets,
     ] = await Promise.all([
-        analyticsService.getMonthlyExpenses(userId, 6),
-        analyticsService.getCategorySpending(userId),
-        analyticsService.getFrequentProducts(userId, 'count'),
-        analyticsService.getFrequentProducts(userId, 'units'),
+        analyticsService.getMonthlyExpenses(userId, 6, startDate, endDate),
+        analyticsService.getCategorySpending(userId, startDate, endDate),
+        analyticsService.getFrequentProducts(userId, 'count', 6, startDate, endDate),
+        analyticsService.getFrequentProducts(userId, 'units', 6, startDate, endDate),
         productService.getAllBrandProducts(userId),
         productService.getGenericItems(userId),
-        analyticsService.getMonthlyExpenses(userId, 7),
-        analyticsService.getTopCategories(userId, 5),
-        analyticsService.getTopSpendingProducts(userId, 5),
-        purchaseRepository.findRecent(userId, 5),
-        genericItemRepository.findByOwnerId(userId),
+        analyticsService.getMonthlyExpenses(userId, 7, startDate, endDate),
+        analyticsService.getTopCategories(userId, 5, startDate, endDate),
+        analyticsService.getTopSpendingProducts(userId, 5, startDate, endDate),
+        purchaseRepository.findRecent(userId, 5, startDate, endDate),
+        masterDataService.getSupermarkets(userId),
     ]);
 
-    const allProducts = genericItems
-        .sort((a, b) => a.canonicalName.localeCompare(b.canonicalName))
-        .map(p => ({ id: p.id, name: p.canonicalName }));
+    const recentPurchasesMapped = recentPurchases.map(p => ({
+        ...p,
+        supermarketName: supermarkets.find(s => s.id === p.supermarketId)?.name || 'Sin supermercado'
+    }));
 
     return (
-        <div className="p-4 md:p-8 space-y-6 pb-24">
-            <div>
-                <h1 className="text-2xl font-bold text-text-1">Analítica</h1>
-                <p className="text-text-3">Tu panel de Market: resumen e insights de tus compras y gastos.</p>
-            </div>
+        <Tabs defaultValue="resumen" className="space-y-6">
+            <TabsList className="bg-transparent border-b border-border w-full flex justify-between md:justify-start rounded-none p-0 overflow-x-auto gap-1 md:gap-6 hide-scrollbar mb-6">
+                <TabsTrigger value="resumen" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 md:px-2 py-3 text-sm md:text-base text-text-3 data-[state=active]:text-text-1 font-medium">Resumen</TabsTrigger>
+                <TabsTrigger value="expenses" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 md:px-2 py-3 text-sm md:text-base text-text-3 data-[state=active]:text-text-1 font-medium">Gastos</TabsTrigger>
+                <TabsTrigger value="categories" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 md:px-2 py-3 text-sm md:text-base text-text-3 data-[state=active]:text-text-1 font-medium">Categorías</TabsTrigger>
+                <TabsTrigger value="products" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 md:px-2 py-3 text-sm md:text-base text-text-3 data-[state=active]:text-text-1 font-medium">Productos</TabsTrigger>
+            </TabsList>
 
-            <Tabs defaultValue="resumen" className="space-y-6">
-                <TabsList className="bg-bg-2 border border-border w-full md:w-auto p-1 h-auto flex flex-wrap justify-start md:inline-flex">
-                    <TabsTrigger value="resumen" className="flex-1 md:flex-none">Resumen</TabsTrigger>
-                    <TabsTrigger value="expenses" className="flex-1 md:flex-none">Gastos</TabsTrigger>
-                    <TabsTrigger value="categories" className="flex-1 md:flex-none">Categorías</TabsTrigger>
-                    <TabsTrigger value="products" className="flex-1 md:flex-none">Productos</TabsTrigger>
-                    <TabsTrigger value="prices" className="flex-1 md:flex-none">Precios</TabsTrigger>
-                </TabsList>
+            {/* Flow 18: Global metrics */}
+            <TabsContent value="resumen" className="animate-in fade-in duration-500">
+                <MarketOverview
+                    monthly={overviewMonthly.history}
+                    frequentProducts={freqCountData.generics}
+                    topCategories={topCategories}
+                    topSpending={topSpending}
+                    recentPurchases={recentPurchasesMapped as any}
+                    hasDateFilter={Boolean(startDate || endDate)}
+                    userFirstName={userFirstName}
+                />
+            </TabsContent>
 
-                {/* Resumen: relocated dashboard overview (Market's own dashboard) */}
-                <TabsContent value="resumen" className="animate-in fade-in duration-500">
-                    <MarketOverview
-                        monthly={overviewMonthly.history}
-                        frequentProducts={freqCountData.generics}
-                        topCategories={topCategories}
-                        topSpending={topSpending}
-                        recentPurchases={recentPurchases}
-                        allProducts={allProducts}
-                        userFirstName={userFirstName}
-                    />
-                </TabsContent>
+            {/* Flow 19: Expenses + Price Analysis */}
+            <TabsContent value="expenses" className="animate-in fade-in duration-500 space-y-6">
+                <ExpenseAnalytics
+                    data={monthlyData.history}
+                    average={monthlyData.average}
+                />
+                <PriceAnalytics
+                    searchableProducts={allBrandProducts}
+                    searchableGenericItems={allGenericItems}
+                />
+            </TabsContent>
 
-                {/* Flow 19: Expenses */}
-                <TabsContent value="expenses" className="animate-in fade-in duration-500">
-                    <ExpenseAnalytics
-                        data={monthlyData.history}
-                        average={monthlyData.average}
-                    />
-                </TabsContent>
+            {/* Flow 20: Categories */}
+            <TabsContent value="categories" className="animate-in fade-in duration-500">
+                <CategoryAnalytics data={categoryData} />
+            </TabsContent>
 
-                {/* Flow 20: Categories */}
-                <TabsContent value="categories" className="animate-in fade-in duration-500">
-                    <CategoryAnalytics data={categoryData} />
-                </TabsContent>
-
-                {/* Flow 21: Products */}
-                <TabsContent value="products" className="animate-in fade-in duration-500">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <ProductAnalytics data={freqCountData} mode="count" />
-                        <ProductAnalytics data={freqUnitsData} mode="units" />
-                    </div>
-                </TabsContent>
-
-                {/* Flow 22 & 23: Prices */}
-                <TabsContent value="prices" className="animate-in fade-in duration-500">
-                    <PriceAnalytics
-                        searchableProducts={allBrandProducts}
-                        searchableGenericItems={allGenericItems}
-                    />
-                </TabsContent>
-            </Tabs>
-        </div>
+            {/* Flow 21 & 22: Products */}
+            <TabsContent value="products" className="animate-in fade-in duration-500 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ProductAnalytics data={freqCountData} mode="count" />
+                    <ProductAnalytics data={freqUnitsData} mode="units" />
+                </div>
+            </TabsContent>
+        </Tabs>
     );
 }

@@ -23,3 +23,23 @@ export async function getProductPriceHistory(genericId: string) {
     const history = await analyticsService.getGenericPriceHistory(userId, genericId);
     return history;
 }
+
+export async function getAllProductsPriceHistories() {
+    await initializeContainer();
+
+    let userId: string | undefined;
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        const { createClient } = await import("@/infrastructure/supabase/server");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    } else {
+        const cookieStore = await cookies();
+        userId = cookieStore.get("kyber_session")?.value;
+    }
+
+    if (!userId) throw new Error("Unauthorized");
+
+    const histories = await analyticsService.getAllGenericPriceHistories(userId);
+    return histories;
+}

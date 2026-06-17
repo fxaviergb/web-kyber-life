@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FinancialTransaction } from "@/domain/entities/financial";
+import { useState, useEffect, useMemo } from "react";
+import { FinancialTransaction, FinancialInstitution, FinancialInstitutionType } from "@/domain/entities/financial";
 import { getTransactionDisplayTitle } from "@/lib/financial-utils";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AuditTrail } from "./AuditTrail";
 import { DuplicateResolver } from "./DuplicateResolver";
 import { OriginStatsViewer } from "./OriginStatsViewer";
-import { History, CalendarDays, Wallet, Edit2, Undo2, Check, Sparkles, Building2, Tags, FileText } from "lucide-react";
+import { History, CalendarDays, Wallet, Edit2, Undo2, Check, Sparkles, Building2, Tags, FileText, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { updateTransactionAction, getUniqueTagsAction } from "@/app/actions/financial-transactions";
-import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
+import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction } from "@/app/actions/financial-settings";
+import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
 import { cn } from "@/lib/utils";
+import { toDateTimeLocalValue } from "@/lib/date-range";
 import { TagInput } from "@/components/ui/tag-input";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { Landmark, FolderGit2 } from "lucide-react";
@@ -91,9 +93,19 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
     const [isEditing, setIsEditing] = useState(false);
     const [suggestions, setSuggestions] = useState<string[]>([]);
 
-    const [institutionsList, setInstitutionsList] = useState<string[]>([]);
+    const [institutions, setInstitutions] = useState<FinancialInstitution[]>([]);
+    const [institutionTypes, setInstitutionTypes] = useState<FinancialInstitutionType[]>([]);
     const [accountsList, setAccountsList] = useState<string[]>([]);
     const [categoriesList, setCategoriesList] = useState<string[]>([]);
+
+    // Institution inline-edit (staged; persisted when the edit is confirmed).
+    const [pendingInstitutionEdit, setPendingInstitutionEdit] = useState<PendingInstitutionEdit | null>(null);
+    const [instDialogOpen, setInstDialogOpen] = useState(false);
+
+    const institutionNames = useMemo(
+        () => institutions.filter(i => !i.isDeleted).map(i => i.name),
+        [institutions],
+    );
 
     const [displayNames, setDisplayNames] = useState({
         institution: transaction.merchant || "",
@@ -110,15 +122,17 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         };
         const fetchSettings = async () => {
             try {
-                const [instRes, accRes, catRes] = await Promise.all([
+                const [instRes, accRes, catRes, typesRes] = await Promise.all([
                     getInstitutionsAction(),
                     getAccountsAction(),
-                    getCategoriesAction()
+                    getCategoriesAction(),
+                    getInstitutionTypesAction(),
                 ]);
 
-                setInstitutionsList(instRes.map(i => i.name));
+                setInstitutions(instRes);
                 setAccountsList(accRes.map(a => a.name));
                 setCategoriesList(catRes.map(c => c.name));
+                setInstitutionTypes(typesRes);
 
                 const instName = instRes.find(i => i.id === transaction.institutionId)?.name || transaction.merchant || "";
                 const accName = accRes.find(a => a.id === transaction.accountId)?.name || "";
@@ -153,7 +167,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         categoryName: "",
         type: transaction.type || "EXPENSE",
         amount: transaction.amount ?? null,
-        date: transaction.date ? new Date(transaction.date).toISOString().slice(0, 16) : "",
+        date: transaction.date ? toDateTimeLocalValue(new Date(transaction.date)) : "",
         notes: extractContext(transaction),
         tags: transaction.tags || [],
     });
@@ -176,7 +190,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                 categoryName: displayNames.category,
                 type: transaction.type || "EXPENSE",
                 amount: transaction.amount ?? null,
-                date: transaction.date ? new Date(transaction.date).toISOString().slice(0, 16) : "",
+                date: transaction.date ? toDateTimeLocalValue(new Date(transaction.date)) : "",
                 notes: extractContext(transaction),
                 tags: transaction.tags || [],
             });
@@ -184,9 +198,45 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         setIsEditing(!isEditing);
     };
 
+    const matchedInstitution = useMemo(
+        () => institutions.find(i => !i.isDeleted && i.name.trim().toLowerCase() === editState.institutionName.trim().toLowerCase()) ?? null,
+        [institutions, editState.institutionName],
+    );
+
+    const institutionForDialog = useMemo(() => {
+        if (!matchedInstitution) return null;
+        if (pendingInstitutionEdit && pendingInstitutionEdit.id === matchedInstitution.id) {
+            return {
+                ...matchedInstitution,
+                name: pendingInstitutionEdit.name,
+                institutionTypeId: pendingInstitutionEdit.institutionTypeId,
+                description: pendingInstitutionEdit.description,
+            };
+        }
+        return matchedInstitution;
+    }, [matchedInstitution, pendingInstitutionEdit]);
+
+    const handleInstitutionEditApply = (edit: PendingInstitutionEdit) => {
+        setPendingInstitutionEdit(edit);
+        updateEditState("institutionName", edit.name);
+        updateEditState("merchant", edit.name);
+        setInstitutions(prev => prev.map(i => i.id === edit.id
+            ? { ...i, name: edit.name, institutionTypeId: edit.institutionTypeId, description: edit.description }
+            : i));
+    };
+
     const handleSaveEdit = async () => {
         setIsLoading(true);
         try {
+            // Persist a staged institution edit first (deferred until confirm).
+            if (pendingInstitutionEdit && editState.institutionName.trim().toLowerCase() === pendingInstitutionEdit.name.trim().toLowerCase()) {
+                await updateInstitutionAction(pendingInstitutionEdit.id, {
+                    name: pendingInstitutionEdit.name,
+                    institutionTypeId: pendingInstitutionEdit.institutionTypeId,
+                    description: pendingInstitutionEdit.description,
+                });
+            }
+
             const res = await updateTransactionAction(transaction.id!, {
                 description: editState.description.trim() || undefined,
                 merchant: editState.merchant || editState.institutionName,
@@ -266,17 +316,33 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                     <Building2 className="h-4 w-4" /> Institución
                                 </div>
                                 {isEditing ? (
-                                    <AutocompleteInput
-                                        id="headerInstitutionName"
-                                        value={editState.institutionName}
-                                        onChange={(val) => {
-                                            updateEditState("institutionName", val);
-                                            updateEditState("merchant", val);
-                                        }}
-                                        options={institutionsList}
-                                        className="h-10 text-xl font-bold border-border/50 bg-bg-primary"
-                                        placeholder="Nombre de la institución"
-                                    />
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <AutocompleteInput
+                                                id="headerInstitutionName"
+                                                value={editState.institutionName}
+                                                onChange={(val) => {
+                                                    updateEditState("institutionName", val);
+                                                    updateEditState("merchant", val);
+                                                }}
+                                                options={institutionNames}
+                                                className="h-10 text-xl font-bold border-border/50 bg-bg-primary"
+                                                placeholder="Nombre de la institución"
+                                            />
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            className="shrink-0 h-10 w-10"
+                                            disabled={!matchedInstitution}
+                                            title={matchedInstitution ? "Editar institución" : "Elige una institución existente para editar su registro"}
+                                            onClick={() => setInstDialogOpen(true)}
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                            <span className="sr-only">Editar institución</span>
+                                        </Button>
+                                    </div>
                                 ) : (
                                     <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
                                         {displayNames.institution || transaction.merchant || "Sin institución"}
@@ -476,6 +542,14 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
             <div className="space-y-6">
                 <OriginStatsViewer originStats={transaction.originStats as Record<string, unknown>} />
             </div>
+
+            <InstitutionEditDialog
+                open={instDialogOpen}
+                onOpenChange={setInstDialogOpen}
+                institution={institutionForDialog}
+                types={institutionTypes}
+                onApply={handleInstitutionEditApply}
+            />
         </div>
     );
 }

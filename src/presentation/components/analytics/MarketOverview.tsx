@@ -1,11 +1,11 @@
 import { type ComponentProps } from "react";
 import { MetricsCarousel } from "@/presentation/components/dashboard/metrics-carousel";
-import { SalesBarChart } from "@/presentation/components/dashboard/sales-bar-chart";
+
 import { TopProductsChart } from "@/presentation/components/dashboard/top-products-chart";
 import { RecentPurchasesCard } from "@/presentation/components/dashboard/recent-purchases-card";
 import { TopExpensesCard } from "@/presentation/components/dashboard/top-expenses-card";
 import { TopCategoriesCard } from "@/presentation/components/dashboard/top-categories-card";
-import { PriceHistoryCard } from "@/presentation/components/dashboard/price-history-card";
+
 import { DashboardEmptyState } from "@/presentation/components/dashboard/empty-state";
 
 interface MarketOverviewProps {
@@ -14,7 +14,9 @@ interface MarketOverviewProps {
     topCategories: { id: string; name: string; value: number; percentage: number }[];
     topSpending: { id: string; name: string; value: number }[];
     recentPurchases: ComponentProps<typeof RecentPurchasesCard>["purchases"];
-    allProducts: { id: string; name: string }[];
+
+    /** Whether a date-range filter is currently applied (preset or custom). */
+    hasDateFilter?: boolean;
     userFirstName?: string;
 }
 
@@ -28,10 +30,14 @@ export function MarketOverview({
     topCategories,
     topSpending,
     recentPurchases,
-    allProducts,
+
+    hasDateFilter = false,
     userFirstName,
 }: MarketOverviewProps) {
-    if (recentPurchases.length === 0) {
+    // Only show the onboarding empty state when the user has no activity at all
+    // (no date filter applied). When a date range is selected and yields nothing,
+    // render the real (empty) widgets so the dashboard reflects that range honestly.
+    if (recentPurchases.length === 0 && !hasDateFilter) {
         return <DashboardEmptyState userFirstName={userFirstName} />;
     }
 
@@ -41,8 +47,12 @@ export function MarketOverview({
     const currentMonthSpending = currentMonthEntry ? currentMonthEntry.total : 0;
 
     const pastMonths = monthly.filter((h) => h.month !== currentMonthKey);
+    const validPastMonths = pastMonths.filter((h) => h.total > 0);
     const totalPast = pastMonths.reduce((sum, h) => sum + h.total, 0);
-    const averageSpending = pastMonths.length > 0 ? totalPast / pastMonths.length : 0;
+    const averageSpending = validPastMonths.length > 0 ? totalPast / validPastMonths.length : 0;
+
+    const totalSpend = monthly.reduce((sum, h) => sum + h.total, 0);
+    const validMonthsCount = monthly.filter((h) => h.total > 0).length;
 
     const previousMonthEntry = pastMonths.length > 0 ? pastMonths[pastMonths.length - 1] : null;
     const lastMonthVsAvg =
@@ -60,6 +70,9 @@ export function MarketOverview({
                     currentMonthSpending={currentMonthSpending}
                     avgTrend={lastMonthVsAvg}
                     currentTrend={currentVsAvg}
+                    totalSpend={totalSpend}
+                    validMonthsCount={validMonthsCount}
+                    validPastMonthsCount={validPastMonths.length}
                 />
             </div>
 
@@ -75,15 +88,9 @@ export function MarketOverview({
                 <TopExpensesCard products={topSpending} />
             </div>
 
-            {/* Row 3: Recent purchases + Monthly spend + Price history */}
-            <div className="col-span-1 h-[400px]">
+            {/* Row 3: Recent purchases */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-3">
                 <RecentPurchasesCard purchases={recentPurchases} />
-            </div>
-            <div className="col-span-1 h-[400px]">
-                <SalesBarChart data={monthly} />
-            </div>
-            <div className="col-span-1 h-[400px]">
-                <PriceHistoryCard initialProducts={allProducts} />
             </div>
         </div>
     );

@@ -7,11 +7,10 @@ import { Home, ShoppingCart, FileText, BarChart2, Settings, Tag, Scale, User } f
 
 const MOBILE_ITEMS = [
     { label: "Dash", icon: Home, href: "/dashboard" },
+    { label: "Resumen", icon: BarChart2, href: "/market/analytics" },
     { label: "Compras", icon: ShoppingCart, href: "/market/purchases" },
     { label: "Plantillas", icon: FileText, href: "/market/templates" },
-    { label: "Cats", icon: Tag, href: "/market/categories" }, // Short label
-    { label: "Unit", icon: Scale, href: "/market/units" },
-    { label: "Analítica", icon: BarChart2, href: "/market/analytics" },
+    { label: "Config", icon: Settings, href: "/market/settings" },
     { label: "Perfil", icon: User, href: "/profile" },
 ];
 

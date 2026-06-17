@@ -122,7 +122,11 @@ export class FinancialTransactionService {
             amount: dto.amount,
             currency: dto.currency,
             date: dto.date,
-            merchant: dto.merchant ?? null,
+            // `merchant` is the persisted display field for a transaction's vendor/
+            // institution. When a manual transaction provides only an institution
+            // name (no explicit merchant), fall back to it so the card shows the
+            // institution immediately — matching the edit and scan flows.
+            merchant: dto.merchant ?? dto.institutionName ?? null,
             description: dto.description,
             categoryId: finalCategoryId,
             institutionId: finalInstitutionId,
@@ -310,13 +314,13 @@ export class FinancialTransactionService {
 
     async getTransactionsByUser(userId: UUID): Promise<FinancialTransaction[]> {
         const transactions = await this.transactionRepo.findByOwnerId(userId);
-        return this.enrichTransactionsWithCategories(transactions, userId);
+        return this.enrichTransactions(transactions, userId);
     }
 
     async getTransactionById(id: string): Promise<FinancialTransaction | null> {
         const tx = await this.transactionRepo.findById(id);
         if (tx) {
-            const enriched = await this.enrichTransactionsWithCategories([tx], tx.ownerUserId);
+            const enriched = await this.enrichTransactions([tx], tx.ownerUserId);
             return enriched[0];
         }
         return null;
@@ -345,7 +349,7 @@ export class FinancialTransactionService {
         await this.resolveSearchFilters(userId, filters);
 
         const result = await this.transactionRepo.findPaginated(userId, filters, { page, pageSize });
-        result.data = await this.enrichTransactionsWithCategories(result.data, userId);
+        result.data = await this.enrichTransactions(result.data, userId);
         return result;
     }
 
@@ -356,7 +360,7 @@ export class FinancialTransactionService {
         await this.resolveSearchFilters(userId, filters);
 
         const transactions = await this.transactionRepo.search(userId, filters.query || '', filters);
-        return this.enrichTransactionsWithCategories(transactions, userId);
+        return this.enrichTransactions(transactions, userId);
     }
 
     // ── Private Helpers ──────────────────────────────────────
@@ -382,26 +386,31 @@ export class FinancialTransactionService {
         }
     }
 
-    private async enrichTransactionsWithCategories(transactions: FinancialTransaction[], userId: UUID): Promise<FinancialTransaction[]> {
-        if (!this.categoryRepo || transactions.length === 0) return transactions;
-        
+    private async enrichTransactions(transactions: FinancialTransaction[], userId: UUID): Promise<FinancialTransaction[]> {
+        if (transactions.length === 0) return transactions;
+
         try {
-            const categories = await this.categoryRepo.findAllBaseAndUser(userId);
+            const [categories, institutions] = await Promise.all([
+                this.categoryRepo ? this.categoryRepo.findAllBaseAndUser(userId) : Promise.resolve([]),
+                this.institutionRepo ? this.institutionRepo.findByOwnerId(userId) : Promise.resolve([]),
+            ]);
             const categoryMap = new Map(categories.map(c => [c.id, c]));
-            
+            const institutionMap = new Map(institutions.map(i => [i.id, i]));
+
             return transactions.map(tx => {
-                if (tx.categoryId && categoryMap.has(tx.categoryId)) {
-                    const category = categoryMap.get(tx.categoryId);
-                    return {
-                        ...tx,
-                        categoryName: category?.name,
-                        categoryColor: category?.color ?? undefined,
-                    };
-                }
-                return tx;
+                const category = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined;
+                const institution = tx.institutionId ? institutionMap.get(tx.institutionId) : undefined;
+                return {
+                    ...tx,
+                    categoryName: category?.name ?? tx.categoryName,
+                    categoryColor: category?.color ?? tx.categoryColor,
+                    // Resolve the institution name from its id so the UI can always
+                    // prioritize it over the stored merchant.
+                    institutionName: institution?.name ?? tx.institutionName,
+                };
             });
         } catch (e) {
-            console.error("Failed to enrich transactions with categories", e);
+            console.error("Failed to enrich transactions", e);
             return transactions;
         }
     }

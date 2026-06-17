@@ -1,19 +1,67 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createTransactionAction } from "@/app/actions/financial-transactions";
-import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
-import { FinancialTransactionType } from "@/domain/entities/financial";
+import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction } from "@/app/actions/financial-settings";
+import { FinancialTransactionType, FinancialInstitution, FinancialInstitutionType } from "@/domain/entities/financial";
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
-import { Building2, Landmark, FolderGit2, FileText } from "lucide-react";
+import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
+import { toDateTimeLocalValue } from "@/lib/date-range";
+import { Building2, Landmark, FolderGit2, FileText, Pencil } from "lucide-react";
+
+// Lowercase type labels for natural-reading auto notes.
+const NOTE_TYPE_LABELS: Record<string, string> = {
+    EXPENSE: "gasto",
+    INCOME: "ingreso",
+    TRANSFER: "transferencia",
+    WITHDRAWAL: "retiro",
+    SUBSCRIPTION: "suscripción",
+};
+
+/** Format a datetime-local string as "DD/MM/YYYY HH:mm". */
+function formatNotesDateTime(dtLocal: string): string {
+    if (!dtLocal) return "";
+    const d = new Date(dtLocal);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+interface AutoNotesInput {
+    type: string;
+    description: string;
+    institutionName: string;
+    amount: string;
+    date: string;
+    accountName: string;
+}
+
+/**
+ * Build the auto-generated notes sentence from the current form fields.
+ * Clauses are appended only when their value exists, so the sentence stays
+ * clean while the form is being filled. The "desde la cuenta ..." clause is
+ * included only when an account/card has been entered.
+ */
+function buildAutoNotes(p: AutoNotesInput): string {
+    const typeLabel = NOTE_TYPE_LABELS[p.type] ?? p.type.toLowerCase();
+    let s = `Registro de ${typeLabel}`;
+    if (p.description.trim()) s += ` por ${p.description.trim()}`;
+    if (p.institutionName.trim()) s += ` en ${p.institutionName.trim()}`;
+    if (p.amount && Number(p.amount) > 0) s += ` por un monto de $${p.amount}`;
+    const dateStr = formatNotesDateTime(p.date);
+    if (dateStr) s += ` el ${dateStr}`;
+    if (p.accountName.trim()) s += ` desde la cuenta ${p.accountName.trim()}`;
+    return s;
+}
 
 export function TransactionForm() {
     const router = useRouter();
@@ -23,30 +71,44 @@ export function TransactionForm() {
     const [type, setType] = useState<FinancialTransactionType>("EXPENSE");
     const [amount, setAmount] = useState("");
     const [description, setDescription] = useState("");
-    const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+    const [date, setDate] = useState(toDateTimeLocalValue(new Date()));
     const [notes, setNotes] = useState("");
+    // Whether the user has manually customised the notes (stops auto-generation).
+    const [notesEdited, setNotesEdited] = useState(false);
     const [institutionName, setInstitutionName] = useState("");
     const [accountName, setAccountName] = useState("");
     const [categoryName, setCategoryName] = useState("");
 
-    const [institutionsList, setInstitutionsList] = useState<string[]>([]);
+    const [institutions, setInstitutions] = useState<FinancialInstitution[]>([]);
+    const [institutionTypes, setInstitutionTypes] = useState<FinancialInstitutionType[]>([]);
     const [accountsList, setAccountsList] = useState<string[]>([]);
     const [categoriesList, setCategoriesList] = useState<string[]>([]);
+
+    // Institution inline-edit (staged; persisted on submit).
+    const [pendingInstitutionEdit, setPendingInstitutionEdit] = useState<PendingInstitutionEdit | null>(null);
+    const [instDialogOpen, setInstDialogOpen] = useState(false);
+
+    const institutionNames = useMemo(
+        () => institutions.filter(i => !i.isDeleted).map(i => i.name),
+        [institutions],
+    );
 
     // Load draft and lists on mount
     useEffect(() => {
         const loadDraftAndData = async () => {
             try {
                 // Fetch settings for datalist
-                const [instRes, accRes, catRes] = await Promise.all([
+                const [instRes, accRes, catRes, typesRes] = await Promise.all([
                     getInstitutionsAction(),
                     getAccountsAction(),
-                    getCategoriesAction()
+                    getCategoriesAction(),
+                    getInstitutionTypesAction(),
                 ]);
 
-                setInstitutionsList(instRes.map(i => i.name));
+                setInstitutions(instRes);
                 setAccountsList(accRes.map(a => a.name));
                 setCategoriesList(catRes.map(c => c.name));
+                setInstitutionTypes(typesRes);
 
                 // Load draft
                 const drafts = await financialOfflineStore.drafts.getAll();
@@ -54,14 +116,35 @@ export function TransactionForm() {
 
                 if (latestDraft) {
                     const data = latestDraft.data as any;
+                    const draftType = data.type || "EXPENSE";
+                    const draftAmount = data.amount ? data.amount.toString() : "";
+                    const draftDescription = data.description || "";
+                    const draftInstitution = data.institutionName || "";
+                    const draftAccount = data.accountName || "";
+                    const draftDate = data.date ? toDateTimeLocalValue(new Date(data.date)) : "";
+
                     if (data.type) setType(data.type);
-                    if (data.amount) setAmount(data.amount.toString());
-                    if (data.description) setDescription(data.description);
-                    if (data.date) setDate(data.date.split("T")[0]);
-                    if (data.notes) setNotes(data.notes);
-                    if (data.institutionName) setInstitutionName(data.institutionName);
-                    if (data.accountName) setAccountName(data.accountName);
+                    if (data.amount) setAmount(draftAmount);
+                    if (data.description) setDescription(draftDescription);
+                    if (draftDate) setDate(draftDate);
+                    if (data.institutionName) setInstitutionName(draftInstitution);
+                    if (data.accountName) setAccountName(draftAccount);
                     if (data.categoryName) setCategoryName(data.categoryName);
+
+                    if (data.notes) {
+                        // Resume auto-generation only if the draft notes still match what
+                        // we'd auto-generate; otherwise treat them as user-customised.
+                        const draftAuto = buildAutoNotes({
+                            type: draftType,
+                            description: draftDescription,
+                            institutionName: draftInstitution,
+                            amount: draftAmount,
+                            date: draftDate,
+                            accountName: draftAccount,
+                        });
+                        setNotes(data.notes);
+                        setNotesEdited(data.notes.trim() !== draftAuto.trim());
+                    }
                 }
             } catch (e) {
                 console.error("Failed to load transaction draft or settings", e);
@@ -101,6 +184,47 @@ export function TransactionForm() {
         const timeoutId = setTimeout(saveDraft, 500);
         return () => clearTimeout(timeoutId);
     }, [type, amount, description, date, notes, institutionName, accountName, categoryName]);
+
+    // Auto-generate the notes from the form fields until the user customises them.
+    const autoNotes = useMemo(
+        () => buildAutoNotes({ type, description, institutionName, amount, date, accountName }),
+        [type, description, institutionName, amount, date, accountName],
+    );
+
+    useEffect(() => {
+        if (!notesEdited) {
+            setNotes(autoNotes);
+        }
+    }, [autoNotes, notesEdited]);
+
+    // The existing institution matching the typed name (editable via the dialog).
+    const matchedInstitution = useMemo(
+        () => institutions.find(i => !i.isDeleted && i.name.trim().toLowerCase() === institutionName.trim().toLowerCase()) ?? null,
+        [institutions, institutionName],
+    );
+
+    // The institution passed to the dialog, with any staged edit already applied.
+    const institutionForDialog = useMemo(() => {
+        if (!matchedInstitution) return null;
+        if (pendingInstitutionEdit && pendingInstitutionEdit.id === matchedInstitution.id) {
+            return {
+                ...matchedInstitution,
+                name: pendingInstitutionEdit.name,
+                institutionTypeId: pendingInstitutionEdit.institutionTypeId,
+                description: pendingInstitutionEdit.description,
+            };
+        }
+        return matchedInstitution;
+    }, [matchedInstitution, pendingInstitutionEdit]);
+
+    const handleInstitutionEditApply = (edit: PendingInstitutionEdit) => {
+        setPendingInstitutionEdit(edit);
+        setInstitutionName(edit.name);
+        // Optimistically reflect the staged rename so the field still matches.
+        setInstitutions(prev => prev.map(i => i.id === edit.id
+            ? { ...i, name: edit.name, institutionTypeId: edit.institutionTypeId, description: edit.description }
+            : i));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -155,6 +279,21 @@ export function TransactionForm() {
         }
 
         try {
+            // Persist a staged institution edit first (deferred until save).
+            if (pendingInstitutionEdit && institutionName.trim().toLowerCase() === pendingInstitutionEdit.name.trim().toLowerCase()) {
+                try {
+                    await updateInstitutionAction(pendingInstitutionEdit.id, {
+                        name: pendingInstitutionEdit.name,
+                        institutionTypeId: pendingInstitutionEdit.institutionTypeId,
+                        description: pendingInstitutionEdit.description,
+                    });
+                } catch {
+                    toast.error("No se pudo actualizar la institución", { id: "inst-update-error" });
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             const result = await createTransactionAction(transactionData);
 
             if (result.success) {
@@ -209,14 +348,30 @@ export function TransactionForm() {
                             <Building2 className="w-4 h-4 text-blue-500" />
                             Institución
                         </Label>
-                        <AutocompleteInput
-                            id="institutionName"
-                            value={institutionName}
-                            onChange={setInstitutionName}
-                            options={institutionsList}
-                            className="bg-background border-border/50"
-                            placeholder="Ej. Banco de Chile, Sodexo, Amazon..."
-                        />
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                                <AutocompleteInput
+                                    id="institutionName"
+                                    value={institutionName}
+                                    onChange={setInstitutionName}
+                                    options={institutionNames}
+                                    className="bg-background border-border/50"
+                                    placeholder="Ej. Banco de Chile, Sodexo, Amazon..."
+                                />
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="shrink-0"
+                                disabled={!matchedInstitution}
+                                title={matchedInstitution ? "Editar institución" : "Elige una institución existente para editar su registro"}
+                                onClick={() => setInstDialogOpen(true)}
+                            >
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Editar institución</span>
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
@@ -283,11 +438,11 @@ export function TransactionForm() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="date">Fecha</Label>
+                            <Label htmlFor="date">Fecha y hora</Label>
                             <Input
                                 id="date"
                                 name="date"
-                                type="date"
+                                type="datetime-local"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
                                 required
@@ -299,19 +454,23 @@ export function TransactionForm() {
 
                         <div className="space-y-2">
                             <Label htmlFor="notes">Notas (opcional)</Label>
-                            <Input
+                            <Textarea
                                 id="notes"
                                 name="notes"
-                                type="text"
-                                placeholder="Detalles adicionales..."
+                                rows={4}
+                                placeholder="Se completa automáticamente con los datos del formulario. Puedes editarlo libremente."
                                 value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setNotes(val);
+                                    setNotesEdited(val.trim().length > 0);
+                                }}
                                 autoComplete="off"
                             />
                         </div>
                     </div>
                 </CardContent>
-                <CardFooter className="flex justify-between">
+                <CardFooter className="flex justify-between gap-3 pt-6">
                     <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                         Cancelar
                     </Button>
@@ -320,6 +479,14 @@ export function TransactionForm() {
                     </Button>
                 </CardFooter>
             </form>
+
+            <InstitutionEditDialog
+                open={instDialogOpen}
+                onOpenChange={setInstDialogOpen}
+                institution={institutionForDialog}
+                types={institutionTypes}
+                onApply={handleInstitutionEditApply}
+            />
         </Card>
     );
 }

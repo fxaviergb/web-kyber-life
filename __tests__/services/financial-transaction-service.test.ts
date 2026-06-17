@@ -66,6 +66,47 @@ describe("FinancialTransactionService", () => {
             );
         });
 
+        it("should default merchant to the institution name when no merchant is provided", async () => {
+            transactionRepoMock.findByOwnerId.mockResolvedValue([]);
+            transactionRepoMock.create.mockImplementation(async (tx: any) => tx);
+            auditLogRepoMock.create.mockResolvedValue({} as any);
+
+            const dto: CreateFinancialTransactionDTO = {
+                ownerUserId: mockUserId,
+                type: "EXPENSE",
+                amount: 4.49,
+                currency: "USD",
+                date: "2026-06-17T10:00:00Z",
+                institutionName: "El Asadero Medio Ejido",
+                description: "Compra de merienda",
+            };
+
+            const result = await service.createTransaction(dto);
+
+            expect(result.merchant).toBe("El Asadero Medio Ejido");
+        });
+
+        it("should keep an explicit merchant over the institution name", async () => {
+            transactionRepoMock.findByOwnerId.mockResolvedValue([]);
+            transactionRepoMock.create.mockImplementation(async (tx: any) => tx);
+            auditLogRepoMock.create.mockResolvedValue({} as any);
+
+            const dto: CreateFinancialTransactionDTO = {
+                ownerUserId: mockUserId,
+                type: "EXPENSE",
+                amount: 10,
+                currency: "USD",
+                date: "2026-06-17T10:00:00Z",
+                merchant: "Amazon",
+                institutionName: "Visa",
+                description: "Compra",
+            };
+
+            const result = await service.createTransaction(dto);
+
+            expect(result.merchant).toBe("Amazon");
+        });
+
         it("should mark as possible duplicate if a matching transaction exists", async () => {
             const existingTx = {
                 id: uuidv4(),
@@ -99,6 +140,43 @@ describe("FinancialTransactionService", () => {
                     action: "CREATED_WITH_DUPLICATE_FLAG"
                 })
             );
+        });
+    });
+
+    describe("institution enrichment", () => {
+        it("resolves institutionName from institutionId, prioritised over the stored merchant", async () => {
+            const institutionRepoMock = {
+                findByOwnerId: jest.fn().mockResolvedValue([
+                    { id: "inst-1", ownerUserId: mockUserId, name: "El Asadero Medio Ejido", isDeleted: false },
+                ]),
+            };
+            const categoryRepoMock = {
+                findAllBaseAndUser: jest.fn().mockResolvedValue([]),
+            };
+            const enrichingService = new FinancialTransactionService(
+                transactionRepoMock,
+                auditLogRepoMock,
+                institutionRepoMock as any,
+                undefined,
+                categoryRepoMock as any,
+            );
+
+            transactionRepoMock.findById.mockResolvedValue({
+                id: mockTransactionId,
+                ownerUserId: mockUserId,
+                type: "EXPENSE",
+                status: "MANUAL",
+                amount: 4.49,
+                currency: "USD",
+                date: "2026-06-17T10:00:00Z",
+                merchant: "stale-merchant",
+                institutionId: "inst-1",
+                categoryId: null,
+            });
+
+            const result = await enrichingService.getTransactionById(mockTransactionId);
+
+            expect(result?.institutionName).toBe("El Asadero Medio Ejido");
         });
     });
 

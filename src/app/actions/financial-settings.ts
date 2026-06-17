@@ -2,15 +2,12 @@
 
 import { financialSettingsService } from "@/infrastructure/container";
 import { FinancialInstitution, FinancialAccount, FinancialCategory } from "@/domain/entities/financial";
-import { createClient } from "@/infrastructure/supabase/server";
+import { requireUserId } from "@/infrastructure/supabase/auth-user";
 import { revalidatePath } from "next/cache";
 import { UUID } from "@/domain/core";
 
 async function getRequiredUser(): Promise<{ id: string }> {
-    const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user?.id) throw new Error("Unauthorized");
-    return { id: user.id };
+    return { id: await requireUserId() };
 }
 
 export async function getInstitutionTypesAction() {

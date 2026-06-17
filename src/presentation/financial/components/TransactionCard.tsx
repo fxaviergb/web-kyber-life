@@ -122,8 +122,9 @@ function getFallbackDescription(tx: FinancialTransaction, typeLabel: string): st
         return emailSubject;
     }
 
-    const merchantStr = tx.merchant ? ` en ${tx.merchant}` : "";
-    return `${typeLabel}${merchantStr}`;
+    const vendor = tx.institutionName || tx.merchant;
+    const vendorStr = vendor ? ` en ${vendor}` : "";
+    return `${typeLabel}${vendorStr}`;
 }
 
 // ─── Component ────────────────────────────────────────────────
@@ -228,8 +229,8 @@ export function TransactionCard({
                             {displayTitle}
                         </CardTitle>
                         <div className="flex items-start gap-2 mt-0.5 min-w-0">
-                            <span className="line-clamp-3 break-words text-[13px] font-medium text-zinc-400" title={transaction.merchant || typeLabel}>
-                                {transaction.merchant || typeLabel}
+                            <span className="line-clamp-3 break-words text-[13px] font-medium text-zinc-400" title={transaction.institutionName || transaction.merchant || typeLabel}>
+                                {transaction.institutionName || transaction.merchant || typeLabel}
                             </span>
                         </div>
                         <div className="flex items-center gap-2 mt-1 min-w-0">
