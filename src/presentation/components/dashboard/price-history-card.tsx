@@ -238,9 +238,9 @@ export function PriceHistoryCard({ initialProducts }: PriceHistoryCardProps) {
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                             }}
                             itemStyle={{ color: 'var(--text-primary)', fontWeight: 'bold' }}
-                            formatter={(value: number, name: string) => {
+                            formatter={(value: any, name: any) => {
                                 const product = initialProducts.find(p => p.id === name);
-                                return [`$${Number(value).toFixed(2)}`, product ? product.name : name];
+                                return [`$${Number(value || 0).toFixed(2)}`, product ? product.name : name];
                             }}
                             labelFormatter={(label) => new Date(label).toLocaleDateString('es-ES')}
                         />

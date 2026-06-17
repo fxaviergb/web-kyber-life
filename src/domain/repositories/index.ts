@@ -54,8 +54,8 @@ export interface ITemplateItemRepository {
 }
 
 export interface IPurchaseRepository extends IRepository<Purchase> {
-    findByOwnerId(userId: UUID): Promise<Purchase[]>;
-    findRecent(userId: UUID, limit: number): Promise<Purchase[]>;
+    findByOwnerId(userId: UUID, startDate?: string, endDate?: string): Promise<Purchase[]>;
+    findRecent(userId: UUID, limit: number, startDate?: string, endDate?: string): Promise<Purchase[]>;
 }
 
 export interface IPurchaseLineRepository {

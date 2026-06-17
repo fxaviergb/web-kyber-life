@@ -344,7 +344,7 @@ export function PriceAnalytics({ searchableProducts, searchableGenericItems }: P
                                                     boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                                                 }}
                                                 labelFormatter={(val) => new Date(val).toLocaleDateString('es-ES')}
-                                                formatter={(value: number) => [`$${value.toFixed(2)}`, "Precio"]}
+                                                formatter={(value: any) => [`$${Number(value || 0).toFixed(2)}`, "Precio"]}
                                             />
                                             <Line
                                                 type="monotone"

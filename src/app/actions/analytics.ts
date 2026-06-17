@@ -90,9 +90,7 @@ export async function getMarketDailySpendAction(startDate?: string, endDate?: st
 export async function getMarketTopProductsAction(startDate?: string, endDate?: string, limit: number = 8) {
     try {
         const userId = await resolveUserId();
-        const s = startDate ? new Date(startDate) : undefined;
-        const e = endDate ? new Date(endDate) : undefined;
-        const data = await analyticsService.getTopSpendingProducts(userId, limit, s, e);
+        const data = await analyticsService.getTopSpendingProducts(userId, limit, startDate, endDate);
         return { success: true, data };
     } catch (e) {
         return { success: false, error: (e as Error).message };

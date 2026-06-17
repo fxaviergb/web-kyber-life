@@ -6,8 +6,16 @@ import { CategoryAnalytics } from "@/presentation/components/analytics/CategoryA
 import { ProductAnalytics } from "@/presentation/components/analytics/ProductAnalytics";
 import { PriceAnalytics } from "@/presentation/components/analytics/PriceAnalytics";
 import { MarketOverview } from "@/presentation/components/analytics/MarketOverview";
+import { MarketDateFilterBar } from "@/presentation/components/analytics/MarketDateFilterBar";
 
-export default async function AnalyticsPage() {
+type Props = {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function AnalyticsPage({ searchParams }: Props) {
+    const resolvedSearchParams = await searchParams;
+    const startDate = typeof resolvedSearchParams.startDate === 'string' ? resolvedSearchParams.startDate : undefined;
+    const endDate = typeof resolvedSearchParams.endDate === 'string' ? resolvedSearchParams.endDate : undefined;
     await initializeContainer();
 
     let userId: string | undefined;
@@ -45,16 +53,16 @@ export default async function AnalyticsPage() {
         recentPurchases,
         supermarkets,
     ] = await Promise.all([
-        analyticsService.getMonthlyExpenses(userId, 6),
-        analyticsService.getCategorySpending(userId),
-        analyticsService.getFrequentProducts(userId, 'count'),
-        analyticsService.getFrequentProducts(userId, 'units'),
+        analyticsService.getMonthlyExpenses(userId, 6, startDate, endDate),
+        analyticsService.getCategorySpending(userId, startDate, endDate),
+        analyticsService.getFrequentProducts(userId, 'count', 6, startDate, endDate),
+        analyticsService.getFrequentProducts(userId, 'units', 6, startDate, endDate),
         productService.getAllBrandProducts(userId),
         productService.getGenericItems(userId),
-        analyticsService.getMonthlyExpenses(userId, 7),
-        analyticsService.getTopCategories(userId, 5),
-        analyticsService.getTopSpendingProducts(userId, 5),
-        purchaseRepository.findRecent(userId, 5),
+        analyticsService.getMonthlyExpenses(userId, 7, startDate, endDate),
+        analyticsService.getTopCategories(userId, 5, startDate, endDate),
+        analyticsService.getTopSpendingProducts(userId, 5, startDate, endDate),
+        purchaseRepository.findRecent(userId, 5, startDate, endDate),
         masterDataService.getSupermarkets(userId),
     ]);
 
@@ -70,12 +78,14 @@ export default async function AnalyticsPage() {
                 <p className="text-text-3">Tu panel de Market: resumen e insights de tus compras y gastos.</p>
             </div>
 
+            <MarketDateFilterBar />
+
             <Tabs defaultValue="resumen" className="space-y-6">
-                <TabsList className="bg-bg-2 border border-border w-full md:w-auto p-1 h-auto flex flex-wrap justify-start md:inline-flex">
-                    <TabsTrigger value="resumen" className="flex-1 md:flex-none">Resumen</TabsTrigger>
-                    <TabsTrigger value="expenses" className="flex-1 md:flex-none">Gastos</TabsTrigger>
-                    <TabsTrigger value="categories" className="flex-1 md:flex-none">Categorías</TabsTrigger>
-                    <TabsTrigger value="products" className="flex-1 md:flex-none">Productos</TabsTrigger>
+                <TabsList className="bg-bg-2 border border-border w-full p-1 h-auto flex flex-wrap">
+                    <TabsTrigger value="resumen" className="flex-1">Resumen</TabsTrigger>
+                    <TabsTrigger value="expenses" className="flex-1">Gastos</TabsTrigger>
+                    <TabsTrigger value="categories" className="flex-1">Categorías</TabsTrigger>
+                    <TabsTrigger value="products" className="flex-1">Productos</TabsTrigger>
                 </TabsList>
 
                 {/* Flow 18: Global metrics */}
