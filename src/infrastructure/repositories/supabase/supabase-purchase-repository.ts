@@ -56,7 +56,8 @@ export class SupabasePurchaseRepository implements IPurchaseRepository {
             query = query.gte('date', startDate);
         }
         if (endDate) {
-            query = query.lte('date', endDate);
+            const endDateTime = endDate.length === 10 ? `${endDate}T23:59:59.999Z` : endDate;
+            query = query.lte('date', endDateTime);
         }
         
         const { data, error } = await query.order('date', { ascending: false });
@@ -77,7 +78,8 @@ export class SupabasePurchaseRepository implements IPurchaseRepository {
             query = query.gte('date', startDate);
         }
         if (endDate) {
-            query = query.lte('date', endDate);
+            const endDateTime = endDate.length === 10 ? `${endDate}T23:59:59.999Z` : endDate;
+            query = query.lte('date', endDateTime);
         }
         
         const { data, error } = await query

@@ -7,6 +7,36 @@ import { Input } from "@/components/ui/input";
 
 export type FilterType = "all" | "today" | "week" | "month" | "custom";
 
+const getDateRange = (type: FilterType): { start?: string, end?: string } => {
+    const now = new Date();
+    
+    if (type === "today") {
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        return { start: start.toISOString(), end: end.toISOString() };
+    }
+    if (type === "week") {
+        const start = new Date(now);
+        const day = now.getDay() || 7; 
+        if (day !== 1) start.setDate(start.getDate() - (day - 1));
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        return { start: start.toISOString(), end: end.toISOString() };
+    }
+    if (type === "month") {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999);
+        return { start: start.toISOString(), end: end.toISOString() };
+    }
+    return {};
+};
+
 export function MarketDateFilterBar() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -18,7 +48,9 @@ export function MarketDateFilterBar() {
     // Initialize from URL
     useEffect(() => {
         const type = searchParams.get("filter") as FilterType;
-        if (type && ["all", "today", "week", "month", "custom"].includes(type)) {
+        const validTypes = ["all", "today", "week", "month", "custom"];
+        
+        if (type && validTypes.includes(type)) {
             setFilterType(type);
         } else {
             setFilterType("all");
@@ -27,40 +59,55 @@ export function MarketDateFilterBar() {
         const start = searchParams.get("startDate");
         const end = searchParams.get("endDate");
         
-        if (start) setCustomStartDate(start);
-        if (end) setCustomEndDate(end);
-    }, [searchParams]);
+        if (start) {
+            const d = new Date(start);
+            if (!isNaN(d.getTime())) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                setCustomStartDate(`${yyyy}-${mm}-${dd}`);
+            } else {
+                setCustomStartDate(start.substring(0, 10));
+            }
+        }
+        if (end) {
+            const d = new Date(end);
+            if (!isNaN(d.getTime())) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                setCustomEndDate(`${yyyy}-${mm}-${dd}`);
+            } else {
+                setCustomEndDate(end.substring(0, 10));
+            }
+        }
 
-    const getDateRange = (type: FilterType): { start?: string, end?: string } => {
-        const now = new Date();
-        
-        if (type === "today") {
-            const today = now.toISOString().split('T')[0];
-            return { start: today, end: today };
+        // Hydrate missing dates for standard filters (fixes bookmarks without dates)
+        if (type && type !== "all" && type !== "custom" && (!start || !end)) {
+            const range = getDateRange(type);
+            if (range.start && range.end) {
+                const params = new URLSearchParams(searchParams);
+                params.set("startDate", range.start);
+                params.set("endDate", range.end);
+                router.replace(`?${params.toString()}`, { scroll: false });
+            }
         }
-        if (type === "week") {
-            const start = new Date(now);
-            const day = now.getDay() || 7; 
-            if (day !== 1) start.setHours(-24 * (day - 1));
-            const end = new Date(start);
-            end.setHours(24 * 6);
-            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
-        }
-        if (type === "month") {
-            const start = new Date(now.getFullYear(), now.getMonth(), 1);
-            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
-        }
-        return {};
-    };
+    }, [searchParams, router]);
 
     const updateFilter = (type: FilterType, start?: string, end?: string) => {
         const params = new URLSearchParams(searchParams);
         params.set("filter", type);
         
         if (type === "custom") {
-            if (start) params.set("startDate", start);
-            if (end) params.set("endDate", end);
+            if (start) {
+                // If it's already an ISO string, keep it, otherwise convert from YYYY-MM-DD
+                const startIso = start.includes('T') ? start : new Date(start + 'T00:00:00').toISOString();
+                params.set("startDate", startIso);
+            }
+            if (end) {
+                const endIso = end.includes('T') ? end : new Date(end + 'T23:59:59.999').toISOString();
+                params.set("endDate", endIso);
+            }
         } else if (type === "all") {
             params.delete("startDate");
             params.delete("endDate");
@@ -82,11 +129,14 @@ export function MarketDateFilterBar() {
             // For custom, if we already have dates, use them, otherwise initialize to current month
             if (!customStartDate || !customEndDate) {
                 const now = new Date();
-                const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-                setCustomStartDate(start);
-                setCustomEndDate(end);
-                updateFilter("custom", start, end);
+                const yyyy = now.getFullYear();
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const lastDay = new Date(yyyy, now.getMonth() + 1, 0).getDate();
+                const startStr = `${yyyy}-${mm}-01`;
+                const endStr = `${yyyy}-${mm}-${lastDay}`;
+                setCustomStartDate(startStr);
+                setCustomEndDate(endStr);
+                updateFilter("custom", startStr, endStr);
             } else {
                 updateFilter("custom", customStartDate, customEndDate);
             }

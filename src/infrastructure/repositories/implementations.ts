@@ -269,11 +269,24 @@ export class InMemoryTemplateItemRepository implements ITemplateItemRepository {
 }
 
 export class InMemoryPurchaseRepository extends InMemoryRepository<Purchase> implements IPurchaseRepository {
-    async findByOwnerId(userId: UUID): Promise<Purchase[]> {
-        return (await this.findAll()).filter(p => p.ownerUserId === userId).sort((a, b) => b.date.localeCompare(a.date));
+    async findByOwnerId(userId: UUID, startDate?: string, endDate?: string): Promise<Purchase[]> {
+        return (await this.findAll())
+            .filter(p => p.ownerUserId === userId)
+            .filter(p => this.isWithinRange(p.date, startDate, endDate))
+            .sort((a, b) => b.date.localeCompare(a.date));
     }
-    async findRecent(userId: UUID, limit: number): Promise<Purchase[]> {
-        return (await this.findByOwnerId(userId)).slice(0, limit);
+    async findRecent(userId: UUID, limit: number, startDate?: string, endDate?: string): Promise<Purchase[]> {
+        return (await this.findByOwnerId(userId, startDate, endDate)).slice(0, limit);
+    }
+
+    /** Whether an ISO purchase date falls within an optional [startDate, endDate] range. */
+    private isWithinRange(dateStr: string, startDate?: string, endDate?: string): boolean {
+        if (startDate && dateStr < startDate) return false;
+        if (endDate) {
+            const endBoundary = endDate.length === 10 ? `${endDate}T23:59:59.999Z` : endDate;
+            if (dateStr > endBoundary) return false;
+        }
+        return true;
     }
 }
 

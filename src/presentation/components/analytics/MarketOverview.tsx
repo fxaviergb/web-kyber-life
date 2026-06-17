@@ -15,6 +15,8 @@ interface MarketOverviewProps {
     topSpending: { id: string; name: string; value: number }[];
     recentPurchases: ComponentProps<typeof RecentPurchasesCard>["purchases"];
 
+    /** Whether a date-range filter is currently applied (preset or custom). */
+    hasDateFilter?: boolean;
     userFirstName?: string;
 }
 
@@ -29,9 +31,13 @@ export function MarketOverview({
     topSpending,
     recentPurchases,
 
+    hasDateFilter = false,
     userFirstName,
 }: MarketOverviewProps) {
-    if (recentPurchases.length === 0) {
+    // Only show the onboarding empty state when the user has no activity at all
+    // (no date filter applied). When a date range is selected and yields nothing,
+    // render the real (empty) widgets so the dashboard reflects that range honestly.
+    if (recentPurchases.length === 0 && !hasDateFilter) {
         return <DashboardEmptyState userFirstName={userFirstName} />;
     }
 
