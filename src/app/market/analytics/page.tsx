@@ -81,11 +81,11 @@ export default async function AnalyticsPage({ searchParams }: Props) {
             <MarketDateFilterBar />
 
             <Tabs defaultValue="resumen" className="space-y-6">
-                <TabsList className="bg-bg-2 border border-border w-full p-1 h-auto flex flex-wrap">
-                    <TabsTrigger value="resumen" className="flex-1">Resumen</TabsTrigger>
-                    <TabsTrigger value="expenses" className="flex-1">Gastos</TabsTrigger>
-                    <TabsTrigger value="categories" className="flex-1">Categorías</TabsTrigger>
-                    <TabsTrigger value="products" className="flex-1">Productos</TabsTrigger>
+                <TabsList className="bg-transparent border-b border-border w-full flex justify-start rounded-none p-0 overflow-x-auto gap-6 hide-scrollbar mb-6">
+                    <TabsTrigger value="resumen" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-3 text-text-3 data-[state=active]:text-text-1 font-medium">Resumen</TabsTrigger>
+                    <TabsTrigger value="expenses" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-3 text-text-3 data-[state=active]:text-text-1 font-medium">Gastos</TabsTrigger>
+                    <TabsTrigger value="categories" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-3 text-text-3 data-[state=active]:text-text-1 font-medium">Categorías</TabsTrigger>
+                    <TabsTrigger value="products" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-3 text-text-3 data-[state=active]:text-text-1 font-medium">Productos</TabsTrigger>
                 </TabsList>
 
                 {/* Flow 18: Global metrics */}
