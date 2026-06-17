@@ -31,6 +31,29 @@ export function MarketDateFilterBar() {
         if (end) setCustomEndDate(end);
     }, [searchParams]);
 
+    const getDateRange = (type: FilterType): { start?: string, end?: string } => {
+        const now = new Date();
+        
+        if (type === "today") {
+            const today = now.toISOString().split('T')[0];
+            return { start: today, end: today };
+        }
+        if (type === "week") {
+            const start = new Date(now);
+            const day = now.getDay() || 7; 
+            if (day !== 1) start.setHours(-24 * (day - 1));
+            const end = new Date(start);
+            end.setHours(24 * 6);
+            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        }
+        if (type === "month") {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        }
+        return {};
+    };
+
     const updateFilter = (type: FilterType, start?: string, end?: string) => {
         const params = new URLSearchParams(searchParams);
         params.set("filter", type);
@@ -38,9 +61,13 @@ export function MarketDateFilterBar() {
         if (type === "custom") {
             if (start) params.set("startDate", start);
             if (end) params.set("endDate", end);
-        } else {
+        } else if (type === "all") {
             params.delete("startDate");
             params.delete("endDate");
+        } else {
+            const range = getDateRange(type);
+            if (range.start) params.set("startDate", range.start);
+            if (range.end) params.set("endDate", range.end);
         }
 
         router.push(`?${params.toString()}`, { scroll: false });
@@ -81,7 +108,7 @@ export function MarketDateFilterBar() {
             {/* Mobile Filter (Select) */}
             <div className="w-full sm:hidden">
                 <Select value={filterType} onValueChange={(v: FilterType) => handleTypeChange(v)}>
-                    <SelectTrigger className="w-full bg-bg-2 border-border/40 rounded-xl h-10 font-medium">
+                    <SelectTrigger className="w-full bg-bg-2 border-border/40 rounded-xl h-10 font-medium text-text-1">
                         <SelectValue placeholder="Seleccionar período" />
                     </SelectTrigger>
                     <SelectContent>
@@ -111,8 +138,8 @@ export function MarketDateFilterBar() {
                         className={`
                             flex-1 relative px-4 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg whitespace-nowrap
                             ${filterType === tab.id
-                                ? 'text-foreground bg-bg-3 shadow-sm ring-1 ring-border/50'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-bg-3/50'}
+                                ? 'text-text-1 bg-bg-1 shadow-sm ring-1 ring-border/50'
+                                : 'text-text-3 hover:text-text-1 hover:bg-bg-3/50'}
                         `}
                     >
                         {tab.label}
