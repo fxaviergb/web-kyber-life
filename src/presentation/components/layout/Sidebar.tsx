@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { LogoutButton } from "@/presentation/components/auth/logout-button";
 import { useState, useEffect } from "react";
 import { MENU_ITEMS, MenuItem } from "@/config/menu-items";
@@ -133,8 +134,15 @@ export function Sidebar({ isOpen = true }: { isOpen?: boolean }) {
             {/* Brand */}
             <div className="h-24 flex items-center px-6 bg-transparent">
                 <div className="flex items-center gap-4 group cursor-pointer">
-                    <div className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-accent-violet to-accent-cyan shadow-lg shadow-accent-violet/20 group-hover:scale-110 transition-all duration-300 ease-out">
-                        <Sparkles className="w-7 h-7 text-white" />
+                    <div className="relative flex items-center justify-center w-12 h-12 group-hover:scale-110 transition-all duration-300 ease-out">
+                        <Image
+                            src="/images/logo-kyber-blue.png"
+                            alt="KyberLife"
+                            width={48}
+                            height={48}
+                            className="object-contain drop-shadow-lg"
+                            priority
+                        />
                     </div>
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold tracking-tight text-text-primary group-hover:text-accent-violet transition-colors">
