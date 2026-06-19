@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import { FinancialDashboard } from "@/presentation/financial/components/FinancialDashboard";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Inbox as InboxIcon, Plus } from "lucide-react";
+import { Plus, ArrowRight, Inbox as InboxIcon } from "lucide-react";
 import Link from "next/link";
+import { RobotLoader } from "@/components/ui/RobotLoader";
 
 export default function FinancialOverviewPage() {
     return (
@@ -37,13 +38,8 @@ export default function FinancialOverviewPage() {
             </div>
 
             <Suspense fallback={
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="h-28 rounded-lg bg-muted animate-pulse" />
-                        ))}
-                    </div>
-                    <div className="h-96 rounded-lg bg-muted animate-pulse" />
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <RobotLoader text="Cargando resumen" />
                 </div>
             }>
                 <FinancialDashboard />

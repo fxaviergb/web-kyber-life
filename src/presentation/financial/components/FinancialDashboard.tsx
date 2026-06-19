@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from "next/link";
-
+import { RobotLoader } from "@/components/ui/RobotLoader";
 function formatCurrency(value: number): string {
     return `$${Math.abs(value).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -123,18 +123,8 @@ export function FinancialDashboard() {
 
     if (loading && !kpis) {
         return (
-            <div className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-                    <div className="col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
-                    <div className="col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
-                    <div className="col-span-2 sm:col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
-                    <div className="col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
-                    <div className="col-span-1 h-28 rounded-lg bg-muted animate-pulse" />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="h-96 rounded-lg bg-muted animate-pulse" />
-                    <div className="h-96 rounded-lg bg-muted animate-pulse" />
-                </div>
+            <div className="flex h-[50vh] w-full items-center justify-center">
+                <RobotLoader text="Cargando resumen" />
             </div>
         );
     }
