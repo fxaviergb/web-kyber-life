@@ -1,4 +1,3 @@
-import { Sparkles } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function AuthLayout({

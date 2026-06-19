@@ -12,6 +12,7 @@ import { RankBarChart } from "@/presentation/components/charts/RankBarChart";
 import { SpendTrendChart } from "@/presentation/components/charts/SpendTrendChart";
 import { UnifiedTrendChart } from "@/presentation/financial/components/UnifiedTrendChart";
 import { useHomeDashboard } from "./hooks/useHomeDashboard";
+import { DashboardLoading } from "./DashboardLoading";
 
 function ChartSkeleton() {
     return <div className="h-[440px] rounded-2xl border border-border-base bg-bg-secondary animate-pulse" />;
@@ -86,6 +87,20 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
     );
 
     const greeting = userFirstName ? `Hola, ${userFirstName}` : "Panel general";
+
+    // Initial load (no data yet) → friendly full-screen loader with quick actions.
+    // Subsequent refetches (e.g. changing the date filter) keep the previous data
+    // and show per-section skeletons instead, so the whole screen doesn't flash.
+    const isInitialLoading =
+        loading &&
+        data.financialDaily.length === 0 &&
+        data.financialCategories.length === 0 &&
+        data.marketDaily.length === 0 &&
+        data.marketTopProducts.length === 0;
+
+    if (isInitialLoading) {
+        return <DashboardLoading />;
+    }
 
     return (
         <div className="space-y-8 pb-12">
@@ -172,13 +187,13 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                 subtitle="Ingresos, gastos y categorías de tu dinero."
                 actions={
                     <>
-                        <Button asChild variant="outline" size="sm" className="rounded-full">
+                        <Button asChild size="sm" className="rounded-full bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/20">
                             <Link href="/financial/transactions">
                                 <Receipt className="mr-2 h-4 w-4" />
                                 Transacciones
                             </Link>
                         </Button>
-                        <Button asChild size="sm" className="rounded-full bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/20">
+                        <Button asChild variant="outline" size="sm" className="rounded-full">
                             <Link href="/financial">
                                 Ver panel
                                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -227,16 +242,16 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                 subtitle="Tu gasto en compras y los productos que más consumes."
                 actions={
                     <>
-                        <Button asChild variant="outline" size="sm" className="rounded-full">
-                            <Link href="/market/analytics">
-                                Ver panel
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
                         <Button asChild size="sm" className="rounded-full bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/20">
                             <Link href="/market/purchases/new">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nueva compra
+                            </Link>
+                        </Button>
+                        <Button asChild variant="outline" size="sm" className="rounded-full">
+                            <Link href="/market/analytics">
+                                Ver panel
+                                <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>
                         </Button>
                     </>

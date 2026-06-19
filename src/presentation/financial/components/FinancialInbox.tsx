@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Check, CircleAlert, Inbox as InboxIcon, RefreshCw, FileText, X, Edit2, Search, Eye, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Check, CircleAlert, Inbox as InboxIcon, RefreshCw, FileText, X, Edit2, Search, Eye, ChevronDown, ChevronUp, Clock, Tag } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -592,8 +592,12 @@ export function FinancialInbox() {
                                                     {/* TOP ROW: Badge + Amount */}
                                                     <div className="flex w-full items-start justify-between gap-3 min-w-0">
                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            <span className="inline-flex items-center rounded-md bg-[#FFB020]/10 text-[#FFB020] px-2 py-0.5 text-[10px] font-medium tracking-wide shrink-0 border border-[#FFB020]/20">
-                                                                Pendiente
+                                                            <span
+                                                                className="inline-flex h-5 max-w-[180px] items-center gap-1 rounded-md border border-[#FFB020]/20 bg-[#FFB020]/10 px-2 text-[11px] font-medium leading-none tracking-wide text-[#FFB020]"
+                                                                title={tx.category || "Sin categoría"}
+                                                            >
+                                                                <Tag className="h-3 w-3 shrink-0" />
+                                                                <span className="truncate">{tx.category || "Sin categoría"}</span>
                                                             </span>
                                                             {tx.relatedTransactionHint && (
                                                                 <Popover>

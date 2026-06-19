@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -17,8 +18,7 @@ import {
     User,
     X,
     ChevronDown,
-    ChevronRight,
-    Sparkles
+    ChevronRight
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -131,8 +131,15 @@ export function MobileDrawer({ open, onOpenChange }: MobileDrawerProps) {
             <SheetContent side="left" className="w-72 p-0 bg-bg-primary rounded-r-[2.5rem] border-r-0 shadow-2xl">
                 <SheetHeader className="h-24 flex flex-row items-center px-6 bg-transparent space-y-0">
                     <div className="flex items-center gap-4">
-                        <div className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-accent-violet to-accent-cyan shadow-lg shadow-accent-violet/20">
-                            <Sparkles className="w-7 h-7 text-white" />
+                        <div className="relative flex items-center justify-center w-12 h-12">
+                            <Image
+                                src="/images/logo-kyber-blue.png"
+                                alt="KyberLife"
+                                width={48}
+                                height={48}
+                                className="object-contain drop-shadow-lg"
+                                priority
+                            />
                         </div>
                         <div className="flex flex-col items-start">
                             <SheetTitle className="text-2xl font-bold tracking-tight text-text-primary">

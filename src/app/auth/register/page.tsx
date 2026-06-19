@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 export default function RegisterPage() {
@@ -47,8 +48,15 @@ export default function RegisterPage() {
             <div className="mb-10 flex flex-col items-center text-center">
                 {/* Logo */}
                 <div className="flex items-center gap-4 mb-2">
-                    <div className="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-accent-violet to-accent-cyan shadow-lg shadow-accent-violet/20">
-                        <Sparkles className="w-10 h-10 text-white" />
+                    <div className="relative flex items-center justify-center w-20 h-20">
+                        <Image
+                            src="/images/logo-kyber-blue.png"
+                            alt="KyberLife"
+                            width={80}
+                            height={80}
+                            className="object-contain drop-shadow-lg"
+                            priority
+                        />
                     </div>
                     <div className="flex flex-col text-left">
                         <h1 className="text-4xl font-bold tracking-tight text-text-primary">

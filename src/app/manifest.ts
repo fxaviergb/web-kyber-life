@@ -11,12 +11,12 @@ export default function manifest(): MetadataRoute.Manifest {
         theme_color: '#0f172a',
         icons: [
             {
-                src: '/icon-192.png',
+                src: '/images/logo-kyber-blue-192x192.png',
                 sizes: '192x192',
                 type: 'image/png',
             },
             {
-                src: '/icon-512.png',
+                src: '/images/logo-kyber-blue-512x512.png',
                 sizes: '512x512',
                 type: 'image/png',
             },
