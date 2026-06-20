@@ -35,6 +35,13 @@ export const FINANCIAL_FLAGS = {
      * Default: false (Experimental)
      */
     RECURRING_DETECTION: process.env.NEXT_PUBLIC_FF_FINANCIAL_RECURRING === "true",
+
+    /**
+     * Toggles voice-to-transaction capture via n8n + OpenAI.
+     * Requires VOICE_N8N_WEBHOOK_URL on the server and NEXT_PUBLIC_FF_FINANCIAL_VOICE=true.
+     * Default: false
+     */
+    VOICE_ENABLED: process.env.NEXT_PUBLIC_FF_FINANCIAL_VOICE === "true",
 } as const;
 
 export type FinancialFeatureFlags = typeof FINANCIAL_FLAGS;

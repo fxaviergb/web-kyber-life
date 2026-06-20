@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,10 @@ import { financialOfflineStore } from "@/infrastructure/offline/financial-offlin
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
 import { toDateTimeLocalValue } from "@/lib/date-range";
-import { Building2, Landmark, FolderGit2, FileText, Pencil } from "lucide-react";
+import { Building2, Landmark, FolderGit2, FileText, Pencil, X } from "lucide-react";
+import { FINANCIAL_FLAGS } from "@/lib/feature-flags";
+import { VoiceTransactionInput } from "./VoiceTransactionInput";
+import { type VoiceParseResult } from "@/app/actions/voice-transaction";
 
 // Lowercase type labels for natural-reading auto notes.
 const NOTE_TYPE_LABELS: Record<string, string> = {
@@ -66,6 +69,7 @@ function buildAutoNotes(p: AutoNotesInput): string {
 export function TransactionForm() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [voiceBanner, setVoiceBanner] = useState<string | null>(null);
 
     // Form State
     const [type, setType] = useState<FinancialTransactionType>("EXPENSE");
@@ -217,6 +221,19 @@ export function TransactionForm() {
         return matchedInstitution;
     }, [matchedInstitution, pendingInstitutionEdit]);
 
+    const handleVoiceParsed = useCallback((data: VoiceParseResult, transcript: string) => {
+        if (data.type) setType(data.type as FinancialTransactionType);
+        if (data.amount !== undefined) setAmount(data.amount.toString());
+        if (data.description) setDescription(data.description);
+        if (data.institutionName) setInstitutionName(data.institutionName);
+        if (data.categoryName) setCategoryName(data.categoryName);
+        if (data.date) {
+            const parsed = new Date(data.date);
+            if (!isNaN(parsed.getTime())) setDate(toDateTimeLocalValue(parsed));
+        }
+        setVoiceBanner(transcript);
+    }, []);
+
     const handleInstitutionEditApply = (edit: PendingInstitutionEdit) => {
         setPendingInstitutionEdit(edit);
         setInstitutionName(edit.name);
@@ -322,11 +339,33 @@ export function TransactionForm() {
     return (
         <Card className="w-full max-w-lg mx-auto">
             <CardHeader>
-                <CardTitle>Nueva transacción</CardTitle>
-                <CardDescription>Registra manualmente una nueva transacción financiera.</CardDescription>
+                <div className="flex items-start justify-between gap-2">
+                    <div>
+                        <CardTitle>Nueva transacción</CardTitle>
+                        <CardDescription>Registra manualmente una nueva transacción financiera.</CardDescription>
+                    </div>
+                    {FINANCIAL_FLAGS.VOICE_ENABLED && (
+                        <VoiceTransactionInput onParsed={handleVoiceParsed} />
+                    )}
+                </div>
             </CardHeader>
             <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-4">
+                    {voiceBanner && (
+                        <div className="flex items-start gap-2 rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-950/20 dark:border-violet-800 p-3 text-sm">
+                            <span className="flex-1 text-violet-700 dark:text-violet-300 line-clamp-2 italic">
+                                &ldquo;{voiceBanner}&rdquo;
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setVoiceBanner(null)}
+                                className="shrink-0 text-violet-400 hover:text-violet-600 dark:hover:text-violet-200"
+                                aria-label="Cerrar aviso de voz"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <Label htmlFor="description" className="flex items-center gap-2">
                             <FileText className="w-4 h-4 text-violet-500" />
