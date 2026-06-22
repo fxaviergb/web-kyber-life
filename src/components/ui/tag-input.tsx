@@ -99,7 +99,9 @@ export function TagInput({
             ref={inputRef}
             value={inputValue}
             onValueChange={setInputValue}
-            onBlur={() => setOpen(false)}
+            // Delay closing so a tap/click on a suggestion (which blurs the input
+            // first, especially on touch) still registers as a selection.
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
             onFocus={() => setOpen(true)}
             placeholder={placeholder}
             disabled={disabled}
@@ -109,7 +111,7 @@ export function TagInput({
       </div>
       <div className="relative mt-2">
         {open && selectables.length > 0 ? (
-          <div className="absolute top-0 z-10 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
+          <div className="absolute top-0 z-50 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
             <CommandList>
               <CommandGroup className="h-full overflow-auto max-h-[145px]">
                 {selectables.map((tag) => {

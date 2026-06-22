@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Inbox as InboxIcon } from "lucide-react";
 import Link from "next/link";
 import { TransactionTabs } from "@/presentation/financial/components/TransactionTabs";
+import { defaultHubCustomRange } from "@/lib/date-range";
 
 // Always render fresh on the server so a type-filter navigation refetches the
 // correctly filtered first page instead of serving a cached route payload.
@@ -34,11 +35,12 @@ export default async function TransactionsPage({
     let dateFrom = typeof params.dateFrom === 'string' ? params.dateFrom : undefined;
     let dateTo = typeof params.dateTo === 'string' ? params.dateTo : undefined;
 
-    // Apply default "Este mes" filter
+    // Default range: the billing cycle that contains today (22nd of one month →
+    // 21st of the next), matching every other date-range filter.
     if (!dateFrom && !dateTo && range !== 'all') {
-        const now = new Date();
-        dateFrom = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0).toISOString();
-        dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+        const cycle = defaultHubCustomRange();
+        dateFrom = new Date(`${cycle.start}T00:00:00`).toISOString();
+        dateTo = new Date(`${cycle.end}T23:59:59`).toISOString();
     }
 
     const [initialResult, allFilteredResult, categories, institutions] = await Promise.all([

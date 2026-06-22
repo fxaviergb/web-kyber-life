@@ -1,5 +1,7 @@
 import { Metadata } from "next";
 import { getScannerTransactionByIdAction } from "@/app/actions/financial-inbox";
+import { getInstitutionsAction } from "@/app/actions/financial-settings";
+import { getInstitutionMatchInfo, INSTITUTION_MATCH_THRESHOLD } from "@/lib/institution-match";
 import { ScanDetailsForm } from "@/presentation/financial/components/ScanDetailsForm";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
@@ -39,6 +41,18 @@ export default async function ScanDetailsPage({ params }: ScanDetailsPageProps) 
         );
     }
 
+    // Resolve the scanned merchant against existing institutions on the server,
+    // so the form renders the final name immediately (no client-side flash).
+    const institutions = await getInstitutionsAction();
+    const institutionMatch = getInstitutionMatchInfo(
+        response.data.merchant,
+        institutions.map((i) => i.name),
+    );
+    const resolvedInstitutionName =
+        institutionMatch.matchedName && institutionMatch.score >= INSTITUTION_MATCH_THRESHOLD
+            ? institutionMatch.matchedName
+            : response.data.merchant ?? "";
+
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             {/* ── Page Header ──────────────────────────────── */}
@@ -59,7 +73,11 @@ export default async function ScanDetailsPage({ params }: ScanDetailsPageProps) 
             </div>
 
             <div className="mt-8 max-w-4xl mx-auto">
-                <ScanDetailsForm initialData={response.data} />
+                <ScanDetailsForm
+                    initialData={response.data}
+                    resolvedInstitutionName={resolvedInstitutionName}
+                    institutionMatch={institutionMatch}
+                />
             </div>
         </div>
     );

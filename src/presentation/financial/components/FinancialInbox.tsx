@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getUnprocessedInboxTransactionsAction, mapInboxTransactionAction, dismissInboxTransactionAction } from "@/app/actions/financial-inbox";
+import { getInstitutionsAction } from "@/app/actions/financial-settings";
+import { getInstitutionMatchInfo } from "@/lib/institution-match";
+import { InstitutionMatchBadge } from "./InstitutionMatchBadge";
 import { FinancialScannerTransaction } from "@/domain/entities/financial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -158,6 +161,8 @@ export function FinancialInbox() {
     const typeFilter = searchParams.get("type");
 
     const [transactions, setTransactions] = useState<FinancialScannerTransaction[]>([]);
+    const [institutionNames, setInstitutionNames] = useState<string[]>([]);
+    const [institutionsLoaded, setInstitutionsLoaded] = useState(false);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [showPollingNotice, setShowPollingNotice] = useState(false);
@@ -230,6 +235,22 @@ export function FinancialInbox() {
                 clearTimeout(pollingNoticeTimerRef.current);
             }
         };
+    }, []);
+
+    // Load existing institutions once, to flag each card with its match confidence.
+    useEffect(() => {
+        let mounted = true;
+        getInstitutionsAction()
+            .then((insts) => {
+                if (mounted) {
+                    setInstitutionNames(insts.map((i) => i.name));
+                    setInstitutionsLoaded(true);
+                }
+            })
+            .catch(() => {
+                if (mounted) setInstitutionsLoaded(true);
+            });
+        return () => { mounted = false; };
     }, []);
 
     const loadInbox = useCallback(async (options?: { silent?: boolean; mergeNewOnly?: boolean }) => {
@@ -665,9 +686,18 @@ export function FinancialInbox() {
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 />
                                                             ) : (
-                                                                <span className="truncate w-full block" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
-                                                                    {editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}
-                                                                </span>
+                                                                <>
+                                                                    <span className="truncate min-w-0" title={editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}>
+                                                                        {editStates[tx.id!]?.merchant || tx.merchant || "Institución por confirmar"}
+                                                                    </span>
+                                                                    {institutionsLoaded && (editStates[tx.id!]?.merchant || tx.merchant) && (
+                                                                        <InstitutionMatchBadge
+                                                                            info={getInstitutionMatchInfo(editStates[tx.id!]?.merchant || tx.merchant, institutionNames)}
+                                                                            size={13}
+                                                                            className="ml-1"
+                                                                        />
+                                                                    )}
+                                                                </>
                                                             )}
                                                         </div>
                                                     </div>

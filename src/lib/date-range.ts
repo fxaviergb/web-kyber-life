@@ -79,12 +79,18 @@ export function computeDateRange(
 }
 
 /**
- * Default custom range for the main dashboard hub:
- * the 21st of the previous month (00:00) → the 22nd of the current month (23:59).
+ * Default custom range used across every date-range filter: the billing cycle
+ * that *contains* the reference date — from the 22nd of one month (00:00) to the
+ * 21st of the next (23:59). The cycle only rolls forward once we pass the 21st
+ * at 23:59 (i.e. starting on the 22nd):
+ *   - day >= 22 → [this month 22, next month 21]
+ *   - day <= 21 → [previous month 22, this month 21]
+ * (The full-day expansion is applied by computeDateRange for "custom".)
  * Returns YYYY-MM-DD strings for the date inputs.
  */
 export function defaultHubCustomRange(reference: Date = new Date()): { start: string; end: string } {
-    const start = new Date(reference.getFullYear(), reference.getMonth() - 1, 21);
-    const end = new Date(reference.getFullYear(), reference.getMonth(), 22);
+    const anchorMonth = reference.getDate() >= 22 ? reference.getMonth() : reference.getMonth() - 1;
+    const start = new Date(reference.getFullYear(), anchorMonth, 22);
+    const end = new Date(reference.getFullYear(), anchorMonth + 1, 21);
     return { start: toDateInputValue(start), end: toDateInputValue(end) };
 }
