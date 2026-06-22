@@ -49,7 +49,7 @@ function ModuleSection({ icon, iconWrapClassName, title, subtitle, actions, chil
 
 export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
     const initialCustom = useMemo(() => defaultHubCustomRange(), []);
-    const [filterType, setFilterType] = useState<RangeFilterType>("all");
+    const [filterType, setFilterType] = useState<RangeFilterType>("custom");
     const [customStart, setCustomStart] = useState(initialCustom.start);
     const [customEnd, setCustomEnd] = useState(initialCustom.end);
     const [filterOpen, setFilterOpen] = useState(false);

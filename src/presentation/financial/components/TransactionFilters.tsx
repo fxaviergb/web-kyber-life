@@ -19,6 +19,7 @@ import { FinancialCategory, FinancialInstitution } from "@/domain/entities/finan
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { defaultHubCustomRange } from "@/lib/date-range";
 
 // ─── Date Preset Helpers ─────────────────────────────────────
 
@@ -77,19 +78,9 @@ function toLocalDateValue(iso: string): string {
 }
 
 function getDefaultCustomDates() {
-    const now = new Date();
-    // Previous month 22nd
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 22);
-    // Current month 21st
-    const currMonth = new Date(now.getFullYear(), now.getMonth(), 21);
-    
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const formatStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    
-    return {
-        from: formatStr(prevMonth),
-        to: formatStr(currMonth)
-    };
+    // Billing cycle that contains today (22nd of one month → 21st of the next).
+    const { start, end } = defaultHubCustomRange();
+    return { from: start, to: end };
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -120,7 +111,9 @@ export function TransactionFilters({ categories = [], institutions = [] }: Trans
     const urlDateTo = searchParams.get("dateTo") || "";
     const [dateFrom, setDateFrom] = useState(urlDateFrom);
     const [dateTo, setDateTo] = useState(urlDateTo);
-    const [activePreset, setActivePreset] = useState<DatePreset | null>(null);
+    const [activePreset, setActivePreset] = useState<DatePreset | null>(
+        searchParams.get("range") === "all" ? "all" : "custom"
+    );
     const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
     // ── Custom date inputs (local YYYY-MM-DD) ────────────────
@@ -222,8 +215,8 @@ export function TransactionFilters({ categories = [], institutions = [] }: Trans
     };
 
     const urlRange = searchParams.get("range");
-    const isDefaultMonth = !dateFrom && !dateTo && urlRange !== 'all';
-    const hasDateFilter = Boolean(dateFrom || dateTo || isDefaultMonth);
+    const isDefaultRange = !dateFrom && !dateTo && urlRange !== 'all';
+    const hasDateFilter = Boolean(dateFrom || dateTo || isDefaultRange);
 
     const hasAnyFilter = (categoryId && categoryId !== "all")
         || (institutionId && institutionId !== "all")
@@ -261,7 +254,9 @@ export function TransactionFilters({ categories = [], institutions = [] }: Trans
     // ── Build label for date button ──────────────────────────
 
     const getDateButtonLabel = (): string => {
-        if (isDefaultMonth) return "Este mes";
+        if (isDefaultRange) {
+            return `${formatShortDate(`${defaultCustom.from}T00:00:00`)} – ${formatShortDate(`${defaultCustom.to}T00:00:00`)}`;
+        }
         if (urlRange === 'all') return "Todos";
         if (activePreset && activePreset !== "custom") return PRESET_LABELS[activePreset];
         if (dateFrom && dateTo) return `${formatShortDate(dateFrom)} – ${formatShortDate(dateTo)}`;

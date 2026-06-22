@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { defaultHubCustomRange } from "@/lib/date-range";
 
 export type FilterType = "all" | "today" | "week" | "month" | "custom";
 
@@ -41,7 +42,7 @@ export function MarketDateFilterBar() {
     const router = useRouter();
     const searchParams = useSearchParams();
     
-    const [filterType, setFilterType] = useState<FilterType>("all");
+    const [filterType, setFilterType] = useState<FilterType>("custom");
     const [customStartDate, setCustomStartDate] = useState<string>("");
     const [customEndDate, setCustomEndDate] = useState<string>("");
 
@@ -49,16 +50,25 @@ export function MarketDateFilterBar() {
     useEffect(() => {
         const type = searchParams.get("filter") as FilterType;
         const validTypes = ["all", "today", "week", "month", "custom"];
-        
-        if (type && validTypes.includes(type)) {
-            setFilterType(type);
-        } else {
-            setFilterType("all");
-        }
-
         const start = searchParams.get("startDate");
         const end = searchParams.get("endDate");
-        
+
+        // No (valid) filter in the URL → default to the custom 22..21 cycle and hydrate it.
+        if (!type || !validTypes.includes(type)) {
+            const def = defaultHubCustomRange();
+            setFilterType("custom");
+            setCustomStartDate(def.start);
+            setCustomEndDate(def.end);
+            const params = new URLSearchParams(searchParams);
+            params.set("filter", "custom");
+            params.set("startDate", new Date(def.start + "T00:00:00").toISOString());
+            params.set("endDate", new Date(def.end + "T23:59:59.999").toISOString());
+            router.replace(`?${params.toString()}`, { scroll: false });
+            return;
+        }
+
+        setFilterType(type);
+
         if (start) {
             const d = new Date(start);
             if (!isNaN(d.getTime())) {
@@ -82,14 +92,24 @@ export function MarketDateFilterBar() {
             }
         }
 
-        // Hydrate missing dates for standard filters (fixes bookmarks without dates)
-        if (type && type !== "all" && type !== "custom" && (!start || !end)) {
-            const range = getDateRange(type);
-            if (range.start && range.end) {
+        // Hydrate missing dates (fixes bookmarks without dates).
+        if (type !== "all" && (!start || !end)) {
+            if (type === "custom") {
+                const def = defaultHubCustomRange();
+                setCustomStartDate(def.start);
+                setCustomEndDate(def.end);
                 const params = new URLSearchParams(searchParams);
-                params.set("startDate", range.start);
-                params.set("endDate", range.end);
+                params.set("startDate", new Date(def.start + "T00:00:00").toISOString());
+                params.set("endDate", new Date(def.end + "T23:59:59.999").toISOString());
                 router.replace(`?${params.toString()}`, { scroll: false });
+            } else {
+                const range = getDateRange(type);
+                if (range.start && range.end) {
+                    const params = new URLSearchParams(searchParams);
+                    params.set("startDate", range.start);
+                    params.set("endDate", range.end);
+                    router.replace(`?${params.toString()}`, { scroll: false });
+                }
             }
         }
     }, [searchParams, router]);
@@ -126,17 +146,12 @@ export function MarketDateFilterBar() {
         if (type !== "custom") {
             updateFilter(type);
         } else {
-            // For custom, if we already have dates, use them, otherwise initialize to current month
+            // For custom, reuse existing dates or fall back to the default 22..21 cycle.
             if (!customStartDate || !customEndDate) {
-                const now = new Date();
-                const yyyy = now.getFullYear();
-                const mm = String(now.getMonth() + 1).padStart(2, '0');
-                const lastDay = new Date(yyyy, now.getMonth() + 1, 0).getDate();
-                const startStr = `${yyyy}-${mm}-01`;
-                const endStr = `${yyyy}-${mm}-${lastDay}`;
-                setCustomStartDate(startStr);
-                setCustomEndDate(endStr);
-                updateFilter("custom", startStr, endStr);
+                const def = defaultHubCustomRange();
+                setCustomStartDate(def.start);
+                setCustomEndDate(def.end);
+                updateFilter("custom", def.start, def.end);
             } else {
                 updateFilter("custom", customStartDate, customEndDate);
             }

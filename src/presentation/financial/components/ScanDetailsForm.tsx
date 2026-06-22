@@ -5,13 +5,17 @@ import { FinancialScannerTransaction } from "@/domain/entities/financial";
 import { mapInboxTransactionAction, dismissInboxTransactionAction } from "@/app/actions/financial-inbox";
 import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
+import { TagInput } from "@/components/ui/tag-input";
+import { getUniqueTagsAction } from "@/app/actions/financial-transactions";
+import { InstitutionMatchBadge } from "./InstitutionMatchBadge";
+import type { InstitutionMatchInfo } from "@/lib/institution-match";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, X, FileJson, Info, Pencil, Building2, Landmark, FolderGit2, FileText } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, Tags, X, FileJson, Info, Pencil, Building2, Landmark, FolderGit2, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 
@@ -24,6 +28,10 @@ const TYPE_OPTIONS = [
 
 interface ScanDetailsFormProps {
     initialData: FinancialScannerTransaction;
+    /** Institution name already resolved on the server (avoids a client-side flash). */
+    resolvedInstitutionName?: string;
+    /** Confidence of the scanned merchant → existing institution identification. */
+    institutionMatch?: InstitutionMatchInfo;
 }
 
 function getBadgeVariant(type?: string | null) {
@@ -46,15 +54,6 @@ function normalizeType(type?: string | null) {
     return TYPE_OPTIONS.find(o => o.value === normalized)?.value || "EXPENSE";
 }
 
-const normalizeForMatch = (str?: string | null) => {
-    if (!str) return "";
-    try {
-        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-    } catch {
-        return str.toLowerCase().replace(/[^a-zA-Z0-9]/g, "");
-    }
-};
-
 function extractSummary(tx: FinancialScannerTransaction): string {
     const s = tx.summary?.trim();
     if (s && s !== "null" && s !== "undefined") {
@@ -72,7 +71,7 @@ function extractSummary(tx: FinancialScannerTransaction): string {
     return "";
 }
 
-export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
+export function ScanDetailsForm({ initialData, resolvedInstitutionName, institutionMatch }: ScanDetailsFormProps) {
     const router = useRouter();
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -85,54 +84,34 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
             amount: initialData.amount !== null ? String(initialData.amount) : "",
             date: initialData.date ? new Date(initialData.date).toISOString().slice(0, 16) : "",
             notes: defaultNotes,
-            institutionName: initialData.merchant || "",
+            institutionName: resolvedInstitutionName || initialData.merchant || "",
             accountName: "",
             categoryName: initialData.category || "",
+            tags: [] as string[],
         };
     });
 
     const [institutions, setInstitutions] = useState<string[]>([]);
     const [accounts, setAccounts] = useState<string[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
+    const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
 
     useEffect(() => {
         let mounted = true;
         async function loadOptions() {
             try {
-                const [insts, accs, cats] = await Promise.all([
+                const [insts, accs, cats, tagsRes] = await Promise.all([
                     getInstitutionsAction(),
                     getAccountsAction(),
-                    getCategoriesAction()
+                    getCategoriesAction(),
+                    getUniqueTagsAction()
                 ]);
                 if (mounted) {
-                    const instNames = insts.map(i => i.name);
-                    setInstitutions(instNames);
+                    setInstitutions(insts.map(i => i.name));
                     setAccounts(accs.map(a => a.name));
                     setCategories(cats.map(c => c.name));
-
-                    if (initialData.merchant) {
-                        const normalizedMerchant = normalizeForMatch(initialData.merchant);
-
-                        // Try exact match first
-                        let matched = instNames.find(name => normalizeForMatch(name) === normalizedMerchant);
-
-                        // Fallback to fuzzy match (contains)
-                        if (!matched) {
-                            matched = instNames.find(name => {
-                                const nName = normalizeForMatch(name);
-                                return nName.includes(normalizedMerchant) || normalizedMerchant.includes(nName);
-                            });
-                        }
-
-                        if (matched) {
-                            setFormData(prev => {
-                                // Only override if the user hasn't changed it from the original yet
-                                if (prev.institutionName === initialData.merchant) {
-                                    return { ...prev, institutionName: matched };
-                                }
-                                return prev;
-                            });
-                        }
+                    if (tagsRes.success && Array.isArray(tagsRes.data)) {
+                        setTagSuggestions(tagsRes.data as string[]);
                     }
                 }
             } catch (error) {
@@ -141,7 +120,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
         }
         loadOptions();
         return () => { mounted = false; };
-    }, [initialData.merchant]);
+    }, []);
 
     const handleChange = (field: keyof typeof formData, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -185,6 +164,7 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                 institutionName: formData.institutionName || null,
                 accountName: formData.accountName || null,
                 categoryName: formData.categoryName || null,
+                tags: formData.tags,
             });
 
             if (!result.success) {
@@ -255,6 +235,9 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                     <Label htmlFor="institutionName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                                         <Building2 className="h-4 w-4 text-blue-500" />
                                         Institución <span className="text-destructive">*</span>
+                                        {institutionMatch && (
+                                            <InstitutionMatchBadge info={institutionMatch} size={16} className="ml-0.5" />
+                                        )}
                                     </Label>
                                     <AutocompleteInput
                                         id="institutionName"
@@ -334,6 +317,19 @@ export function ScanDetailsForm({ initialData }: ScanDetailsFormProps) {
                                         options={accounts}
                                         className="h-9 text-sm bg-background border-border/50"
                                         placeholder="Ej. Cuenta Corriente, Tarjeta de Crédito..."
+                                    />
+                                </div>
+
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                    <Label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                        <Tags className="h-4 w-4 text-pink-500" />
+                                        Etiquetas
+                                    </Label>
+                                    <TagInput
+                                        value={formData.tags}
+                                        onChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
+                                        suggestions={tagSuggestions}
+                                        placeholder="Escribe y presiona Enter, o elige una existente..."
                                     />
                                 </div>
 

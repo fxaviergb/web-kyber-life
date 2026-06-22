@@ -17,23 +17,15 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from "next/link";
 import { RobotLoader } from "@/components/ui/RobotLoader";
+import { defaultHubCustomRange } from "@/lib/date-range";
 function formatCurrency(value: number): string {
     return `$${Math.abs(value).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function FinancialDashboard() {
-    const [filterType, setFilterType] = useState<"all" | "today" | "week" | "month" | "custom">("month");
-    const [customStartDate, setCustomStartDate] = useState<string>(() => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - 1);
-        d.setDate(22);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    });
-    const [customEndDate, setCustomEndDate] = useState<string>(() => {
-        const d = new Date();
-        d.setDate(21);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    });
+    const [filterType, setFilterType] = useState<"all" | "today" | "week" | "month" | "custom">("custom");
+    const [customStartDate, setCustomStartDate] = useState<string>(() => defaultHubCustomRange().start);
+    const [customEndDate, setCustomEndDate] = useState<string>(() => defaultHubCustomRange().end);
     const [categoryLimit, setCategoryLimit] = useState<number>(5);
     const [institutionLimit, setInstitutionLimit] = useState<number>(5);
 
