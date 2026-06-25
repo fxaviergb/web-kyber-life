@@ -81,13 +81,18 @@ function mapRowToTransaction(row: TransactionRow): FinancialTransaction {
 // ─── Helpers ─────────────────────────────────────────────────
 
 function formatDateLabel(dateStr: string): string {
-    const date = new Date(dateStr);
+    const src = new Date(dateStr);
+    if (isNaN(src.getTime())) return "Fecha no detectada";
+    // The stored `date` is a literal wall-clock value (tagged UTC): take its UTC
+    // calendar day so the group header matches the time shown on each card.
+    const date = new Date(src.getUTCFullYear(), src.getUTCMonth(), src.getUTCDate());
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === today.toDateString()) return "Hoy";
-    if (date.toDateString() === yesterday.toDateString()) return "Ayer";
+    if (date.getTime() === today.getTime()) return "Hoy";
+    if (date.getTime() === yesterday.getTime()) return "Ayer";
 
     return date.toLocaleDateString("es-ES", { month: "long", day: "numeric", year: "numeric" });
 }

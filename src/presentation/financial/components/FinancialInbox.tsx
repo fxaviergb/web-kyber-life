@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { isoToWallClockInput, wallClockInputToISO } from "@/lib/date-range";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
 import { useSearchParams } from "next/navigation";
 
@@ -45,14 +46,6 @@ function normalizeTransactionType(type?: string | null) {
     const supportedType = TYPE_OPTIONS.find((option) => option.value === normalizedType);
 
     return supportedType?.value ?? DEFAULT_TRANSACTION_TYPE;
-}
-
-function formatLocalDatetime(dateStr?: string | null) {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return null;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function formatAmount(amount?: number | null, currency = "USD") {
@@ -129,7 +122,7 @@ function groupTransactionsByDate(transactions: FinancialScannerTransaction[], ed
     const groups: Record<string, FinancialScannerTransaction[]> = {};
 
     transactions.forEach(t => {
-        const dateStr = editStates[t.id!]?.date || t.date || t.createdAt;
+        const dateStr = editStates[t.id!]?.date || isoToWallClockInput(t.date || t.createdAt);
         const dateKey = dateStr ? formatDateLabel(dateStr) : "Fecha no detectada";
         if (!groups[dateKey]) {
             groups[dateKey] = [];
@@ -195,7 +188,7 @@ export function FinancialInbox() {
                 type: normalizeTransactionType(tx.type),
                 merchant: tx.merchant || "",
                 amount: tx.amount ?? null,
-                date: formatLocalDatetime(tx.date || tx.createdAt),
+                date: isoToWallClockInput(tx.date || tx.createdAt),
                 summary: extractSummary(tx),
             },
         }));
@@ -216,7 +209,7 @@ export function FinancialInbox() {
                     type: normalizeTransactionType(tx.type),
                     merchant: tx.merchant || "",
                     amount: tx.amount ?? null,
-                    date: formatLocalDatetime(tx.date || tx.createdAt),
+                    date: isoToWallClockInput(tx.date || tx.createdAt),
                     summary: extractSummary(tx),
                 };
             });
@@ -375,7 +368,7 @@ export function FinancialInbox() {
                 type: type,
                 merchant: merchant,
                 amount: amount,
-                date: editState?.date ? new Date(editState.date).toISOString() : undefined,
+                date: wallClockInputToISO(editState?.date),
                 notes: editState?.summary || undefined,
             });
 

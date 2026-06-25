@@ -90,9 +90,12 @@ function formatAmount(amount: number, currency = "USD"): string {
 }
 
 function formatTime(dateStr: string): string {
+    // The stored `date` is a literal wall-clock value (tagged UTC), so format it
+    // in UTC to show exactly what's stored — no device-timezone shift.
     return new Intl.DateTimeFormat("es-ES", {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "UTC",
     }).format(new Date(dateStr));
 }
 
