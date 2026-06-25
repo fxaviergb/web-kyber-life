@@ -1,6 +1,8 @@
 import {
     toDateInputValue,
     toDateTimeLocalValue,
+    isoToWallClockInput,
+    wallClockInputToISO,
     defaultHubCustomRange,
     computeDateRange,
 } from "@/lib/date-range";
@@ -16,6 +18,44 @@ describe("date-range", () => {
     describe("toDateTimeLocalValue", () => {
         it("formats a Date as local YYYY-MM-DDTHH:mm", () => {
             expect(toDateTimeLocalValue(new Date(2026, 5, 22, 9, 5))).toBe("2026-06-22T09:05");
+        });
+    });
+
+    describe("isoToWallClockInput (literal wall-clock, timezone-independent)", () => {
+        it("reads the UTC components of the stored timestamp verbatim", () => {
+            // 03:15 stored → shown as 03:15 regardless of the device timezone.
+            expect(isoToWallClockInput("2026-06-24T03:15:00.000Z")).toBe("2026-06-24T03:15");
+            expect(isoToWallClockInput("2026-12-31T23:59:00Z")).toBe("2026-12-31T23:59");
+        });
+
+        it("returns null for nullish or invalid input", () => {
+            expect(isoToWallClockInput(null)).toBeNull();
+            expect(isoToWallClockInput(undefined)).toBeNull();
+            expect(isoToWallClockInput("")).toBeNull();
+            expect(isoToWallClockInput("not-a-date")).toBeNull();
+        });
+
+        it("round-trips with wallClockInputToISO without shifting", () => {
+            const iso = "2026-06-24T03:15:00.000Z";
+            const input = isoToWallClockInput(iso)!;
+            expect(wallClockInputToISO(input)).toBe(iso);
+        });
+    });
+
+    describe("wallClockInputToISO (persist digits as UTC)", () => {
+        it("treats the datetime-local digits as UTC", () => {
+            expect(wallClockInputToISO("2026-06-24T03:15")).toBe("2026-06-24T03:15:00.000Z");
+        });
+
+        it("accepts values that already include seconds", () => {
+            expect(wallClockInputToISO("2026-06-24T03:15:30")).toBe("2026-06-24T03:15:30.000Z");
+        });
+
+        it("returns undefined for nullish or invalid input", () => {
+            expect(wallClockInputToISO(null)).toBeUndefined();
+            expect(wallClockInputToISO(undefined)).toBeUndefined();
+            expect(wallClockInputToISO("")).toBeUndefined();
+            expect(wallClockInputToISO("garbage")).toBeUndefined();
         });
     });
 

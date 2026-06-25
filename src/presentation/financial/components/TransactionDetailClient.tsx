@@ -18,7 +18,7 @@ import { updateTransactionAction, getUniqueTagsAction } from "@/app/actions/fina
 import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction } from "@/app/actions/financial-settings";
 import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
 import { cn } from "@/lib/utils";
-import { toDateTimeLocalValue } from "@/lib/date-range";
+import { isoToWallClockInput, wallClockInputToISO } from "@/lib/date-range";
 import { TagInput } from "@/components/ui/tag-input";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { Landmark, FolderGit2 } from "lucide-react";
@@ -68,12 +68,15 @@ function formatAmount(amount: number, currency = "USD"): string {
 }
 
 function formatDate(dateStr: string): string {
+    // The stored `date` is a literal wall-clock value (tagged UTC), so format it
+    // in UTC to show exactly what's stored — no device-timezone shift.
     return new Intl.DateTimeFormat("es-ES", {
         day: "2-digit",
         month: "long",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "UTC",
     }).format(new Date(dateStr));
 }
 
@@ -167,7 +170,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         categoryName: "",
         type: transaction.type || "EXPENSE",
         amount: transaction.amount ?? null,
-        date: transaction.date ? toDateTimeLocalValue(new Date(transaction.date)) : "",
+        date: isoToWallClockInput(transaction.date) ?? "",
         notes: extractContext(transaction),
         tags: transaction.tags || [],
     });
@@ -190,7 +193,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                 categoryName: displayNames.category,
                 type: transaction.type || "EXPENSE",
                 amount: transaction.amount ?? null,
-                date: transaction.date ? toDateTimeLocalValue(new Date(transaction.date)) : "",
+                date: isoToWallClockInput(transaction.date) ?? "",
                 notes: extractContext(transaction),
                 tags: transaction.tags || [],
             });
@@ -248,7 +251,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                 categoryName: editState.categoryName || undefined,
                 type: editState.type,
                 amount: editState.amount,
-                date: editState.date ? new Date(editState.date).toISOString() : undefined,
+                date: wallClockInputToISO(editState.date),
                 notes: editState.notes,
                 tags: editState.tags,
             });

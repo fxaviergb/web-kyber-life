@@ -15,7 +15,7 @@ import { FinancialTransactionType, FinancialInstitution, FinancialInstitutionTyp
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
-import { toDateTimeLocalValue } from "@/lib/date-range";
+import { toDateTimeLocalValue, isoToWallClockInput, wallClockInputToISO } from "@/lib/date-range";
 import { Building2, Landmark, FolderGit2, FileText, Pencil } from "lucide-react";
 
 // Lowercase type labels for natural-reading auto notes.
@@ -121,7 +121,7 @@ export function TransactionForm() {
                     const draftDescription = data.description || "";
                     const draftInstitution = data.institutionName || "";
                     const draftAccount = data.accountName || "";
-                    const draftDate = data.date ? toDateTimeLocalValue(new Date(data.date)) : "";
+                    const draftDate = isoToWallClockInput(data.date) ?? "";
 
                     if (data.type) setType(data.type);
                     if (data.amount) setAmount(draftAmount);
@@ -166,7 +166,7 @@ export function TransactionForm() {
                         type,
                         amount: Number(amount) || 0,
                         description,
-                        date: new Date(date).toISOString(),
+                        date: wallClockInputToISO(date),
                         notes,
                         institutionName,
                         accountName,
@@ -257,7 +257,9 @@ export function TransactionForm() {
             amount: Number(amount),
             currency: "USD",
             description: description.trim() || undefined,
-            date: new Date(date).toISOString(),
+            // `date` is a literal wall-clock from the input; persist its digits as
+            // UTC so it round-trips without a timezone shift (guarded non-empty above).
+            date: wallClockInputToISO(date)!,
             notes: notes || undefined,
             institutionName: institutionName || undefined,
             accountName: accountName || undefined,

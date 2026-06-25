@@ -9,6 +9,7 @@ import { TagInput } from "@/components/ui/tag-input";
 import { getUniqueTagsAction } from "@/app/actions/financial-transactions";
 import { InstitutionMatchBadge } from "./InstitutionMatchBadge";
 import type { InstitutionMatchInfo } from "@/lib/institution-match";
+import { isoToWallClockInput, wallClockInputToISO } from "@/lib/date-range";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,7 +83,7 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
             description: initialData.description || "",
             type: normalizeType(initialData.type),
             amount: initialData.amount !== null ? String(initialData.amount) : "",
-            date: initialData.date ? new Date(initialData.date).toISOString().slice(0, 16) : "",
+            date: isoToWallClockInput(initialData.date) ?? "",
             notes: defaultNotes,
             institutionName: resolvedInstitutionName || initialData.merchant || "",
             accountName: "",
@@ -159,7 +160,9 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
                 type: formData.type,
                 merchant: formData.institutionName || null,
                 amount: isNaN(parsedAmount) ? null : parsedAmount,
-                date: formData.date ? new Date(formData.date).toISOString() : null,
+                // The datetime-local value is a literal wall-clock; persist those
+                // exact digits (as UTC) so saving never shifts the stored time.
+                date: wallClockInputToISO(formData.date) ?? null,
                 notes: formData.notes || null,
                 institutionName: formData.institutionName || null,
                 accountName: formData.accountName || null,

@@ -28,6 +28,33 @@ export function toDateTimeLocalValue(d: Date): string {
 }
 
 /**
+ * A stored transaction `date` is a literal wall-clock value (the DB column holds
+ * the time exactly as it should be shown, with no timezone math). Read its UTC
+ * components verbatim into a `YYYY-MM-DDTHH:mm` value for <input datetime-local>,
+ * so what's stored is what's displayed/edited — independent of the device's zone.
+ */
+export function isoToWallClockInput(dateStr?: string | null): string | null {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
+/**
+ * Inverse of {@link isoToWallClockInput}: persist the exact `YYYY-MM-DDTHH:mm`
+ * digits from a datetime-local input (treated as UTC), so an edit round-trip
+ * never shifts the stored time.
+ */
+export function wallClockInputToISO(value?: string | null): string | undefined {
+    if (!value) return undefined;
+    const normalized = value.length === 16 ? `${value}:00` : value;
+    const d = new Date(`${normalized}Z`);
+    if (isNaN(d.getTime())) return undefined;
+    return d.toISOString();
+}
+
+/**
  * Convert a filter selection into an ISO date range.
  * - "all": no bounds.
  * - "today": start/end of the current day.
