@@ -55,6 +55,13 @@ function formatEcuadorDate(value: string | Date): string {
         year: 'numeric',
     }).format(new Date(value));
 }
+function formatEcuadorDayMonth(value: string | Date): string {
+    return new Intl.DateTimeFormat('es-EC', {
+        timeZone: ECUADOR_TZ,
+        day: '2-digit',
+        month: 'short',
+    }).format(new Date(value));
+}
 
 // Normalize a scan-window boundary to the viewer's LOCAL calendar date
 // (YYYY-MM-DD). The trigger may store endDate as a UTC instant (e.g.
@@ -139,19 +146,25 @@ function ExecutionHistoryCard({ exec, dayCount, defaultExpanded = false }: { exe
     const meta = EXECUTION_STATUS_STYLES[exec.status] ?? EXECUTION_STATUS_STYLES.PROCESSING;
     const StatusIcon = meta.Icon;
 
-    // Scan window → compact local-date range, e.g. "23 jun – 29 jun".
-    const payload = parsePayload(exec.requestPayload);
-    const sDate = payload?.startDate || exec.stats?.startDate;
-    const eDate = payload?.endDate || exec.stats?.endDate;
+    // Scan window. Primary source: search_range_start/end (with time, Ecuador TZ),
+    // e.g. "23 jun 23:59 – 29 jun 21:13". Fallback when absent: the payload dates
+    // (local, date-only) — even if the time can't be shown.
     let rangoText = "Rango no determinado";
-    if (sDate && eDate) {
-        const parseSafe = (d: string) => new Date(`${d.split('T')[0]}T12:00:00`);
-        const s = parseSafe(sDate);
-        const e = parseSafe(eDate);
-        if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
-            const sf = format(s, "dd MMM", { locale: es });
-            const ef = format(e, "dd MMM", { locale: es });
-            rangoText = sf === ef ? sf : `${sf} – ${ef}`;
+    if (exec.searchRangeStart && exec.searchRangeEnd) {
+        rangoText = `${formatEcuadorDayMonth(exec.searchRangeStart)} ${formatEcuadorTime(exec.searchRangeStart)} – ${formatEcuadorDayMonth(exec.searchRangeEnd)} ${formatEcuadorTime(exec.searchRangeEnd)}`;
+    } else {
+        const payload = parsePayload(exec.requestPayload);
+        const sDate = payload?.startDate || exec.stats?.startDate;
+        const eDate = payload?.endDate || exec.stats?.endDate;
+        if (sDate && eDate) {
+            const parseSafe = (d: string) => new Date(`${d.split('T')[0]}T12:00:00`);
+            const s = parseSafe(sDate);
+            const e = parseSafe(eDate);
+            if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+                const sf = format(s, "dd MMM", { locale: es });
+                const ef = format(e, "dd MMM", { locale: es });
+                rangoText = sf === ef ? sf : `${sf} – ${ef}`;
+            }
         }
     }
 

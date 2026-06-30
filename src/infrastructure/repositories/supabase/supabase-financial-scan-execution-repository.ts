@@ -36,6 +36,8 @@ export class SupabaseFinancialScanExecutionRepository implements IFinancialScanE
             requestPayload: parsedPayload,
             startedAt: data.started_at || data.created_at,
             completedAt: data.finished_at,
+            searchRangeStart: data.search_range_start ?? null,
+            searchRangeEnd: data.search_range_end ?? null,
             errorDetails: data.error_message,
             isDeleted: false,
             createdAt: data.created_at,
