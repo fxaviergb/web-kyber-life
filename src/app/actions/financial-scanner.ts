@@ -70,8 +70,8 @@ export async function triggerFinancialScanAction(startDate: string, endDate: str
 
 /**
  * Returns, for a single calendar day, how many scanner transactions each scan
- * found that are DATED on that day, keyed by the external execution id
- * (`financial_scanner_transactions.execution_id`, e.g. `LOCAL_xxx`).
+ * found that are DATED on that day, keyed by the execution's UUID
+ * (`financial_scanner_executions.id`, i.e. the UI's `exec.id`).
  *
  * A range scan finds transactions spread across several days, so the per-day
  * count differs from the scan's grand total. The day boundary is interpreted in
@@ -90,22 +90,48 @@ export async function getScannerDayCountsAction(dateStr: string) {
             return { success: false, error: "No autorizado" };
         }
 
-        const { data, error } = await supabase
+        const { data: txRows, error: txError } = await supabase
             .from("financial_scanner_transactions")
             .select("execution_id")
             .eq("owner_user_id", user.id)
             .gte("date", `${dateStr}T00:00:00.000Z`)
             .lte("date", `${dateStr}T23:59:59.999Z`);
 
-        if (error) {
-            console.error("Error in getScannerDayCountsAction:", error);
-            return { success: false, error: error.message };
+        if (txError) {
+            console.error("Error in getScannerDayCountsAction (transactions):", txError);
+            return { success: false, error: txError.message };
+        }
+
+        // Count per external (n8n LOCAL) execution id.
+        const localCounts: Record<string, number> = {};
+        for (const row of txRows ?? []) {
+            const ext = (row as { execution_id: string | null }).execution_id;
+            if (ext) localCounts[ext] = (localCounts[ext] || 0) + 1;
+        }
+
+        const localIds = Object.keys(localCounts);
+        if (localIds.length === 0) return { success: true, data: {} };
+
+        // Re-key by the execution's stable UUID (`financial_scanner_executions.id`),
+        // which the UI already has as `exec.id`. Avoids depending on the entity's
+        // external id, which can be stale behind the cached repository singleton.
+        const { data: execRows, error: execError } = await supabase
+            .from("financial_scanner_executions")
+            .select("id, execution_id")
+            .eq("owner_user_id", user.id)
+            .in("execution_id", localIds);
+
+        if (execError) {
+            console.error("Error in getScannerDayCountsAction (executions):", execError);
+            return { success: false, error: execError.message };
         }
 
         const counts: Record<string, number> = {};
-        for (const row of data ?? []) {
-            const execId = (row as { execution_id: string | null }).execution_id;
-            if (execId) counts[execId] = (counts[execId] || 0) + 1;
+        for (const row of execRows ?? []) {
+            const r = row as { id: string; execution_id: string | null };
+            if (r.execution_id && localCounts[r.execution_id] != null) {
+                counts[r.id] = localCounts[r.execution_id];
+            }
         }
 
         return { success: true, data: counts };
