@@ -48,8 +48,19 @@ import {
 
 // ... Previous imports ...
 
-// Generic Global Singleton Helper
+// Generic Singleton Helper.
+//
+// In-memory repositories hold seeded state in arrays, so we persist them on
+// `global` to survive dev hot-reloads (otherwise every file edit would reset the
+// data). Supabase repositories are stateless — they open a client per request —
+// so caching them on `global` gives no benefit and actively hurts DX: the cached
+// instance freezes the OLD class definition, hiding code changes until a server
+// restart. For Supabase we therefore create fresh instances so hot-reload (and
+// production cold starts) always use the latest code.
 function singleton<T>(name: string, value: () => T): T {
+    if (process.env.DATA_SOURCE === 'SUPABASE') {
+        return value();
+    }
     // @ts-ignore
     const globalStore = global as any;
     if (!globalStore.__kyber_container) {

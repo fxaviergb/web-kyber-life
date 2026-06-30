@@ -44,6 +44,9 @@ export interface FinancialScanExecution extends BaseEntity {
     stats?: Record<string, any> | null;
     startedAt: ISODate;
     completedAt?: ISODate | null;
+    /** Scan window boundaries (primary source for the displayed range). */
+    searchRangeStart?: ISODate | null;
+    searchRangeEnd?: ISODate | null;
     errorDetails?: string | null;
     requestPayload?: Record<string, any> | null;
 }
