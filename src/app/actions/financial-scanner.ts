@@ -68,6 +68,54 @@ export async function triggerFinancialScanAction(startDate: string, endDate: str
     }
 }
 
+/**
+ * Returns, for a single calendar day, how many scanner transactions each scan
+ * found that are DATED on that day, keyed by the external execution id
+ * (`financial_scanner_transactions.execution_id`, e.g. `LOCAL_xxx`).
+ *
+ * A range scan finds transactions spread across several days, so the per-day
+ * count differs from the scan's grand total. The day boundary is interpreted in
+ * UTC to match how stored dates are displayed verbatim (literal wall-clock).
+ */
+export async function getScannerDayCountsAction(dateStr: string) {
+    try {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            return { success: false, error: "Fecha inválida" };
+        }
+
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return { success: false, error: "No autorizado" };
+        }
+
+        const { data, error } = await supabase
+            .from("financial_scanner_transactions")
+            .select("execution_id")
+            .eq("owner_user_id", user.id)
+            .gte("date", `${dateStr}T00:00:00.000Z`)
+            .lte("date", `${dateStr}T23:59:59.999Z`);
+
+        if (error) {
+            console.error("Error in getScannerDayCountsAction:", error);
+            return { success: false, error: error.message };
+        }
+
+        const counts: Record<string, number> = {};
+        for (const row of data ?? []) {
+            const execId = (row as { execution_id: string | null }).execution_id;
+            if (execId) counts[execId] = (counts[execId] || 0) + 1;
+        }
+
+        return { success: true, data: counts };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error al obtener conteos";
+        console.error("Error in getScannerDayCountsAction:", error);
+        return { success: false, error: message };
+    }
+}
+
 export async function getScanExecutionsAction(
     page: number = 1,
     limit: number = 10,
