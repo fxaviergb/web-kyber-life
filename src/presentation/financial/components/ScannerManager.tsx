@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
-import { triggerFinancialScanAction, getScanExecutionsAction } from '@/app/actions/financial-scanner';
-import { Calendar, Search, RefreshCw, CheckCircle2, XCircle, Clock, ChevronLeft, Mail, AlertCircle, Timer, ChevronDown, ChevronUp } from 'lucide-react';
+import { triggerFinancialScanAction, getScanExecutionsAction, getScannerDayCountsAction } from '@/app/actions/financial-scanner';
+import { Calendar, Search, RefreshCw, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight, Mail, AlertCircle, Timer, ChevronDown, ChevronUp, Plus, Filter } from 'lucide-react';
 import { FinancialScanExecution } from '@/domain/entities/financial';
-import { format, isAfter, isBefore, startOfWeek, endOfWeek } from 'date-fns';
+import { format, isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import Link from 'next/link';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { useFinancialRealtime } from '../hooks/useFinancialRealtime';
 
 type ScanRange = 'today' | 'week' | 'custom' | 'recommended';
@@ -51,7 +51,7 @@ function parsePayload(payload: any) {
         }
         iter++;
     }
-    
+
     if (parsed && typeof parsed === 'object' && parsed.startDate) {
         return parsed;
     }
@@ -59,18 +59,17 @@ function parsePayload(payload: any) {
     if (parsed && typeof parsed === 'object' && parsed.body) {
         let body = parsed.body;
         if (typeof body === 'string') {
-            try { body = JSON.parse(body); } catch (e) {}
+            try { body = JSON.parse(body); } catch (e) { }
         }
         if (body && typeof body === 'object' && body.startDate) {
             return body;
         }
     }
 
-    // Ultimate regex fallback to catch double-stringified or escaped data
     const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
     const startMatch = payloadStr.match(/startDate.*?(\d{4}-\d{2}-\d{2})/);
     const endMatch = payloadStr.match(/endDate.*?(\d{4}-\d{2}-\d{2})/);
-    
+
     if (startMatch || endMatch) {
         return {
             startDate: startMatch ? startMatch[1] : undefined,
@@ -81,28 +80,19 @@ function parsePayload(payload: any) {
     return typeof parsed === 'object' ? parsed : null;
 }
 
-const StatusIcon = ({ status }: { status: string }) => {
-    switch (status) {
-        case 'COMPLETED': return <CheckCircle2 className="w-5 h-5 text-accent-success" />;
-        case 'FAILED': return <XCircle className="w-5 h-5 text-accent-danger" />;
-        case 'PROCESSING': return <RefreshCw className="w-5 h-5 text-accent-info animate-spin" />;
-        default: return <Clock className="w-5 h-5 text-text-tertiary" />;
-    }
-};
-
-function ExecutionHistoryCard({ exec }: { exec: FinancialScanExecution }) {
-    const [isExpanded, setIsExpanded] = useState(false);
+function ExecutionHistoryCard({ exec, dayCount }: { exec: FinancialScanExecution, dayCount?: number }) {
+    const [isExpanded, setIsExpanded] = useState(true);
 
     let statusStyles = '';
     switch (exec.status) {
         case 'COMPLETED':
-            statusStyles = 'bg-success-bg border-accent-success/20 text-success-text';
+            statusStyles = 'bg-success-bg/30 border-accent-success/30 text-success-text';
             break;
         case 'FAILED':
-            statusStyles = 'bg-danger-bg border-accent-danger/20 text-danger-text';
+            statusStyles = 'bg-danger-bg/30 border-accent-danger/30 text-danger-text';
             break;
         default:
-            statusStyles = 'bg-info-bg border-accent-info/20 text-info-text';
+            statusStyles = 'bg-info-bg/30 border-accent-info/30 text-info-text';
     }
 
     const statusBadge = exec.status === 'FAILED' ? (
@@ -110,10 +100,10 @@ function ExecutionHistoryCard({ exec }: { exec: FinancialScanExecution }) {
             <PopoverTrigger asChild>
                 <div
                     onClick={(e) => { e.stopPropagation(); }}
-                    className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold tracking-wide border ${statusStyles} hover:bg-opacity-80 transition-colors shadow-sm cursor-pointer shrink-0 w-fit`}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide border ${statusStyles} hover:bg-opacity-80 transition-colors shadow-sm cursor-pointer shrink-0 w-fit uppercase`}
                 >
                     <span>FALLIDO</span>
-                    <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-80" />
+                    <AlertCircle className="w-3 h-3 opacity-80" />
                 </div>
             </PopoverTrigger>
             <PopoverContent side="top" align="start" className="max-w-xs bg-bg-secondary border border-accent-danger/20 text-danger-text p-4 shadow-xl rounded-xl z-50 relative">
@@ -123,7 +113,7 @@ function ExecutionHistoryCard({ exec }: { exec: FinancialScanExecution }) {
             </PopoverContent>
         </Popover>
     ) : (
-        <div className={`inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold tracking-wide border ${statusStyles} shadow-sm shrink-0 w-fit`}>
+        <div className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide border ${statusStyles} shadow-sm shrink-0 w-fit uppercase`}>
             {exec.status === 'COMPLETED' ? 'COMPLETADO' : exec.status === 'PROCESSING' ? 'PROCESANDO' : exec.status}
         </div>
     );
@@ -141,7 +131,7 @@ function ExecutionHistoryCard({ exec }: { exec: FinancialScanExecution }) {
         };
         const startDateObj = parseSafe(sDate);
         const endDateObj = parseSafe(eDate);
-        
+
         if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
             const startFmt = format(startDateObj, "dd MMM yyyy", { locale: es });
             const endFmt = format(endDateObj, "dd MMM yyyy", { locale: es });
@@ -154,73 +144,54 @@ function ExecutionHistoryCard({ exec }: { exec: FinancialScanExecution }) {
     }
 
     return (
-        <div 
-            className="flex flex-col gap-2 p-4 sm:p-5 rounded-2xl border border-border/40 bg-gradient-to-br from-bg-primary/50 to-bg-primary/30 hover:from-bg-primary hover:to-bg-primary/80 transition-all shadow-sm cursor-pointer"
+        <div
+            className="flex flex-col gap-2 p-4 rounded-[1.25rem] border border-border/40 bg-bg-secondary/60 hover:bg-bg-secondary transition-all cursor-pointer"
             onClick={() => setIsExpanded(!isExpanded)}
         >
-            <div className="flex items-start gap-4 w-full">
-                <div className="p-2 rounded-xl bg-bg-secondary shadow-inner border border-border/50 shrink-0 mt-0.5">
-                    <StatusIcon status={exec.status} />
+            <div className="flex flex-col gap-2">
+                <div>
+                    {statusBadge}
                 </div>
-                
-                <div className="flex flex-col min-w-0 flex-1">
-                    <div className="mb-1">
-                        {statusBadge}
-                    </div>
 
-                    <div className="flex items-center justify-between w-full">
-                        <span className="text-sm sm:text-lg font-bold text-text-primary flex items-center gap-1.5 sm:gap-2 capitalize break-words">
-                            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary shrink-0" />
-                            {dateRangeDisplay}
-                        </span>
-                        <div className="text-text-tertiary shrink-0 ml-2">
-                            {isExpanded ? <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />}
-                        </div>
+                <div className="flex items-center justify-between w-full">
+                    <span className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2 capitalize">
+                        <Calendar className="w-4 h-4 text-accent-primary shrink-0 opacity-80" />
+                        {dateRangeDisplay}
+                    </span>
+                    <div className="text-text-tertiary shrink-0 p-1 hover:bg-bg-primary rounded-full transition-colors">
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </div>
                 </div>
             </div>
 
             {isExpanded && (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-2 mt-2 pt-3 border-t border-border/30 pl-14" onClick={(e) => e.stopPropagation()}>
-                    <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
-                        <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
-                        Ejecución: {format(new Date(exec.startedAt), "dd/MM/yyyy")}
-                    </span>
+                <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-text-secondary">
+                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 opacity-60" /> Ejecución: {format(new Date(exec.startedAt), "dd/MM/yyyy")}</span>
+                        <span className="text-border/50">|</span>
+                        <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 opacity-60" /> Inicio: {format(new Date(exec.startedAt), "HH:mm:ss")}</span>
+                        {exec.completedAt && (
+                            <>
+                                <span className="text-border/50">|</span>
+                                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 opacity-60" /> Fin: {format(new Date(exec.completedAt), "HH:mm:ss")}</span>
+                            </>
+                        )}
+                    </div>
 
-                    <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
-                        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
-                        Inicio: {format(new Date(exec.startedAt), "HH:mm:ss")}
-                    </span>
-
-                    {exec.completedAt && (
-                        <>
-                            <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
-                                <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-text-tertiary shrink-0" />
-                                Fin: {format(new Date(exec.completedAt), "HH:mm:ss")}
-                            </span>
-                            <span className="text-[11px] sm:text-xs font-medium text-text-secondary flex items-center gap-1 sm:gap-1.5 bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30">
-                                <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent-primary shrink-0" />
-                                Duración: <span className="font-bold">{getFormattedDuration(exec.startedAt, exec.completedAt)}</span>
-                            </span>
-                        </>
-                    )}
-
-                    {exec.stats && exec.stats.totalTransactionsFound !== undefined && (
-                        <span className="text-[11px] sm:text-xs font-medium text-text-secondary bg-bg-primary/50 px-2 py-1 sm:px-2.5 rounded-md border border-border/30 flex items-center gap-1 sm:gap-1.5 mt-1 w-full sm:w-auto">
-                            <span className="text-text-primary font-bold">{exec.stats.totalTransactionsFound}</span>
-                            <span>trx detectadas</span>
-                            {exec.source === 'GMAIL_N8N_WEBHOOK' ? (
-                                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded ml-auto sm:ml-1">
-                                    <Mail className="w-2.5 h-2.5 text-accent-primary shrink-0" />
-                                    GMAIL
-                                </span>
-                            ) : exec.source ? (
-                                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded ml-auto sm:ml-1">
-                                    {exec.source}
-                                </span>
-                            ) : null}
+                    <div className="flex items-center gap-3 mt-1 text-xs">
+                        <span className="font-semibold text-text-primary">
+                            {dayCount === undefined
+                                ? "Contando transacciones…"
+                                : `${dayCount} ${dayCount === 1 ? "transacción encontrada" : "transacciones encontradas"}`}
                         </span>
-                    )}
+
+                        {exec.source && (
+                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-text-secondary bg-bg-primary px-2 py-0.5 rounded-md">
+                                {exec.source === 'GMAIL_N8N_WEBHOOK' ? <Mail className="w-3 h-3 text-accent-primary shrink-0" /> : null}
+                                {exec.source === 'GMAIL_N8N_WEBHOOK' ? 'GMAIL' : exec.source}
+                            </span>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
@@ -233,6 +204,7 @@ export function ScannerManager() {
     const [startDate, setStartDate] = useState(weekRange.start);
     const [endDate, setEndDate] = useState(weekRange.end);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isNewScanOpen, setIsNewScanOpen] = useState(false);
 
     // Recommended Ranges State
     const [recommendedRanges, setRecommendedRanges] = useState<{ start: string, end: string }[]>([]);
@@ -240,31 +212,42 @@ export function ScannerManager() {
 
     // History State
     const [executions, setExecutions] = useState<FinancialScanExecution[]>([]);
-    const [sortBy, setSortBy] = useState<'execution' | 'range'>('range');
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-    const sortedExecutions = useMemo(() => {
-        return [...executions].sort((a, b) => {
-            // PROCESSING records always at the top
-            if (a.status === 'PROCESSING' && b.status !== 'PROCESSING') return -1;
-            if (b.status === 'PROCESSING' && a.status !== 'PROCESSING') return 1;
+    // Calendar State
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(new Date());
 
-            if (sortBy === 'range') {
-                const aPayload = parsePayload(a.requestPayload);
-                const bPayload = parsePayload(b.requestPayload);
-                const aStart = aPayload?.startDate ? new Date(aPayload.startDate).getTime() : 0;
-                const bStart = bPayload?.startDate ? new Date(bPayload.startDate).getTime() : 0;
-                if (aStart !== bStart) {
-                    return bStart - aStart; // Descending
-                }
+    // Per-day scanner transaction counts, keyed by day → { externalExecutionId: count }.
+    // These are transactions DATED on the day, broken down per scan — so a range
+    // scan shows only the portion of its findings that fall on the selected day.
+    const [dayCountsByDate, setDayCountsByDate] = useState<Record<string, Record<string, number>>>({});
+
+    useEffect(() => {
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        if (dayCountsByDate[dateStr]) return;
+
+        let active = true;
+        (async () => {
+            const res = await getScannerDayCountsAction(dateStr);
+            if (!active) return;
+            if (res.success && res.data) {
+                setDayCountsByDate(prev => ({ ...prev, [dateStr]: res.data as Record<string, number> }));
             }
-            
-            // Fallback or if sortBy === 'execution'
-            return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
-        });
-    }, [executions, sortBy]);
+        })();
+        return () => { active = false; };
+    }, [selectedDate, dayCountsByDate]);
+
+    // Count of transactions a given scan found dated on the selected day
+    // (undefined while the day's counts are still loading).
+    const getDayCount = useCallback((externalExecutionId?: string | null): number | undefined => {
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        const counts = dayCountsByDate[dateStr];
+        if (!counts) return undefined;
+        return externalExecutionId ? (counts[externalExecutionId] ?? 0) : 0;
+    }, [selectedDate, dayCountsByDate]);
 
     // -- Realtime & Polling for Executions --
     const [showPollingNotice, setShowPollingNotice] = useState(false);
@@ -280,7 +263,8 @@ export function ScannerManager() {
         }, 2500);
 
         try {
-            const res = await getScanExecutionsAction(1, 10);
+            // Load more items to ensure calendar has good data
+            const res = await getScanExecutionsAction(1, 50);
             if (res.success && res.data) {
                 const fetchedExecutions = res.data.data;
                 setExecutions(prev => {
@@ -292,7 +276,6 @@ export function ScannerManager() {
                         }
                     });
 
-                    // Si estamos en la primera página, también agregamos los nuevos que hayan llegado
                     if (page === 1) {
                         const existingIds = new Set(next.map(e => e.id));
                         const newItems = fetchedExecutions.filter(e => !existingIds.has(e.id));
@@ -338,9 +321,7 @@ export function ScannerManager() {
     const loadHistory = useCallback(async (pageNum: number, isInitial = false) => {
         setIsLoadingHistory(true);
         try {
-            console.log("Cargando historial, página:", pageNum);
-            const res = await getScanExecutionsAction(pageNum, 10);
-            console.log("Respuesta de historial:", res);
+            const res = await getScanExecutionsAction(pageNum, 50);
             if (res.success && res.data) {
                 if (isInitial) {
                     setExecutions(res.data.data);
@@ -360,6 +341,51 @@ export function ScannerManager() {
         setPage(1);
         loadHistory(1, true);
     }, [loadHistory]);
+
+    // Calendar logic
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const startDateCalendar = startOfWeek(monthStart, { weekStartsOn: 1 }); // weekStartsOn 1 = Monday
+    const endDateCalendar = endOfWeek(monthEnd, { weekStartsOn: 1 });
+
+    const calendarDays = useMemo(() => eachDayOfInterval({
+        start: startDateCalendar,
+        end: endDateCalendar
+    }), [startDateCalendar, endDateCalendar]);
+
+    const getDayStatus = useCallback((date: Date) => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        let hasFailed = false;
+        let hasCompleted = false;
+        let hasProcessing = false;
+
+        executions.forEach(exec => {
+            const payload = parsePayload(exec.requestPayload);
+            const sDate = payload?.startDate || exec.stats?.startDate;
+            const eDate = payload?.endDate || exec.stats?.endDate;
+            if (!sDate || !eDate) return;
+
+            const parseSafe = (ds: string) => {
+                const datePart = ds.split('T')[0];
+                return new Date(`${datePart}T12:00:00`);
+            };
+            const startObj = parseSafe(sDate);
+            const endObj = parseSafe(eDate);
+
+            const dTime = new Date(`${dateStr}T12:00:00`).getTime();
+
+            if (dTime >= startObj.getTime() && dTime <= endObj.getTime()) {
+                if (exec.status === 'COMPLETED') hasCompleted = true;
+                if (exec.status === 'FAILED') hasFailed = true;
+                if (exec.status === 'PROCESSING') hasProcessing = true;
+            }
+        });
+
+        if (hasProcessing) return 'processing';
+        if (hasCompleted) return 'completed';
+        if (hasFailed) return 'failed';
+        return 'none';
+    }, [executions]);
 
     useEffect(() => {
         const completedIntervals = executions
@@ -400,13 +426,13 @@ export function ScannerManager() {
 
         for (let i = 0; i < 365 && ranges.length < 3; i++) {
             const currentStr = format(currentIterDate, 'yyyy-MM-dd');
-            
+
             if (!isDateScanned(currentStr)) {
                 if (!currentRangeEnd) {
                     currentRangeEnd = currentStr;
                 }
                 currentRangeLength++;
-                
+
                 if (currentRangeLength === 15) {
                     ranges.push({
                         start: currentStr,
@@ -427,7 +453,7 @@ export function ScannerManager() {
                     currentRangeLength = 0;
                 }
             }
-            
+
             currentIterDate.setDate(currentIterDate.getDate() - 1);
         }
 
@@ -491,6 +517,7 @@ export function ScannerManager() {
             const res = await triggerFinancialScanAction(startDate, endDate);
             if (res.success) {
                 toast.success("El escaneo se ha iniciado en segundo plano");
+                setIsNewScanOpen(false); // Close dialog on success
                 setTimeout(() => {
                     setPage(1);
                     loadHistory(1, true);
@@ -505,184 +532,305 @@ export function ScannerManager() {
         }
     };
 
+    const selectedDayExecutions = useMemo(() => {
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        return executions.filter(exec => {
+            const payload = parsePayload(exec.requestPayload);
+            const sDate = payload?.startDate || exec.stats?.startDate;
+            const eDate = payload?.endDate || exec.stats?.endDate;
+            if (!sDate || !eDate) return false;
+
+            const parseSafe = (ds: string) => {
+                const datePart = ds.split('T')[0];
+                return new Date(`${datePart}T12:00:00`);
+            };
+            const startObj = parseSafe(sDate);
+            const endObj = parseSafe(eDate);
+
+            const dTime = new Date(`${dateStr}T12:00:00`).getTime();
+
+            return dTime >= startObj.getTime() && dTime <= endObj.getTime();
+        }).sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+    }, [executions, selectedDate]);
+
+    // Total transactions dated on the selected day across all of its scans
+    // (sum of what each card shows). Undefined while the day's counts are loading.
+    const selectedDayTotalFound = useMemo(() => {
+        const counts = dayCountsByDate[format(selectedDate, 'yyyy-MM-dd')];
+        if (!counts) return undefined;
+        return selectedDayExecutions.reduce(
+            (sum, exec) => sum + (exec.externalExecutionId ? (counts[exec.externalExecutionId] ?? 0) : 0),
+            0,
+        );
+    }, [dayCountsByDate, selectedDate, selectedDayExecutions]);
+
     return (
-        <div className="w-full flex flex-col gap-6">
+        <div className="w-full flex flex-col relative pb-24">
 
+            <div className="flex items-center justify-between mb-4 px-2">
+                <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-accent-primary shrink-0" />
+                    <h2 className="text-lg sm:text-xl font-bold text-text-primary">
+                        Historial de Ejecuciones
+                    </h2>
+                </div>
+                <div className="flex items-center gap-2 bg-bg-secondary px-3 py-1.5 rounded-xl border border-border/40 text-sm font-medium text-text-secondary">
+                    <Filter className="w-4 h-4 opacity-70" />
+                    <span className="hidden sm:inline">Filtrar por Mes</span>
+                    <span className="sm:hidden">Filtro</span>
+                </div>
+            </div>
 
-            <div className="bg-bg-secondary text-text-primary rounded-[1.75rem] border border-border/60 p-6 shadow-sm shadow-black/5">
-                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Search className="w-5 h-5 text-accent-primary" />
-                    Nuevo Escaneo
-                </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+                <div className="lg:col-span-7 xl:col-span-8 bg-bg-secondary/40 rounded-3xl p-4 sm:p-6 flex flex-col border border-border/40">
+                    <div className="flex items-center justify-between mb-6">
+                        <button
+                            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                            className="p-2.5 bg-bg-primary hover:bg-bg-primary/80 transition-colors rounded-xl border border-border/40"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <span className="font-bold text-lg sm:text-xl capitalize text-text-primary">
+                            {format(currentMonth, 'MMMM yyyy', { locale: es })}
+                        </span>
+                        <button
+                            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                            className="p-2.5 bg-bg-primary hover:bg-bg-primary/80 transition-colors rounded-xl border border-border/40"
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+                    </div>
 
-                <div className="flex flex-col gap-5 w-full">
-                    <Tabs value={range} onValueChange={(v) => handleRangeChange(v as ScanRange)} className="w-full">
-                        <TabsList className="grid w-full grid-cols-4 bg-bg-primary/40 border border-border/30 p-1.5 rounded-xl h-12 shadow-inner">
-                            <TabsTrigger
-                                value="recommended"
-                                className="rounded-lg text-sm font-semibold data-[state=active]:bg-bg-secondary data-[state=active]:text-accent-primary data-[state=active]:shadow-sm transition-all h-full truncate px-1"
-                            >
-                                Sugerido
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="custom"
-                                className="rounded-lg text-sm font-semibold data-[state=active]:bg-bg-secondary data-[state=active]:text-accent-primary data-[state=active]:shadow-sm transition-all h-full truncate px-1"
-                            >
-                                Manual
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="week"
-                                className="rounded-lg text-sm font-semibold data-[state=active]:bg-bg-secondary data-[state=active]:text-accent-primary data-[state=active]:shadow-sm transition-all h-full truncate px-1"
-                            >
-                                Semana
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="today"
-                                className="rounded-lg text-sm font-semibold data-[state=active]:bg-bg-secondary data-[state=active]:text-accent-primary data-[state=active]:shadow-sm transition-all h-full truncate px-1"
-                            >
-                                Hoy
-                            </TabsTrigger>
-                        </TabsList>
-                    </Tabs>
+                    <div className="grid grid-cols-7 gap-2 sm:gap-3">
+                        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
+                            <div key={d} className="text-center text-xs font-semibold text-text-tertiary mb-2">
+                                {d}
+                            </div>
+                        ))}
 
-                    <div className="flex flex-col md:flex-row gap-5 items-start md:items-end justify-between bg-bg-primary/20 p-5 rounded-2xl border border-border/40 shadow-inner">
-                        <div className="flex-1 w-full">
-                            <h3 className="text-sm font-semibold text-text-secondary mb-3">
-                                {range === 'today' && 'Escaneo de hoy'}
-                                {range === 'week' && 'Escaneo de la semana actual'}
-                                {range === 'recommended' && 'Rangos sugeridos'}
-                                {range === 'custom' && 'Selección de rango manual'}
-                            </h3>
+                        {calendarDays.map((day, idx) => {
+                            const status = getDayStatus(day);
+                            let statusClasses = "bg-bg-secondary border-dashed border-border/40 text-text-secondary hover:border-border";
 
-                            {range === 'today' && (
-                                <div className="flex flex-col items-center justify-center px-4 py-3 rounded-xl border bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20 w-full">
-                                    <span className="text-sm font-bold">{startDate}</span>
-                                    <span className="text-[10px] uppercase tracking-wider opacity-70 mt-1">único día</span>
-                                </div>
+                            if (status === 'completed') {
+                                statusClasses = "bg-accent-success hover:bg-accent-success/90 border-transparent text-white font-bold shadow-md";
+                            } else if (status === 'failed') {
+                                statusClasses = "bg-accent-danger hover:bg-accent-danger/90 border-transparent text-white font-bold shadow-md";
+                            } else if (status === 'processing') {
+                                statusClasses = "bg-accent-info hover:bg-accent-info/90 border-transparent text-white font-bold shadow-md animate-pulse";
+                            }
+
+                            const isSelected = isSameDay(day, selectedDate);
+                            const isCurrentMonth = isSameMonth(day, currentMonth);
+
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        setSelectedDate(day);
+                                        if (!isSameMonth(day, currentMonth)) {
+                                            setCurrentMonth(day);
+                                        }
+                                    }}
+                                    className={`aspect-square rounded-xl sm:rounded-2xl border flex items-center justify-center text-sm sm:text-base transition-all
+                                        ${statusClasses}
+                                        ${isSelected ? 'ring-4 ring-bg-primary outline outline-2 outline-accent-primary scale-[1.02] z-10' : ''}
+                                        ${!isCurrentMonth ? 'opacity-30' : ''}
+                                    `}
+                                >
+                                    {format(day, 'd')}
+                                </button>
+                            )
+                        })}
+                    </div>
+
+                    <div className="flex flex-col gap-2 mt-8 pt-6 border-t border-border/30 text-xs font-medium text-text-secondary">
+                        <div className="flex items-center gap-3"><div className="w-4 h-4 rounded-md bg-accent-success shadow-sm"></div><span>Días Escaneados y Completados</span></div>
+                        <div className="flex items-center gap-3"><div className="w-4 h-4 rounded-md bg-accent-danger shadow-sm"></div><span>Intentos de Escaneo Fallidos en estas fechas</span></div>
+                        <div className="flex items-center gap-3"><div className="w-4 h-4 rounded-md bg-accent-info shadow-sm"></div><span>Días en Proceso de Escaneo</span></div>
+                        <div className="flex items-center gap-3"><div className="w-4 h-4 rounded-md bg-bg-secondary border border-dashed border-border/50"></div><span>Días no Escaneados (Agujeros)</span></div>
+                    </div>
+                </div>
+
+                {/* Details (Desktop) */}
+                <div className="hidden lg:block lg:col-span-5 xl:col-span-4 relative rounded-3xl border border-border/40 bg-bg-secondary/10">
+                    <div className="absolute inset-0 flex flex-col p-6 overflow-hidden">
+                        <h3 className="text-base font-semibold text-text-primary px-2 capitalize shrink-0 mb-4 flex items-center justify-between">
+                            <span>Detalles del día: {format(selectedDate, "dd MMM yyyy", { locale: es })}</span>
+                            {selectedDayTotalFound !== undefined && selectedDayTotalFound > 0 && (
+                                <span className="text-sm font-bold bg-accent-primary/10 text-accent-primary px-2.5 py-1 rounded-lg shrink-0 ml-2 normal-case">
+                                    {selectedDayTotalFound} trx en total
+                                </span>
                             )}
+                        </h3>
 
-                            {range === 'week' && (
-                                <div className="flex flex-col items-center justify-center px-4 py-3 rounded-xl border bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20 w-full">
-                                    <span className="text-sm font-bold">{startDate}</span>
-                                    <span className="text-[10px] uppercase tracking-wider opacity-70 my-1">hasta</span>
-                                    <span className="text-sm font-bold">{endDate}</span>
-                                </div>
-                            )}
-
-                            {range === 'recommended' && recommendedRanges.length > 0 && (
-                                <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:flex-nowrap">
-                                    {recommendedRanges.map((r, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => setSelectedRecommendedIndex(i)}
-                                            className={`flex flex-col items-center justify-center px-3 py-2 sm:px-4 sm:py-3 rounded-xl border transition-all sm:flex-1 sm:min-w-[130px] ${
-                                                i > 1 ? 'hidden sm:flex' : ''
-                                            } ${selectedRecommendedIndex === i
-                                                ? 'bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20'
-                                                : 'bg-bg-secondary border-border/40 text-text-secondary hover:bg-bg-primary/60 hover:border-border/60 hover:text-text-primary'
-                                                }`}
-                                        >
-                                            <span className="text-sm font-bold">{r.start}</span>
-                                            <span className="text-[10px] uppercase tracking-wider opacity-70 my-0.5 sm:my-1">hasta</span>
-                                            <span className="text-sm font-bold">{r.end}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {range === 'recommended' && recommendedRanges.length === 0 && (
-                                <div className="text-sm text-text-tertiary py-3 px-4 bg-bg-secondary border border-border/40 rounded-xl inline-block">
-                                    No hay recomendaciones disponibles (historial completo o sin espacios).
-                                </div>
-                            )}
-
-                            {range === 'custom' && (
-                                <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-lg">
-                                    <input
-                                        type="date"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        className="w-full bg-bg-secondary border border-border/40 rounded-xl px-4 h-12 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-shadow"
-                                    />
-                                    <span className="text-text-tertiary font-bold hidden sm:block">-</span>
-                                    <input
-                                        type="date"
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        className="w-full bg-bg-secondary border border-border/40 rounded-xl px-4 h-12 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-shadow"
-                                    />
+                        <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-2 h-full">
+                            {selectedDayExecutions.length > 0 ? (
+                                selectedDayExecutions.map(exec => <ExecutionHistoryCard key={exec.id} exec={exec} dayCount={getDayCount(exec.externalExecutionId)} />)
+                            ) : (
+                                <div className="p-6 text-center text-sm text-text-tertiary border border-border/30 rounded-2xl bg-bg-secondary/30">
+                                    No hay registros de ejecución para esta fecha.
                                 </div>
                             )}
                         </div>
+                    </div>
+                </div>
 
-                        <button
-                            onClick={handleTriggerScan}
-                            disabled={isSubmitting}
-                            className="w-full md:w-auto shrink-0 justify-center bg-accent-primary hover:bg-accent-primary/90 text-accent-primary-foreground font-semibold px-8 h-12 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap mt-2 md:mt-0"
-                        >
-                            {isSubmitting ? (
-                                <><RefreshCw className="w-5 h-5 animate-spin" /> Procesando...</>
-                            ) : (
-                                <><Search className="w-5 h-5" /> Ejecutar Escáner</>
-                            )}
-                        </button>
+                {/* Details (Mobile) */}
+                <div className="lg:hidden flex flex-col gap-4 mt-2">
+                    <h3 className="text-base font-semibold text-text-primary px-2 capitalize flex items-center justify-between">
+                        <span>Detalles del día seleccionado: {format(selectedDate, "dd MMM yyyy", { locale: es })}</span>
+                        {selectedDayTotalFound !== undefined && selectedDayTotalFound > 0 && (
+                            <span className="text-sm font-bold bg-accent-primary/10 text-accent-primary px-2.5 py-1 rounded-lg shrink-0 ml-2 normal-case">
+                                {selectedDayTotalFound} trx
+                            </span>
+                        )}
+                    </h3>
+
+                    <div className="flex flex-col gap-3">
+                        {selectedDayExecutions.length > 0 ? (
+                            selectedDayExecutions.map(exec => <ExecutionHistoryCard key={exec.id} exec={exec} dayCount={getDayCount(exec.externalExecutionId)} />)
+                        ) : (
+                            <div className="p-6 text-center text-sm text-text-tertiary border border-border/30 rounded-2xl bg-bg-secondary/30">
+                                No hay registros de ejecución para esta fecha.
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            <div className="bg-bg-secondary text-text-primary rounded-[1.75rem] border border-border/60 p-6 shadow-sm shadow-black/5">
-                <h2 className="text-xl font-semibold mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-accent-primary" />
-                        Historial de Ejecuciones
-                        {showPollingNotice && (
-                            <span className="ml-2 text-[10px] sm:text-xs font-bold text-accent-primary flex items-center gap-1.5 animate-pulse bg-accent-primary/10 px-2 py-1 rounded-md">
-                                <RefreshCw className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" />
-                                Actualizando...
-                            </span>
-                        )}
-                    </div>
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as 'execution' | 'range')}
-                        className="bg-bg-primary text-text-secondary text-sm font-medium border border-border/40 rounded-xl px-3 py-2 sm:py-1.5 focus:outline-none focus:ring-1 focus:ring-accent-primary/50 shadow-sm appearance-none cursor-pointer"
-                    >
-                        <option value="range">Ordenar por Rango</option>
-                        <option value="execution">Ordenar por Fecha de Ejecución</option>
-                    </select>
-                </h2>
+            <Dialog open={isNewScanOpen} onOpenChange={setIsNewScanOpen}>
+                <DialogTrigger asChild>
+                    <button className="fixed bottom-6 right-6 sm:bottom-10 sm:right-10 bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90 h-14 rounded-full px-6 shadow-xl shadow-accent-primary/20 flex items-center gap-2 font-bold transition-all hover:scale-105 z-50">
+                        <Plus className="w-5 h-5" />
+                        <span className="hidden sm:inline">Nuevo Escaneo</span>
+                    </button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md bg-bg-secondary border-border/40 p-0 overflow-hidden rounded-[1.75rem]">
+                    <div className="p-6">
+                        <DialogHeader className="mb-4">
+                            <DialogTitle className="flex items-center gap-2 text-xl text-text-primary">
+                                <Search className="w-5 h-5 text-accent-primary" />
+                                Nuevo Escaneo
+                            </DialogTitle>
+                            <DialogDescription>
+                                Inicia un nuevo escaneo financiero definiendo el rango de fechas.
+                            </DialogDescription>
+                        </DialogHeader>
 
-                <TooltipProvider delayDuration={200}>
-                    <div className="flex flex-col gap-4">
-                        {sortedExecutions.map((exec) => (
-                            <ExecutionHistoryCard key={exec.id} exec={exec} />
-                        ))}
+                        <div className="flex flex-col gap-5 w-full">
+                            <Tabs value={range} onValueChange={(v) => handleRangeChange(v as ScanRange)} className="w-full">
+                                <TabsList className="grid w-full grid-cols-4 bg-bg-primary/40 border border-border/30 p-1.5 rounded-xl h-12 shadow-inner">
+                                    <TabsTrigger
+                                        value="recommended"
+                                        className="rounded-lg text-xs font-semibold data-[state=active]:bg-bg-secondary data-[state=active]:text-accent-primary data-[state=active]:shadow-sm transition-all h-full truncate px-1"
+                                    >
+                                        Sugerido
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="custom"
+                                        className="rounded-lg text-xs font-semibold data-[state=active]:bg-bg-secondary data-[state=active]:text-accent-primary data-[state=active]:shadow-sm transition-all h-full truncate px-1"
+                                    >
+                                        Manual
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="week"
+                                        className="rounded-lg text-xs font-semibold data-[state=active]:bg-bg-secondary data-[state=active]:text-accent-primary data-[state=active]:shadow-sm transition-all h-full truncate px-1"
+                                    >
+                                        Semana
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="today"
+                                        className="rounded-lg text-xs font-semibold data-[state=active]:bg-bg-secondary data-[state=active]:text-accent-primary data-[state=active]:shadow-sm transition-all h-full truncate px-1"
+                                    >
+                                        Hoy
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
 
-                        {sortedExecutions.length === 0 && !isLoadingHistory && (
-                            <div className="text-center py-8 text-muted-foreground text-sm">
-                                No hay registros de ejecuciones previas.
+                            <div className="flex flex-col gap-5 items-start bg-bg-primary/20 p-5 rounded-2xl border border-border/40 shadow-inner">
+                                <div className="flex-1 w-full">
+                                    <h3 className="text-sm font-semibold text-text-secondary mb-3">
+                                        {range === 'today' && 'Escaneo de hoy'}
+                                        {range === 'week' && 'Escaneo de la semana actual'}
+                                        {range === 'recommended' && 'Rangos sugeridos'}
+                                        {range === 'custom' && 'Selección de rango manual'}
+                                    </h3>
+
+                                    {range === 'today' && (
+                                        <div className="flex flex-col items-center justify-center px-4 py-3 rounded-xl border bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20 w-full">
+                                            <span className="text-sm font-bold">{startDate}</span>
+                                            <span className="text-[10px] uppercase tracking-wider opacity-70 mt-1">único día</span>
+                                        </div>
+                                    )}
+
+                                    {range === 'week' && (
+                                        <div className="flex flex-col items-center justify-center px-4 py-3 rounded-xl border bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20 w-full">
+                                            <span className="text-sm font-bold">{startDate}</span>
+                                            <span className="text-[10px] uppercase tracking-wider opacity-70 my-1">hasta</span>
+                                            <span className="text-sm font-bold">{endDate}</span>
+                                        </div>
+                                    )}
+
+                                    {range === 'recommended' && recommendedRanges.length > 0 && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                                            {recommendedRanges.map((r, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setSelectedRecommendedIndex(i)}
+                                                    className={`flex flex-col items-center justify-center px-3 py-2 sm:px-4 sm:py-3 rounded-xl border transition-all ${selectedRecommendedIndex === i
+                                                        ? 'bg-accent-primary/10 border-accent-primary text-accent-primary shadow-sm ring-1 ring-accent-primary/20'
+                                                        : 'bg-bg-secondary border-border/40 text-text-secondary hover:bg-bg-primary/60 hover:border-border/60 hover:text-text-primary'
+                                                        }`}
+                                                >
+                                                    <span className="text-sm font-bold">{r.start}</span>
+                                                    <span className="text-[10px] uppercase tracking-wider opacity-70 my-0.5 sm:my-1">hasta</span>
+                                                    <span className="text-sm font-bold">{r.end}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {range === 'recommended' && recommendedRanges.length === 0 && (
+                                        <div className="text-sm text-text-tertiary py-3 px-4 bg-bg-secondary border border-border/40 rounded-xl inline-block w-full">
+                                            No hay recomendaciones disponibles (historial completo o sin espacios).
+                                        </div>
+                                    )}
+
+                                    {range === 'custom' && (
+                                        <div className="flex flex-col gap-3 w-full">
+                                            <input
+                                                type="date"
+                                                value={startDate}
+                                                onChange={(e) => setStartDate(e.target.value)}
+                                                className="w-full bg-bg-secondary border border-border/40 rounded-xl px-4 h-12 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-shadow"
+                                            />
+                                            <input
+                                                type="date"
+                                                value={endDate}
+                                                onChange={(e) => setEndDate(e.target.value)}
+                                                className="w-full bg-bg-secondary border border-border/40 rounded-xl px-4 h-12 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-shadow"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        )}
 
-                        {hasMore && (
-                            <div className="mt-4 flex justify-center">
-                                <button
-                                    onClick={() => {
-                                        const nextPage = page + 1;
-                                        setPage(nextPage);
-                                        loadHistory(nextPage, false);
-                                    }}
-                                    disabled={isLoadingHistory}
-                                    className="text-sm font-medium text-accent-primary hover:text-accent-primary/80 transition-colors disabled:opacity-50"
-                                >
-                                    {isLoadingHistory ? 'Cargando...' : 'Cargar más resultados'}
-                                </button>
-                            </div>
-                        )}
+                            <button
+                                onClick={handleTriggerScan}
+                                disabled={isSubmitting}
+                                className="w-full shrink-0 justify-center bg-accent-primary hover:bg-accent-primary/90 text-accent-primary-foreground font-semibold px-8 h-12 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+                            >
+                                {isSubmitting ? (
+                                    <><RefreshCw className="w-5 h-5 animate-spin" /> Procesando...</>
+                                ) : (
+                                    <><Search className="w-5 h-5" /> Ejecutar Escáner</>
+                                )}
+                            </button>
+                        </div>
                     </div>
-                </TooltipProvider>
-            </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
-

@@ -41,6 +41,8 @@ export interface FinancialScanExecution extends BaseEntity {
     ownerUserId: UUID;
     status: FinancialScanStatus;
     source: string;
+    /** External scan id (e.g. n8n `LOCAL_xxx`); links to scanner transactions' execution_id. */
+    externalExecutionId?: string | null;
     stats?: Record<string, any> | null;
     startedAt: ISODate;
     completedAt?: ISODate | null;
