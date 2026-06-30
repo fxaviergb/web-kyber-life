@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { triggerFinancialScanAction, getScanExecutionsAction, getScannerDayCountsAction } from '@/app/actions/financial-scanner';
-import { Calendar, Search, RefreshCw, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight, Mail, AlertCircle, Timer, ChevronDown, ChevronUp, Plus, Filter } from 'lucide-react';
+import { Calendar, Search, RefreshCw, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight, Mail, AlertCircle, Timer, ChevronDown, ChevronUp, Plus, Database } from 'lucide-react';
 import { FinancialScanExecution } from '@/domain/entities/financial';
 import { format, isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -24,18 +24,54 @@ function getWeekRange(): { start: string; end: string } {
 }
 
 function getFormattedDuration(start: string | Date, end: string | Date): string {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
-    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMs = Math.abs(new Date(end).getTime() - new Date(start).getTime());
+    const totalSecs = Math.floor(diffMs / 1000);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    if (hrs > 0) return `${hrs}h ${pad(mins)}m`;
+    if (mins > 0) return `${pad(mins)}m ${pad(secs)}s`;
+    return `${secs}s`;
+}
 
-    if (diffSecs < 60) return `${diffSecs} seg`;
-    const diffMins = Math.floor(diffSecs / 60);
-    if (diffMins < 60) return `${diffMins} min`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} hr${diffHours > 1 ? 's' : ''}`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} día${diffDays > 1 ? 's' : ''}`;
+// Execution timestamps are real instants; render them in Ecuador time
+// (America/Guayaquil, UTC-5) regardless of the viewer's device timezone.
+const ECUADOR_TZ = 'America/Guayaquil';
+function formatEcuadorTime(value: string | Date, withSeconds = false): string {
+    return new Intl.DateTimeFormat('es-EC', {
+        timeZone: ECUADOR_TZ,
+        hour: '2-digit',
+        minute: '2-digit',
+        ...(withSeconds ? { second: '2-digit' as const } : {}),
+        hour12: false,
+    }).format(new Date(value));
+}
+function formatEcuadorDate(value: string | Date): string {
+    return new Intl.DateTimeFormat('es-EC', {
+        timeZone: ECUADOR_TZ,
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    }).format(new Date(value));
+}
+
+// Normalize a scan-window boundary to the viewer's LOCAL calendar date
+// (YYYY-MM-DD). The trigger may store endDate as a UTC instant (e.g.
+// "2026-06-30T02:13:21Z"); taking its literal date part would bleed into the
+// next day for users west of UTC (Ecuador, UTC-5). Converting the instant to a
+// local date keeps the calendar coloring and the shown range in local time.
+function toLocalDatePart(value: unknown): string | undefined {
+    if (typeof value !== 'string' || value === '') return undefined;
+    // Already a plain calendar date (no time/zone) — keep verbatim.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) {
+        const m = value.match(/(\d{4}-\d{2}-\d{2})/);
+        return m ? m[1] : undefined;
+    }
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 function parsePayload(payload: any) {
@@ -52,141 +88,145 @@ function parsePayload(payload: any) {
         iter++;
     }
 
+    // Resolve the object that carries startDate/endDate.
+    let source: any = null;
     if (parsed && typeof parsed === 'object' && parsed.startDate) {
-        return parsed;
-    }
-
-    if (parsed && typeof parsed === 'object' && parsed.body) {
+        source = parsed;
+    } else if (parsed && typeof parsed === 'object' && parsed.body) {
         let body = parsed.body;
         if (typeof body === 'string') {
             try { body = JSON.parse(body); } catch (e) { }
         }
         if (body && typeof body === 'object' && body.startDate) {
-            return body;
+            source = body;
         }
     }
 
-    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    const startMatch = payloadStr.match(/startDate.*?(\d{4}-\d{2}-\d{2})/);
-    const endMatch = payloadStr.match(/endDate.*?(\d{4}-\d{2}-\d{2})/);
-
-    if (startMatch || endMatch) {
-        return {
-            startDate: startMatch ? startMatch[1] : undefined,
-            endDate: endMatch ? endMatch[1] : undefined
-        };
+    if (!source) {
+        const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        const startMatch = payloadStr.match(/startDate.*?(\d{4}-\d{2}-\d{2})/);
+        const endMatch = payloadStr.match(/endDate.*?(\d{4}-\d{2}-\d{2})/);
+        if (startMatch || endMatch) {
+            source = {
+                startDate: startMatch ? startMatch[1] : undefined,
+                endDate: endMatch ? endMatch[1] : undefined
+            };
+        }
     }
 
-    return typeof parsed === 'object' ? parsed : null;
+    if (!source) {
+        return typeof parsed === 'object' ? parsed : null;
+    }
+
+    // Normalize the scan window to LOCAL calendar dates so the calendar coloring
+    // and the displayed range don't drift a day due to a UTC-stored endDate.
+    return {
+        ...source,
+        startDate: toLocalDatePart(source.startDate),
+        endDate: toLocalDatePart(source.endDate),
+    };
 }
 
-function ExecutionHistoryCard({ exec, dayCount }: { exec: FinancialScanExecution, dayCount?: number }) {
-    const [isExpanded, setIsExpanded] = useState(true);
+const EXECUTION_STATUS_STYLES: Record<string, { label: string; badge: string; ring: string; Icon: React.ElementType }> = {
+    COMPLETED: { label: 'COMPLETADO', badge: 'bg-success-bg/30 border-accent-success/30 text-success-text', ring: 'border-accent-success/40', Icon: CheckCircle2 },
+    FAILED: { label: 'FALLIDO', badge: 'bg-danger-bg/30 border-accent-danger/30 text-danger-text', ring: 'border-accent-danger/40', Icon: XCircle },
+    PROCESSING: { label: 'EN PROGRESO', badge: 'bg-info-bg/30 border-accent-info/30 text-info-text', ring: 'border-accent-info/40', Icon: Clock },
+};
 
-    let statusStyles = '';
-    switch (exec.status) {
-        case 'COMPLETED':
-            statusStyles = 'bg-success-bg/30 border-accent-success/30 text-success-text';
-            break;
-        case 'FAILED':
-            statusStyles = 'bg-danger-bg/30 border-accent-danger/30 text-danger-text';
-            break;
-        default:
-            statusStyles = 'bg-info-bg/30 border-accent-info/30 text-info-text';
-    }
+function ExecutionHistoryCard({ exec, dayCount, defaultExpanded = false }: { exec: FinancialScanExecution, dayCount?: number, defaultExpanded?: boolean }) {
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-    const statusBadge = exec.status === 'FAILED' ? (
-        <Popover>
-            <PopoverTrigger asChild>
-                <div
-                    onClick={(e) => { e.stopPropagation(); }}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide border ${statusStyles} hover:bg-opacity-80 transition-colors shadow-sm cursor-pointer shrink-0 w-fit uppercase`}
-                >
-                    <span>FALLIDO</span>
-                    <AlertCircle className="w-3 h-3 opacity-80" />
-                </div>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="max-w-xs bg-bg-secondary border border-accent-danger/20 text-danger-text p-4 shadow-xl rounded-xl z-50 relative">
-                <p className="text-xs font-medium leading-relaxed whitespace-pre-wrap">
-                    {exec.errorDetails || "La ejecución falló sin reportar un mensaje de error detallado."}
-                </p>
-            </PopoverContent>
-        </Popover>
-    ) : (
-        <div className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide border ${statusStyles} shadow-sm shrink-0 w-fit uppercase`}>
-            {exec.status === 'COMPLETED' ? 'COMPLETADO' : exec.status === 'PROCESSING' ? 'PROCESANDO' : exec.status}
-        </div>
-    );
+    const meta = EXECUTION_STATUS_STYLES[exec.status] ?? EXECUTION_STATUS_STYLES.PROCESSING;
+    const StatusIcon = meta.Icon;
 
+    // Scan window → compact local-date range, e.g. "23 jun – 29 jun".
     const payload = parsePayload(exec.requestPayload);
     const sDate = payload?.startDate || exec.stats?.startDate;
     const eDate = payload?.endDate || exec.stats?.endDate;
-
-    let dateRangeDisplay = <span className="text-text-tertiary text-sm font-medium italic normal-case">No se pudo determinar el rango de fechas</span>;
+    let rangoText = "Rango no determinado";
     if (sDate && eDate) {
-        const parseSafe = (d: string) => {
-            if (!d) return new Date("");
-            const datePart = d.split('T')[0];
-            return new Date(`${datePart}T12:00:00`);
-        };
-        const startDateObj = parseSafe(sDate);
-        const endDateObj = parseSafe(eDate);
-
-        if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
-            const startFmt = format(startDateObj, "dd MMM yyyy", { locale: es });
-            const endFmt = format(endDateObj, "dd MMM yyyy", { locale: es });
-            if (startFmt === endFmt) {
-                dateRangeDisplay = <>{startFmt}</>;
-            } else {
-                dateRangeDisplay = <>{startFmt} - {endFmt}</>;
-            }
+        const parseSafe = (d: string) => new Date(`${d.split('T')[0]}T12:00:00`);
+        const s = parseSafe(sDate);
+        const e = parseSafe(eDate);
+        if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+            const sf = format(s, "dd MMM", { locale: es });
+            const ef = format(e, "dd MMM", { locale: es });
+            rangoText = sf === ef ? sf : `${sf} – ${ef}`;
         }
     }
 
+    const timeLabel = formatEcuadorTime(exec.startedAt);
+    const duration = exec.completedAt
+        ? getFormattedDuration(exec.startedAt, exec.completedAt)
+        : (exec.status === 'PROCESSING' ? 'En curso' : '—');
+
+    const statusBadge = (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide border ${meta.badge} uppercase shrink-0`}>
+            <StatusIcon className="w-3 h-3" />
+            {meta.label}
+        </span>
+    );
+
     return (
         <div
-            className="flex flex-col gap-2 p-4 rounded-[1.25rem] border border-border/40 bg-bg-secondary/60 hover:bg-bg-secondary transition-all cursor-pointer"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => setIsExpanded((v) => !v)}
+            className={`p-4 rounded-[1.25rem] border bg-bg-secondary/60 hover:bg-bg-secondary transition-all cursor-pointer ${isExpanded ? meta.ring : 'border-border/40'}`}
         >
-            <div className="flex flex-col gap-2">
-                <div>
-                    {statusBadge}
-                </div>
+            {/* Header: status + time + chevron */}
+            <div className="flex items-center justify-between gap-2">
+                {exec.status === 'FAILED' ? (
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <button onClick={(e) => e.stopPropagation()} className="focus:outline-none">{statusBadge}</button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" align="start" className="max-w-xs bg-bg-secondary border border-accent-danger/20 text-danger-text p-4 shadow-xl rounded-xl z-50">
+                            <p className="text-xs font-medium leading-relaxed whitespace-pre-wrap">
+                                {exec.errorDetails || "La ejecución falló sin reportar un mensaje de error detallado."}
+                            </p>
+                        </PopoverContent>
+                    </Popover>
+                ) : statusBadge}
 
-                <div className="flex items-center justify-between w-full">
-                    <span className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2 capitalize">
-                        <Calendar className="w-4 h-4 text-accent-primary shrink-0 opacity-80" />
-                        {dateRangeDisplay}
-                    </span>
-                    <div className="text-text-tertiary shrink-0 p-1 hover:bg-bg-primary rounded-full transition-colors">
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
+                <div className="flex items-center gap-2 text-text-tertiary shrink-0">
+                    <span className="text-xs font-semibold tabular-nums">{timeLabel}</span>
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
             </div>
 
+            {/* Rango */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <span className="text-text-secondary">Rango:</span>
+                <span className="font-semibold text-text-primary">{rangoText}</span>
+            </div>
+
+            {/* Expanded: key metrics (stacked label ↔ value to fit the narrow panel) */}
             {isExpanded && (
-                <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-text-secondary">
-                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 opacity-60" /> Ejecución: {format(new Date(exec.startedAt), "dd/MM/yyyy")}</span>
-                        <span className="text-border/50">|</span>
-                        <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 opacity-60" /> Inicio: {format(new Date(exec.startedAt), "HH:mm:ss")}</span>
-                        {exec.completedAt && (
-                            <>
-                                <span className="text-border/50">|</span>
-                                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 opacity-60" /> Fin: {format(new Date(exec.completedAt), "HH:mm:ss")}</span>
-                            </>
-                        )}
+                <div className="mt-3 pt-3 border-t border-border/30 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="flex items-center gap-2 text-xs text-text-secondary min-w-0">
+                            <Database className="w-3.5 h-3.5 text-accent-primary shrink-0" />
+                            <span className="truncate">Transacciones detectadas</span>
+                        </span>
+                        <span className="text-base font-bold text-text-primary tabular-nums shrink-0">{dayCount === undefined ? '…' : dayCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="flex items-center gap-2 text-xs text-text-secondary min-w-0">
+                            <Timer className="w-3.5 h-3.5 text-accent-info shrink-0" />
+                            <span className="truncate">Tiempo de procesamiento</span>
+                        </span>
+                        <span className="text-base font-bold text-text-primary tabular-nums shrink-0">{duration}</span>
                     </div>
 
-                    <div className="flex items-center gap-3 mt-1 text-xs">
-                        <span className="font-semibold text-text-primary">
-                            {dayCount === undefined
-                                ? "Contando transacciones…"
-                                : `${dayCount} ${dayCount === 1 ? "transacción encontrada" : "transacciones encontradas"}`}
-                        </span>
-
+                    <div className="flex flex-col gap-2 mt-1 pt-2.5 border-t border-border/20 text-[11px] text-text-secondary">
+                        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
+                            <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3 opacity-60 shrink-0" /> {formatEcuadorDate(exec.startedAt)}</span>
+                            <span className="flex items-center gap-1.5">
+                                <Clock className="w-3 h-3 opacity-60 shrink-0" />
+                                {formatEcuadorTime(exec.startedAt, true)}{exec.completedAt ? ` - ${formatEcuadorTime(exec.completedAt, true)}` : ''}
+                            </span>
+                        </div>
                         {exec.source && (
-                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-text-secondary bg-bg-primary px-2 py-0.5 rounded-md">
+                            <span className="inline-flex w-fit items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-text-secondary bg-bg-primary px-2 py-0.5 rounded-md">
                                 {exec.source === 'GMAIL_N8N_WEBHOOK' ? <Mail className="w-3 h-3 text-accent-primary shrink-0" /> : null}
                                 {exec.source === 'GMAIL_N8N_WEBHOOK' ? 'GMAIL' : exec.source}
                             </span>
@@ -242,11 +282,11 @@ export function ScannerManager() {
 
     // Count of transactions a given scan found dated on the selected day
     // (undefined while the day's counts are still loading).
-    const getDayCount = useCallback((externalExecutionId?: string | null): number | undefined => {
+    const getDayCount = useCallback((executionId?: string | null): number | undefined => {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         const counts = dayCountsByDate[dateStr];
         if (!counts) return undefined;
-        return externalExecutionId ? (counts[externalExecutionId] ?? 0) : 0;
+        return executionId ? (counts[executionId] ?? 0) : 0;
     }, [selectedDate, dayCountsByDate]);
 
     // -- Realtime & Polling for Executions --
@@ -559,7 +599,7 @@ export function ScannerManager() {
         const counts = dayCountsByDate[format(selectedDate, 'yyyy-MM-dd')];
         if (!counts) return undefined;
         return selectedDayExecutions.reduce(
-            (sum, exec) => sum + (exec.externalExecutionId ? (counts[exec.externalExecutionId] ?? 0) : 0),
+            (sum, exec) => sum + (exec.id ? (counts[exec.id] ?? 0) : 0),
             0,
         );
     }, [dayCountsByDate, selectedDate, selectedDayExecutions]);
@@ -574,15 +614,17 @@ export function ScannerManager() {
                         Historial de Ejecuciones
                     </h2>
                 </div>
-                <div className="flex items-center gap-2 bg-bg-secondary px-3 py-1.5 rounded-xl border border-border/40 text-sm font-medium text-text-secondary">
-                    <Filter className="w-4 h-4 opacity-70" />
-                    <span className="hidden sm:inline">Filtrar por Mes</span>
-                    <span className="sm:hidden">Filtro</span>
-                </div>
+                <button
+                    onClick={() => setIsNewScanOpen(true)}
+                    className="hidden sm:inline-flex items-center gap-2 bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90 px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-accent-primary/20 transition-all hover:scale-[1.02]"
+                >
+                    <Plus className="w-4 h-4" />
+                    Nuevo Escaneo
+                </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
-                <div className="lg:col-span-7 xl:col-span-8 bg-bg-secondary/40 rounded-3xl p-4 sm:p-6 flex flex-col border border-border/40">
+                <div className="lg:col-span-6 xl:col-span-7 bg-bg-secondary/40 rounded-3xl p-4 sm:p-6 flex flex-col border border-border/40">
                     <div className="flex items-center justify-between mb-6">
                         <button
                             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
@@ -653,20 +695,23 @@ export function ScannerManager() {
                 </div>
 
                 {/* Details (Desktop) */}
-                <div className="hidden lg:block lg:col-span-5 xl:col-span-4 relative rounded-3xl border border-border/40 bg-bg-secondary/10">
-                    <div className="absolute inset-0 flex flex-col p-6 overflow-hidden">
-                        <h3 className="text-base font-semibold text-text-primary px-2 capitalize shrink-0 mb-4 flex items-center justify-between">
-                            <span>Detalles del día: {format(selectedDate, "dd MMM yyyy", { locale: es })}</span>
-                            {selectedDayTotalFound !== undefined && selectedDayTotalFound > 0 && (
-                                <span className="text-sm font-bold bg-accent-primary/10 text-accent-primary px-2.5 py-1 rounded-lg shrink-0 ml-2 normal-case">
+                <div className="hidden lg:block lg:col-span-6 xl:col-span-5 relative rounded-3xl border border-border/40 bg-bg-secondary/10">
+                    <div className="absolute inset-0 flex flex-col p-5 overflow-hidden">
+                        <div className="flex items-start justify-between gap-2 shrink-0 mb-4 px-1">
+                            <h3 className="text-base font-semibold text-text-primary leading-tight">
+                                Detalles del día
+                                <span className="block text-xs font-normal text-text-tertiary mt-0.5 capitalize">{format(selectedDate, "dd MMM yyyy", { locale: es })}</span>
+                            </h3>
+                            {selectedDayTotalFound !== undefined && (
+                                <span className="text-xs font-bold bg-accent-primary/10 text-accent-primary px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap">
                                     {selectedDayTotalFound} trx en total
                                 </span>
                             )}
-                        </h3>
+                        </div>
 
-                        <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-2 h-full">
+                        <div className="flex flex-col gap-2.5 overflow-y-auto overflow-x-hidden pr-1.5 pb-2 h-full">
                             {selectedDayExecutions.length > 0 ? (
-                                selectedDayExecutions.map(exec => <ExecutionHistoryCard key={exec.id} exec={exec} dayCount={getDayCount(exec.externalExecutionId)} />)
+                                selectedDayExecutions.map((exec, idx) => <ExecutionHistoryCard key={exec.id} exec={exec} dayCount={getDayCount(exec.id)} defaultExpanded={idx === 0} />)
                             ) : (
                                 <div className="p-6 text-center text-sm text-text-tertiary border border-border/30 rounded-2xl bg-bg-secondary/30">
                                     No hay registros de ejecución para esta fecha.
@@ -678,18 +723,21 @@ export function ScannerManager() {
 
                 {/* Details (Mobile) */}
                 <div className="lg:hidden flex flex-col gap-4 mt-2">
-                    <h3 className="text-base font-semibold text-text-primary px-2 capitalize flex items-center justify-between">
-                        <span>Detalles del día seleccionado: {format(selectedDate, "dd MMM yyyy", { locale: es })}</span>
-                        {selectedDayTotalFound !== undefined && selectedDayTotalFound > 0 && (
-                            <span className="text-sm font-bold bg-accent-primary/10 text-accent-primary px-2.5 py-1 rounded-lg shrink-0 ml-2 normal-case">
-                                {selectedDayTotalFound} trx
+                    <div className="flex items-start justify-between gap-2 px-1">
+                        <h3 className="text-base font-semibold text-text-primary leading-tight">
+                            Detalles del día
+                            <span className="block text-xs font-normal text-text-tertiary mt-0.5 capitalize">{format(selectedDate, "dd MMM yyyy", { locale: es })}</span>
+                        </h3>
+                        {selectedDayTotalFound !== undefined && (
+                            <span className="text-xs font-bold bg-accent-primary/10 text-accent-primary px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap">
+                                {selectedDayTotalFound} trx en total
                             </span>
                         )}
-                    </h3>
+                    </div>
 
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-2.5">
                         {selectedDayExecutions.length > 0 ? (
-                            selectedDayExecutions.map(exec => <ExecutionHistoryCard key={exec.id} exec={exec} dayCount={getDayCount(exec.externalExecutionId)} />)
+                            selectedDayExecutions.map((exec, idx) => <ExecutionHistoryCard key={exec.id} exec={exec} dayCount={getDayCount(exec.id)} defaultExpanded={idx === 0} />)
                         ) : (
                             <div className="p-6 text-center text-sm text-text-tertiary border border-border/30 rounded-2xl bg-bg-secondary/30">
                                 No hay registros de ejecución para esta fecha.
@@ -701,9 +749,8 @@ export function ScannerManager() {
 
             <Dialog open={isNewScanOpen} onOpenChange={setIsNewScanOpen}>
                 <DialogTrigger asChild>
-                    <button className="fixed bottom-6 right-6 sm:bottom-10 sm:right-10 bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90 h-14 rounded-full px-6 shadow-xl shadow-accent-primary/20 flex items-center gap-2 font-bold transition-all hover:scale-105 z-50">
+                    <button className="sm:hidden fixed bottom-6 right-6 bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary/90 h-14 rounded-full px-6 shadow-xl shadow-accent-primary/20 flex items-center gap-2 font-bold transition-all hover:scale-105 z-50">
                         <Plus className="w-5 h-5" />
-                        <span className="hidden sm:inline">Nuevo Escaneo</span>
                     </button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md bg-bg-secondary border-border/40 p-0 overflow-hidden rounded-[1.75rem]">
