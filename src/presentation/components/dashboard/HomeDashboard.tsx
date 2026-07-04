@@ -2,7 +2,22 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Wallet, ShoppingCart, Receipt, ArrowRight, Plus, Layers, Package, CalendarRange, ChevronDown, Filter } from "lucide-react";
+import {
+    Wallet,
+    ShoppingCart,
+    Receipt,
+    Plus,
+    Layers,
+    Package,
+    ArrowDownCircle,
+    ArrowUpCircle,
+    CalendarClock,
+    TrendingUp,
+    CreditCard,
+    CircleDollarSign,
+    ScanSearch,
+    ClipboardList,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -11,291 +26,472 @@ import { DateRangeFilter, HUB_PRESETS } from "@/presentation/components/charts/D
 import { RankBarChart } from "@/presentation/components/charts/RankBarChart";
 import { SpendTrendChart } from "@/presentation/components/charts/SpendTrendChart";
 import { UnifiedTrendChart } from "@/presentation/financial/components/UnifiedTrendChart";
-import { useHomeDashboard } from "./hooks/useHomeDashboard";
+import { useFinancialOverview, useMarketOverview } from "./hooks/useHomeDashboard";
+import { StatTile } from "./stat-tile";
+import { FrequentProductsCard } from "./frequent-products-card";
 import { DashboardLoading } from "./DashboardLoading";
+import { RobotLoader } from "@/components/ui/RobotLoader";
+import { MobileCarousel } from "./MobileCarousel";
 
-function ChartSkeleton() {
-    return <div className="h-[440px] rounded-2xl border border-border-base bg-bg-secondary animate-pulse" />;
+function ChartSkeleton({ className }: { className?: string }) {
+    return (
+        <div className={cn("h-[320px] sm:h-[280px] rounded-2xl border border-border-base bg-bg-secondary flex items-center justify-center", className)}>
+            <RobotLoader size={64} text="Cargando datos" />
+        </div>
+    );
 }
 
-interface ModuleSectionProps {
+function TilesSkeleton() {
+    return (
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {[0, 1, 2].map((i) => (
+                <div key={i} className="h-[76px] sm:h-[82px] rounded-2xl border border-border-base bg-bg-secondary animate-pulse" />
+            ))}
+        </div>
+    );
+}
+
+const currency = (n: number) =>
+    `$${n.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+interface ModuleColumnProps {
     icon: ReactNode;
     iconWrapClassName: string;
     title: string;
     subtitle: string;
-    actions: ReactNode;
+    filter: ReactNode;
     children: ReactNode;
 }
 
-function ModuleSection({ icon, iconWrapClassName, title, subtitle, actions, children }: ModuleSectionProps) {
+/** One dashboard column (Finanzas / Supermercado): header, own filter, then a vertical stack of blocks. */
+function ModuleColumn({ icon, iconWrapClassName, title, subtitle, filter, children }: ModuleColumnProps) {
     return (
-        <section className="space-y-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                    <span className={cn("flex h-11 w-11 items-center justify-center rounded-2xl text-white shadow-lg", iconWrapClassName)}>
-                        {icon}
-                    </span>
-                    <div>
-                        <h2 className="text-xl font-bold tracking-tight text-text-primary">{title}</h2>
-                        <p className="text-sm text-text-tertiary">{subtitle}</p>
-                    </div>
+        <section className="flex flex-col gap-4 sm:gap-5">
+            <div className="hidden xl:flex items-center gap-2.5">
+                <span className={cn("flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg", iconWrapClassName)}>
+                    {icon}
+                </span>
+                <div className="min-w-0 flex flex-col justify-center">
+                    <h2 className="text-base font-bold uppercase tracking-wide text-text-primary sm:text-lg leading-none">{title}</h2>
+                    <p className="hidden sm:block truncate text-xs text-text-tertiary mt-1">{subtitle}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">{actions}</div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">{children}</div>
+            <div className="py-1 sm:py-2">
+                {filter}
+            </div>
+            <div className="flex flex-col gap-4 sm:gap-6">{children}</div>
         </section>
+    );
+}
+
+function BlockTitle({ children, className }: { children: ReactNode; className?: string }) {
+    return (
+        <h3 className={cn("text-[11px] font-semibold uppercase tracking-widest text-text-tertiary", className)}>{children}</h3>
     );
 }
 
 export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
     const initialCustom = useMemo(() => defaultHubCustomRange(), []);
-    const [filterType, setFilterType] = useState<RangeFilterType>("custom");
-    const [customStart, setCustomStart] = useState(initialCustom.start);
-    const [customEnd, setCustomEnd] = useState(initialCustom.end);
-    const [filterOpen, setFilterOpen] = useState(false);
+
+    // Independent filters per column, matching the reference layout.
+    const [finFilterType, setFinFilterType] = useState<RangeFilterType>("custom");
+    const [finStart, setFinStart] = useState(initialCustom.start);
+    const [finEnd, setFinEnd] = useState(initialCustom.end);
+
+    const [mktFilterType, setMktFilterType] = useState<RangeFilterType>("all");
+    const [mktStart, setMktStart] = useState(initialCustom.start);
+    const [mktEnd, setMktEnd] = useState(initialCustom.end);
+
+    const [mobileTab, setMobileTab] = useState<"finanzas" | "supermercado">("finanzas");
+
     const [categoryLimit, setCategoryLimit] = useState(5);
     const [productLimit, setProductLimit] = useState(5);
 
-    const { startDate, endDate } = useMemo(
-        () => computeDateRange(filterType, customStart, customEnd),
-        [filterType, customStart, customEnd],
+    const finRange = useMemo(
+        () => computeDateRange(finFilterType, finStart, finEnd),
+        [finFilterType, finStart, finEnd],
+    );
+    const mktRange = useMemo(
+        () => computeDateRange(mktFilterType, mktStart, mktEnd),
+        [mktFilterType, mktStart, mktEnd],
     );
 
-    const { data, loading } = useHomeDashboard(startDate, endDate);
+    const { data: fin, loading: finLoading } = useFinancialOverview(finRange.startDate, finRange.endDate);
+    const { data: mkt, loading: mktLoading } = useMarketOverview(mktRange.startDate, mktRange.endDate);
 
     const financialCategoryData = useMemo(
         () =>
-            data.financialCategories
+            fin.categories
                 .filter((c) => c.categoryName && c.categoryName.toLowerCase() !== "sin categoría")
                 .slice(0, categoryLimit)
                 .map((c) => ({ name: c.categoryName, value: c.total, color: c.color, percentage: c.percentage })),
-        [data.financialCategories, categoryLimit],
+        [fin.categories, categoryLimit],
     );
 
-    const presetLabel = HUB_PRESETS.find((p) => p.id === filterType)?.label ?? "Todos";
+    // Market summary metrics derived from the fetched datasets.
+    const marketMetrics = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const d of mkt.daily) {
+            const month = d.date.substring(0, 7);
+            map.set(month, (map.get(month) || 0) + d.total);
+        }
+        const monthlyMkt = Array.from(map.entries()).map(([month, total]) => ({ month, total }));
+        monthlyMkt.sort((a, b) => a.month.localeCompare(b.month));
 
-    const marketTopProductData = useMemo(
-        () => data.marketTopProducts.slice(0, productLimit).map((p) => ({ name: p.name, value: p.value })),
-        [data.marketTopProducts, productLimit],
+        const currentMonthKey = new Date().toISOString().slice(0, 7);
+        const currentMonthEntry = monthlyMkt.find(h => h.month === currentMonthKey);
+        const currentMonthSpending = currentMonthEntry ? currentMonthEntry.total : 0;
+
+        const pastMonths = monthlyMkt.filter((h) => h.month !== currentMonthKey);
+        const validPastMonths = pastMonths.filter((h) => h.total > 0);
+        const totalPast = pastMonths.reduce((sum, h) => sum + h.total, 0);
+        const averageSpending = validPastMonths.length > 0 ? totalPast / validPastMonths.length : 0;
+
+        const totalSpend = monthlyMkt.reduce((sum, h) => sum + h.total, 0);
+        const validMonthsCount = monthlyMkt.filter((h) => h.total > 0).length;
+
+        const previousMonthEntry = pastMonths.length > 0 ? pastMonths[pastMonths.length - 1] : null;
+        const lastMonthVsAvg = averageSpending > 0 && previousMonthEntry
+            ? ((previousMonthEntry.total - averageSpending) / averageSpending) * 100
+            : 0;
+        const currentVsAvg = averageSpending > 0 ? ((currentMonthSpending - averageSpending) / averageSpending) * 100 : 0;
+
+        return {
+            averageSpending,
+            currentMonthSpending,
+            lastMonthVsAvg,
+            currentVsAvg,
+            totalSpend,
+            validMonthsCount,
+            validPastMonthsCount: validPastMonths.length
+        };
+    }, [mkt.daily]);
+
+    const frequentProducts = useMemo(
+        () => mkt.topProducts.slice(0, productLimit),
+        [mkt.topProducts, productLimit],
     );
 
-    // Stable denominator for product shares: the full fetched top-products set,
-    // so percentages don't shift when toggling between Top 5 and Top 10.
-    const marketProductsTotal = useMemo(
-        () => data.marketTopProducts.reduce((sum, p) => sum + p.value, 0),
-        [data.marketTopProducts],
-    );
-
+    const kpis = fin.kpis;
     const greeting = userFirstName ? `Hola, ${userFirstName}` : "Panel general";
 
-    // Initial load (no data yet) → friendly full-screen loader with quick actions.
-    // Subsequent refetches (e.g. changing the date filter) keep the previous data
-    // and show per-section skeletons instead, so the whole screen doesn't flash.
     const isInitialLoading =
-        loading &&
-        data.financialDaily.length === 0 &&
-        data.financialCategories.length === 0 &&
-        data.marketDaily.length === 0 &&
-        data.marketTopProducts.length === 0;
+        finLoading &&
+        mktLoading &&
+        !fin.kpis &&
+        fin.daily.length === 0 &&
+        fin.categories.length === 0 &&
+        mkt.daily.length === 0 &&
+        mkt.topProducts.length === 0;
 
-    if (isInitialLoading) {
-        return <DashboardLoading />;
-    }
 
     return (
-        <div className="space-y-8 pb-12">
-            {/* Hero + shared range filter */}
-            <header className="relative overflow-hidden rounded-3xl border border-border-base bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-tertiary/40 p-6 sm:p-8">
-                <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-accent-primary/10 blur-3xl" />
-                <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-accent-info/10 blur-3xl" />
-                <div className="relative flex flex-col gap-6">
-                    <div className="flex flex-col gap-1">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-accent-primary">KyberLife</p>
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-text-primary">{greeting}</h1>
-                        <p className="text-text-tertiary text-sm">Tu actividad financiera y de compras, en un vistazo.</p>
+        <div className="pb-8 sm:pb-12">
+            {/* Hero Wrapper */}
+            <div className="sticky top-[64px] z-20 bg-bg-primary pt-3 md:pt-4 lg:pt-5 -mt-3 md:-mt-4 lg:-mt-5 px-4 md:px-6 lg:px-8 -mx-4 md:-mx-6 lg:-mx-8 pb-3 sm:pb-4">
+                <header className="relative overflow-hidden rounded-3xl border border-border-base bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-tertiary/40 p-4 sm:p-5 shadow-sm">
+                    <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-emerald-500/10 blur-3xl" />
+                    <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-accent-violet/10 blur-3xl" />
+                    <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-col gap-1">
+                            <p className="text-xs font-semibold uppercase tracking-widest text-accent-primary">KyberLife</p>
+                            <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">{greeting}</h1>
+                            <p className="hidden sm:block text-sm text-text-tertiary">Tu actividad financiera y de compras, en un vistazo.</p>
+                        </div>
+
+                        {/* ACCIONES */}
+                        <div className="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center lg:justify-end w-full lg:w-auto">
+                            {/* FINANZAS */}
+                            <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-nowrap">
+                                    <Button asChild variant="ghost" className="h-auto p-0 hover:bg-transparent w-full sm:w-auto lg:w-[160px]">
+                                        <Link
+                                            href="/financial/transactions/new"
+                                            className="flex w-full items-center gap-2.5 lg:gap-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 px-3 py-2.5 lg:px-4 lg:py-3 text-white shadow-lg shadow-emerald-500/20 transition-opacity hover:opacity-90"
+                                        >
+                                            <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                                                <CircleDollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
+                                            </div>
+                                            <div className="flex flex-col items-start text-left">
+                                                <span className="text-[10px] lg:text-[11px] font-medium leading-tight text-white/90">Nueva</span>
+                                                <span className="text-xs lg:text-sm font-bold leading-tight">Transacción</span>
+                                            </div>
+                                        </Link>
+                                    </Button>
+                                    <Button asChild variant="ghost" className="h-auto p-0 hover:bg-transparent w-full sm:w-auto lg:w-[160px]">
+                                        <Link
+                                            href="/financial/scans"
+                                            className="flex w-full items-center gap-2.5 lg:gap-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 px-3 py-2.5 lg:px-4 lg:py-3 text-white shadow-lg shadow-emerald-500/20 transition-opacity hover:opacity-90"
+                                        >
+                                            <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                                                <ScanSearch className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
+                                            </div>
+                                            <div className="flex flex-col items-start text-left">
+                                                <span className="text-[10px] lg:text-[11px] font-medium leading-tight text-white/90">Ver</span>
+                                                <span className="text-xs lg:text-sm font-bold leading-tight">Escaneos</span>
+                                            </div>
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* SEPARADOR VERTICAL */}
+                            <div className="hidden h-10 w-[1px] bg-border-base sm:block" />
+
+                            {/* SUPERMERCADO */}
+                            <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-nowrap">
+                                    <Button asChild variant="ghost" className="h-auto p-0 hover:bg-transparent w-full sm:w-auto lg:w-[160px]">
+                                        <Link
+                                            href="/market/purchases/new"
+                                            className="flex w-full items-center gap-2.5 lg:gap-3 rounded-2xl bg-violet-500 px-3 py-2.5 lg:px-4 lg:py-3 text-white shadow-lg shadow-violet-500/20 transition-opacity hover:opacity-90"
+                                        >
+                                            <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                                                <ShoppingCart className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
+                                            </div>
+                                            <div className="flex flex-col items-start text-left">
+                                                <span className="text-[10px] lg:text-[11px] font-medium leading-tight text-white/90">Nueva</span>
+                                                <span className="text-xs lg:text-sm font-bold leading-tight">Compra</span>
+                                            </div>
+                                        </Link>
+                                    </Button>
+                                    <Button asChild variant="ghost" className="h-auto p-0 hover:bg-transparent w-full sm:w-auto lg:w-[160px]">
+                                        <Link
+                                            href="/market/purchases"
+                                            className="flex w-full items-center gap-2.5 lg:gap-3 rounded-2xl bg-violet-500 px-3 py-2.5 lg:px-4 lg:py-3 text-white shadow-lg shadow-violet-500/20 transition-opacity hover:opacity-90"
+                                        >
+                                            <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                                                <ClipboardList className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
+                                            </div>
+                                            <div className="flex flex-col items-start text-left">
+                                                <span className="text-[10px] lg:text-[11px] font-medium leading-tight text-white/90">Ver</span>
+                                                <span className="text-xs lg:text-sm font-bold leading-tight">Compras</span>
+                                            </div>
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    {/* Mobile: accordion filter card */}
-                    <div className="lg:hidden">
+                </header>
+            </div>
+
+            {isInitialLoading ? (
+                <DashboardLoading />
+            ) : (
+                <>
+                    {/* Mobile Tabs */}
+                    <div className="flex xl:hidden rounded-xl bg-bg-secondary p-1 mb-4 border border-border-base/50">
                         <button
-                            type="button"
-                            onClick={() => setFilterOpen((o) => !o)}
-                            aria-expanded={filterOpen}
+                            onClick={() => setMobileTab('finanzas')}
                             className={cn(
-                                "relative w-full flex items-center justify-between py-3 px-4 rounded-[1.25rem] border border-border/50 dark:border-white/10 bg-gradient-to-b from-black/[0.02] dark:from-white/[0.04] to-transparent shadow-lg shadow-black/5 dark:shadow-black/20 transition-all active:scale-[0.98]",
-                                filterOpen
-                                    ? "bg-black/[0.02] dark:bg-white/[0.02] border-border dark:border-white/15"
-                                    : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
+                                "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all",
+                                mobileTab === 'finanzas' ? "bg-bg-tertiary text-text-primary shadow-sm" : "text-text-tertiary hover:text-text-secondary"
                             )}
                         >
-                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/10 dark:via-white/20 to-transparent rounded-t-[1.25rem]" aria-hidden="true" />
-                            <div className="flex items-center gap-3 relative z-10 min-w-0">
-                                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-inner shrink-0">
-                                    <Filter className="w-4 h-4" />
-                                </div>
-                                <div className="flex flex-col justify-center gap-1.5 min-w-0 text-left">
-                                    <span className="text-lg font-bold tracking-tight leading-none text-foreground/90">
-                                        Filtros
-                                    </span>
-                                    <p className="text-[10px] text-muted-foreground font-medium leading-none uppercase tracking-wider truncate">
-                                        Período: {presetLabel}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-black/5 dark:bg-white/5 border border-border/50 dark:border-white/10 shadow-sm shrink-0">
-                                <ChevronDown className={cn("w-4 h-4 text-foreground/70 transition-transform duration-300", filterOpen && "rotate-180")} />
-                            </div>
+                            <Wallet className="h-4 w-4 text-emerald-500" />
+                            Finanzas
                         </button>
-                        {filterOpen && (
-                            <div className="mt-3 animate-in fade-in slide-in-from-top-2">
-                                <DateRangeFilter
-                                    value={filterType}
-                                    onChange={setFilterType}
-                                    customStart={customStart}
-                                    customEnd={customEnd}
-                                    onCustomStartChange={setCustomStart}
-                                    onCustomEndChange={setCustomEnd}
-                                    presets={HUB_PRESETS}
-                                />
-                            </div>
-                        )}
+                        <button
+                            onClick={() => setMobileTab('supermercado')}
+                            className={cn(
+                                "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all",
+                                mobileTab === 'supermercado' ? "bg-bg-tertiary text-text-primary shadow-sm" : "text-text-tertiary hover:text-text-secondary"
+                            )}
+                        >
+                            <ShoppingCart className="h-4 w-4 text-violet-500" />
+                            Supermercado
+                        </button>
                     </div>
 
-                    {/* Desktop: inline filter */}
-                    <div className="hidden lg:flex lg:items-center lg:gap-3">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-text-tertiary shrink-0">
-                            <CalendarRange className="h-4 w-4" />
-                            <span className="uppercase tracking-wide">Período</span>
+                    {/* Two-column hub */}
+                    <div className="grid grid-cols-1 gap-8 xl:grid-cols-2 pt-0 sm:pt-2">
+                        {/* ── FINANZAS ── */}
+                        <div className={cn(mobileTab === 'finanzas' ? 'block' : 'hidden', 'xl:block')}>
+                            <ModuleColumn
+                                icon={<Wallet className="h-5 w-5" />}
+                                iconWrapClassName="bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/20"
+                                title="Finanzas"
+                                subtitle="Ingresos, gastos y categorías de tu dinero."
+                                filter={
+                                    <DateRangeFilter
+                                        value={finFilterType}
+                                        onChange={setFinFilterType}
+                                        customStart={finStart}
+                                        customEnd={finEnd}
+                                        onCustomStartChange={setFinStart}
+                                        onCustomEndChange={setFinEnd}
+                                        presets={HUB_PRESETS}
+                                    />
+                                }
+                            >
+                                {/* Resumen financiero */}
+                                <div className="space-y-2">
+                                    <BlockTitle>Resumen financiero</BlockTitle>
+                                    {finLoading && !kpis ? (
+                                        <TilesSkeleton />
+                                    ) : (
+                                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                                            <StatTile
+                                                label="Balance"
+                                                value={currency(kpis?.netBalance ?? 0)}
+                                                icon={Wallet}
+                                                accentClassName={(kpis?.netBalance ?? 0) < 0 ? "text-accent-danger" : "text-emerald-500"}
+                                                negative={(kpis?.netBalance ?? 0) < 0}
+                                            />
+                                            <StatTile
+                                                label="Ingresos"
+                                                value={currency(kpis?.totalIncome ?? 0)}
+                                                icon={ArrowDownCircle}
+                                                accentClassName="text-accent-success"
+                                            />
+                                            <StatTile
+                                                label="Gastos"
+                                                value={currency(kpis?.totalExpenses ?? 0)}
+                                                icon={ArrowUpCircle}
+                                                accentClassName="text-accent-danger"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <MobileCarousel>
+                                    {/* Evolución financiera */}
+                                    <div className="space-y-2">
+                                        <BlockTitle className="hidden sm:block">Evolución financiera</BlockTitle>
+                                        {finLoading ? <ChartSkeleton /> : <UnifiedTrendChart data={fin.daily} iconLegend className="h-[320px] sm:h-[280px]" />}
+                                    </div>
+
+                                    {/* Top categorías de gasto */}
+                                    <div className="space-y-2">
+                                        <BlockTitle className="hidden sm:block">Top categorías de gasto</BlockTitle>
+                                        {finLoading ? (
+                                            <ChartSkeleton />
+                                        ) : (
+                                            <RankBarChart
+                                                title="Gasto por categoría"
+                                                description="Distribución de tus gastos"
+                                                icon={Layers}
+                                                iconClassName="text-emerald-500"
+                                                data={financialCategoryData}
+                                                emptyMessage="Sin datos"
+                                                showPercentage
+                                                className="h-[320px] sm:h-[280px]"
+                                                headerAction={
+                                                    <Select value={String(categoryLimit)} onValueChange={(v) => setCategoryLimit(Number(v))}>
+                                                        <SelectTrigger className="h-8 w-[92px] rounded-lg border-border/40 bg-muted/40 text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="5">Top 5</SelectItem>
+                                                            <SelectItem value="10">Top 10</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                }
+                                            />
+                                        )}
+                                    </div>
+                                </MobileCarousel>
+                            </ModuleColumn>
                         </div>
-                        <DateRangeFilter
-                            value={filterType}
-                            onChange={setFilterType}
-                            customStart={customStart}
-                            customEnd={customEnd}
-                            onCustomStartChange={setCustomStart}
-                            onCustomEndChange={setCustomEnd}
-                            presets={HUB_PRESETS}
-                        />
+
+                        {/* ── SUPERMERCADO ── */}
+                        <div className={cn(mobileTab === 'supermercado' ? 'block' : 'hidden', 'xl:block')}>
+                            <ModuleColumn
+                                icon={<ShoppingCart className="h-5 w-5" />}
+                                iconWrapClassName="bg-violet-500 shadow-violet-500/20"
+                                title="Supermercado"
+                                subtitle="Tu gasto en compras y los productos que más consumes."
+                                filter={
+                                    <DateRangeFilter
+                                        value={mktFilterType}
+                                        onChange={setMktFilterType}
+                                        customStart={mktStart}
+                                        customEnd={mktEnd}
+                                        onCustomStartChange={setMktStart}
+                                        onCustomEndChange={setMktEnd}
+                                        presets={HUB_PRESETS}
+                                    />
+                                }
+                            >
+                                {/* Resumen supermercado */}
+                                <div className="space-y-2">
+                                    <BlockTitle>Resumen supermercado</BlockTitle>
+                                    {mktLoading && mkt.daily.length === 0 ? (
+                                        <TilesSkeleton />
+                                    ) : (
+                                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                                            <StatTile
+                                                label={`Gasto Total (${marketMetrics.validMonthsCount} meses)`}
+                                                value={currency(marketMetrics.totalSpend)}
+                                                icon={Wallet}
+                                                accentClassName="text-accent-violet"
+                                            />
+                                            <StatTile
+                                                label={`Promedio (${marketMetrics.validPastMonthsCount} meses)`}
+                                                value={currency(marketMetrics.averageSpending)}
+                                                icon={TrendingUp}
+                                                accentClassName="text-accent-cyan"
+                                            />
+                                            <StatTile
+                                                label="Gasto Mes Actual"
+                                                value={currency(marketMetrics.currentMonthSpending)}
+                                                icon={CreditCard}
+                                                accentClassName="text-accent-primary"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <MobileCarousel>
+                                    {/* Distribución de gasto en compras */}
+                                    <div className="space-y-2">
+                                        <BlockTitle className="hidden sm:block">Distribución de gasto en compras</BlockTitle>
+                                        {mktLoading ? (
+                                            <ChartSkeleton />
+                                        ) : (
+                                            <SpendTrendChart
+                                                data={mkt.daily}
+                                                title="Gasto en compras"
+                                                description="Evolución de tu gasto en Supermercado"
+                                                icon={ShoppingCart}
+                                                iconClassName="text-accent-violet"
+                                                color="#8b5cf6"
+                                                variant="bar"
+                                                className="h-[320px] sm:h-[280px]"
+                                            />
+                                        )}
+                                    </div>
+
+                                    {/* Top productos frecuentes */}
+                                    <div className="space-y-2">
+                                        <BlockTitle className="hidden sm:block">Top productos frecuentes</BlockTitle>
+                                        {mktLoading ? (
+                                            <ChartSkeleton />
+                                        ) : (
+                                            <FrequentProductsCard
+                                                products={frequentProducts}
+                                                className="h-[320px] sm:h-[280px]"
+                                                headerAction={
+                                                    <Select value={String(productLimit)} onValueChange={(v) => setProductLimit(Number(v))}>
+                                                        <SelectTrigger className="h-8 w-[92px] rounded-lg border-border/40 bg-muted/40 text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="5">Top 5</SelectItem>
+                                                            <SelectItem value="10">Top 10</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                }
+                                            />
+                                        )}
+                                    </div>
+                                </MobileCarousel>
+                            </ModuleColumn>
+                        </div>
                     </div>
-                </div>
-            </header>
-
-            {/* ── Financiero ── */}
-            <ModuleSection
-                icon={<Wallet className="h-5 w-5" />}
-                iconWrapClassName="bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/20"
-                title="Finanzas"
-                subtitle="Ingresos, gastos y categorías de tu dinero."
-                actions={
-                    <>
-                        <Button asChild size="sm" className="rounded-full bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/20">
-                            <Link href="/financial/transactions">
-                                <Receipt className="mr-2 h-4 w-4" />
-                                Transacciones
-                            </Link>
-                        </Button>
-                        <Button asChild variant="outline" size="sm" className="rounded-full">
-                            <Link href="/financial">
-                                Ver panel
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
-                    </>
-                }
-            >
-                {loading ? (
-                    <>
-                        <ChartSkeleton />
-                        <ChartSkeleton />
-                    </>
-                ) : (
-                    <>
-                        <UnifiedTrendChart data={data.financialDaily} iconLegend />
-                        <RankBarChart
-                            title="Gasto por categoría"
-                            description="Distribución de tus gastos"
-                            icon={Layers}
-                            iconClassName="text-emerald-500"
-                            data={financialCategoryData}
-                            emptyMessage="Sin gastos por categoría en el período"
-                            showPercentage
-                            headerAction={
-                                <Select value={String(categoryLimit)} onValueChange={(v) => setCategoryLimit(Number(v))}>
-                                    <SelectTrigger className="w-[92px] h-8 text-xs bg-muted/40 border-border/40 rounded-lg">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="5">Top 5</SelectItem>
-                                        <SelectItem value="10">Top 10</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            }
-                        />
-                    </>
-                )}
-            </ModuleSection>
-
-            {/* ── Market ── */}
-            <ModuleSection
-                icon={<ShoppingCart className="h-5 w-5" />}
-                iconWrapClassName="bg-gradient-to-br from-accent-violet to-accent-cyan shadow-accent-violet/20"
-                title="Market"
-                subtitle="Tu gasto en compras y los productos que más consumes."
-                actions={
-                    <>
-                        <Button asChild size="sm" className="rounded-full bg-accent-primary hover:bg-accent-primary/90 text-white shadow-lg shadow-accent-primary/20">
-                            <Link href="/market/purchases/new">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Nueva compra
-                            </Link>
-                        </Button>
-                        <Button asChild variant="outline" size="sm" className="rounded-full">
-                            <Link href="/market/analytics">
-                                Ver panel
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
-                    </>
-                }
-            >
-                {loading ? (
-                    <>
-                        <ChartSkeleton />
-                        <ChartSkeleton />
-                    </>
-                ) : (
-                    <>
-                        <SpendTrendChart
-                            data={data.marketDaily}
-                            title="Gasto en compras"
-                            description="Evolución de tu gasto en Market"
-                            icon={ShoppingCart}
-                            iconClassName="text-accent-violet"
-                            color="#8b5cf6"
-                        />
-                        <RankBarChart
-                            title="Productos top"
-                            description="Mayor gasto por producto"
-                            icon={Package}
-                            iconClassName="text-accent-violet"
-                            data={marketTopProductData}
-                            emptyMessage="Sin compras en el período"
-                            showPercentage
-                            total={marketProductsTotal}
-                            headerAction={
-                                <Select value={String(productLimit)} onValueChange={(v) => setProductLimit(Number(v))}>
-                                    <SelectTrigger className="w-[92px] h-8 text-xs bg-muted/40 border-border/40 rounded-lg">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="5">Top 5</SelectItem>
-                                        <SelectItem value="10">Top 10</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            }
-                        />
-                    </>
-                )}
-            </ModuleSection>
+                </>
+            )}
         </div>
     );
 }

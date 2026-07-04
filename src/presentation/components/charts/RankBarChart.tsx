@@ -5,6 +5,8 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LucideIcon } from "lucide-react";
 import { formatChartCurrency } from "@/lib/date-bucketing";
+import { cn } from "@/lib/utils";
+import { RobotLoader } from "@/components/ui/RobotLoader";
 
 export interface RankBarDatum {
     name: string;
@@ -28,6 +30,7 @@ interface RankBarChartProps {
     showPercentage?: boolean;
     /** Denominator for computed percentages (defaults to the sum of `data`). */
     total?: number;
+    className?: string;
 }
 
 interface ChartDatum extends RankBarDatum {
@@ -87,11 +90,12 @@ export function RankBarChart({
     description,
     icon: Icon,
     iconClassName = "text-accent-primary",
-    emptyMessage = "Sin datos para el período seleccionado",
+    emptyMessage = "Sin datos",
     valueFormatter = formatChartCurrency,
     headerAction,
     showPercentage = false,
     total,
+    className,
 }: RankBarChartProps) {
     const denom = total ?? data.reduce((sum, d) => sum + d.value, 0);
     const chartData: ChartDatum[] = data.map((d) => {
@@ -104,7 +108,7 @@ export function RankBarChart({
     const calculatedHeight = Math.max(MIN_HEIGHT, data.length * ITEM_HEIGHT);
 
     return (
-        <Card className="flex flex-col h-full border-border/40 shadow-sm overflow-hidden">
+        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] border-border/40 shadow-sm overflow-hidden", className)}>
             <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -115,28 +119,30 @@ export function RankBarChart({
                         )}
                         <div>
                             <CardTitle className="text-lg">{title}</CardTitle>
-                            {description && <CardDescription>{description}</CardDescription>}
                         </div>
                     </div>
                     {headerAction && <div className="shrink-0">{headerAction}</div>}
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 p-2 sm:p-4">
+            <CardContent className="flex-1 p-2 sm:p-4 flex flex-col">
                 {data.length === 0 ? (
-                    <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
-                        {emptyMessage}
+                    <div className="flex-1 min-h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                        <RobotLoader text={emptyMessage} showDots={false} size={64} />
                     </div>
                 ) : (
                     <div className="w-full h-full min-h-[300px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-thumb]:rounded-full">
                         <div style={{ height: calculatedHeight, width: "100%" }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: showPercentage ? 54 : 28, left: 8, bottom: 4 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" horizontal={true} vertical={false} />
+                                <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: showPercentage ? 54 : 28, left: 8, bottom: 40 }}>
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" horizontal={true} vertical={true} />
                                     <XAxis
                                         type="number"
+                                        hide={false}
+                                        height={40}
+                                        domain={[0, 'dataMax']}
                                         tickFormatter={valueFormatter}
-                                        tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
-                                        axisLine={{ stroke: "var(--color-border-base)" }}
+                                        tick={{ fontSize: 11, fill: "var(--color-muted-foreground)", dy: 10 }}
+                                        axisLine={{ stroke: "var(--color-border-base)", strokeWidth: 1 }}
                                         tickLine={{ stroke: "var(--color-border-base)" }}
                                     />
                                     <YAxis

@@ -225,6 +225,7 @@ export function PriceHistoryCard({ initialProducts }: PriceHistoryCardProps) {
                             }}
                         />
                         <YAxis
+                            domain={[0, 'auto']}
                             axisLine={false}
                             tickLine={false}
                             tick={{ fill: 'var(--text-tertiary)', fontSize: 10 }}

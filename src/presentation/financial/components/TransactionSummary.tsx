@@ -12,6 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { MobileCarousel } from "@/presentation/components/dashboard/MobileCarousel";
 
 // ─── Type visual metadata ────────────────────────────────────
 
@@ -55,6 +56,7 @@ type ViewMode = 'day' | 'week' | 'month';
 export function TransactionSummary({ transactions }: TransactionSummaryProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('day');
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isDesktopExpanded, setIsDesktopExpanded] = useState(false);
     
     // Default null avoids hydration mismatch; we determine it on mount
     const [userChartPreference, setUserChartPreference] = useState<"donut" | "bar" | null>(null);
@@ -67,7 +69,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const activeChartType = userChartPreference || (isMobile ? "bar" : "donut");
+    const activeChartType = userChartPreference || "bar";
 
     const {
         balance,
@@ -208,9 +210,27 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         );
     };
 
+    // Shared per-type summary badges used in both mobile and desktop triggers
+    const summaryBadges = pieData.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {pieData.map((item) => {
+                const Icon = item.icon;
+                return (
+                    <div key={item.name} className="flex items-center gap-1.5 min-w-0 shrink-0">
+                        <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: item.fill }} />
+                        <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">{item.name}</span>
+                        <span className="text-[11px] font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
+                            {formatCurrency(item.value, primaryCurrency)}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    ) : null;
+
     return (
         <div className="flex flex-col gap-3">
-            {/* Mobile Accordion Toggle */}
+            {/* ═══════════════ MOBILE ACCORDION TOGGLE ═══════════════ */}
             <div
                 className={cn(
                     "sm:hidden relative flex items-center justify-between py-3 px-4 rounded-[1.25rem] border border-border/50 dark:border-white/10 bg-gradient-to-b from-black/[0.02] dark:from-white/[0.04] to-transparent shadow-lg shadow-black/5 dark:shadow-black/20 cursor-pointer transition-all active:scale-[0.98]",
@@ -243,15 +263,49 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 </div>
             </div>
 
-            {/* Content (Hidden on mobile by default) */}
-            <div className={cn(
-                "relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 sm:p-6 flex-col transition-all duration-300",
-                isExpanded ? "flex animate-in fade-in slide-in-from-top-4" : "hidden sm:flex"
-            )}>
+            {/* ═══════════════ DESKTOP ACCORDION TRIGGER ═══════════════ */}
+            <div
+                className={cn(
+                    "hidden sm:flex relative items-center justify-between py-3.5 px-5 rounded-2xl border cursor-pointer transition-all group",
+                    isDesktopExpanded
+                        ? "border-white/15 bg-background/60 shadow-md"
+                        : "border-border/50 dark:border-white/10 bg-gradient-to-b from-black/[0.02] dark:from-white/[0.04] to-transparent shadow-lg shadow-black/5 dark:shadow-black/20 hover:border-white/15 hover:bg-background/40"
+                )}
+                onClick={() => setIsDesktopExpanded(!isDesktopExpanded)}
+                role="button"
+                aria-expanded={isDesktopExpanded}
+            >
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/10 dark:via-white/20 to-transparent rounded-t-2xl" aria-hidden="true" />
+                <div className="flex flex-col gap-2 relative z-10">
+                    <div className="flex items-center gap-2.5">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-accent-primary/20 to-accent-primary/5 border border-accent-primary/20 text-accent-primary">
+                            <BarChart2 className="w-4 h-4" />
+                        </div>
+                        <span className="text-base font-bold tracking-tight text-foreground/90">Resumen Visual</span>
+                        <span className="text-xs text-muted-foreground font-medium">·</span>
+                        <span className="text-sm font-medium text-muted-foreground">Balance</span>
+                        <span className={cn(
+                            "text-base font-bold tracking-tight",
+                            balance > 0 ? "text-emerald-500" : balance < 0 ? "text-rose-500" : "text-foreground/70"
+                        )}>
+                            {balanceStr}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-medium">({transactions.length} transacciones)</span>
+                    </div>
+                    <div className="pl-[2.625rem]">{summaryBadges}</div>
+                </div>
+                <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-black/5 dark:bg-white/5 border border-border/50 dark:border-white/10 shadow-sm transition-colors group-hover:bg-black/10 dark:group-hover:bg-white/10">
+                    <ChevronDown className={cn("w-4 h-4 text-foreground/70 transition-transform duration-300", isDesktopExpanded && "rotate-180")} />
+                </div>
+            </div>
 
-                {/* Charts row (donut + breakdown) — kept in its own wrapper so the
-                    totals strip below never alters the chart dimensions. */}
-                <div className="flex w-full flex-col lg:flex-row gap-6 lg:gap-8 lg:items-center order-2 sm:order-1">
+            {/* ═══════════════ MOBILE CONTENT (unchanged behavior) ═══════════════ */}
+            <div className={cn(
+                "sm:hidden relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 flex-col transition-all duration-300",
+                isExpanded ? "flex animate-in fade-in slide-in-from-top-4" : "hidden"
+            )}>
+                {/* Charts row */}
+                <MobileCarousel className="order-2 w-full">
 
                     {/* ── LEFT SIDE: BALANCE NETO (DONUT CHART OR BAR CHART) ── */}
                     <div className="relative z-10 flex flex-col items-center justify-center lg:w-auto lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8 w-full sm:w-auto">
@@ -485,22 +539,17 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                             </ResponsiveContainer>
                         </div>
                     </div>
-                </div>
+                </MobileCarousel>
 
-                {/* ── Per-type totals ── computed from the same (filtered) transactions
-                    that feed the charts, placed below so the charts never resize. */}
+                {/* ── Mobile per-type totals ── */}
                 {pieData.length > 0 && (
-                    <div className="relative z-10 mb-5 sm:mb-0 sm:mt-6 pb-4 sm:pb-0 sm:pt-5 border-b sm:border-b-0 sm:border-t border-white/5 flex flex-wrap items-center justify-center gap-x-2.5 sm:gap-x-6 gap-y-2.5 order-1 sm:order-2 w-full">
+                    <div className="relative z-10 mb-5 pb-4 border-b border-white/5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2.5 order-1 w-full">
                         {pieData.map((item) => {
                             const Icon = item.icon;
                             return (
-                                <div key={item.name} className="flex items-center gap-1 sm:gap-2 min-w-0 shrink-0">
-                                    {/* Icon for mobile, dot for desktop */}
-                                    <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:hidden shrink-0" style={{ color: item.fill }} />
-                                    <span className="hidden sm:inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
-                                    
-                                    <span className="hidden sm:inline text-[11px] font-medium text-muted-foreground whitespace-nowrap">{item.name}</span>
-                                    <span className="text-[11px] sm:text-sm font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
+                                <div key={item.name} className="flex items-center gap-1 min-w-0 shrink-0">
+                                    <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: item.fill }} />
+                                    <span className="text-[11px] font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
                                         {formatCurrency(item.value, primaryCurrency)}
                                     </span>
                                 </div>
@@ -510,6 +559,252 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 )}
 
             </div>
+
+            {/* ═══════════════ DESKTOP COLLAPSIBLE CONTENT ═══════════════ */}
+            <div className={cn(
+                "hidden sm:block relative overflow-hidden transition-all duration-300",
+                isDesktopExpanded
+                    ? "max-h-[600px] opacity-100 animate-in fade-in slide-in-from-top-2"
+                    : "max-h-0 opacity-0 pointer-events-none"
+            )}>
+                <div className="rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-6">
+                    <div className="flex w-full flex-row gap-6 items-stretch">
+
+                        {/* ── LEFT: BALANCE NETO (DONUT OR BAR CHART) ── */}
+                        <div className="relative z-10 flex flex-col items-center justify-center w-1/2 border-r border-white/5 pr-6">
+                            {/* Chart type toggle */}
+                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full mb-4 self-end">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setUserChartPreference('donut'); }}
+                                    className={cn(
+                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                        activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
+                                    )}
+                                    aria-label="Ver gráfico de dona"
+                                >
+                                    <PieChartIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setUserChartPreference('bar'); }}
+                                    className={cn(
+                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                        activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
+                                    )}
+                                    aria-label="Ver gráfico de barras"
+                                >
+                                    <BarChartIcon className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            <div className={cn("relative flex-shrink-0 mx-auto", activeChartType === 'donut' ? "w-52 h-52" : "w-full h-52")}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    {activeChartType === 'donut' ? (
+                                        <PieChart>
+                                            <Pie
+                                                data={pieData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={dynamicInnerRadius}
+                                                outerRadius="100%"
+                                                paddingAngle={2}
+                                                dataKey="value"
+                                                stroke="none"
+                                                labelLine={false}
+                                                label={renderCustomizedLabel}
+                                                animationDuration={400}
+                                                animationBegin={0}
+                                                animationEasing="ease-out"
+                                            >
+                                                {pieData.map((entry, index) => (
+                                                    <Cell key={`dcell-${index}`} fill={entry.fill} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                content={({ active, payload }) => {
+                                                    if (active && payload && payload.length) {
+                                                        return (
+                                                            <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-2 text-xs flex items-center gap-2 z-50">
+                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].payload.fill }} />
+                                                                <span className="text-muted-foreground">{payload[0].name}:</span>
+                                                                <span className="font-semibold text-foreground">
+                                                                    {formatCurrency(payload[0].value as number, primaryCurrency)}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                        </PieChart>
+                                    ) : (
+                                        <BarChart data={pieData} margin={{ top: 20, right: 10, left: 10, bottom: 20 }}>
+                                            <XAxis dataKey="name" tick={renderCustomXAxisTick} axisLine={false} tickLine={false} />
+                                            <YAxis type="number" hide domain={[0, 'dataMax + 10']} />
+                                            <Tooltip
+                                                cursor={{ fill: 'transparent' }}
+                                                content={({ active, payload }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-2 text-xs flex flex-col gap-1 z-50">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.fill }} />
+                                                                    <span className="text-muted-foreground">{data.name}:</span>
+                                                                </div>
+                                                                <span className="font-semibold text-foreground">
+                                                                    {formatCurrency(data.value as number, primaryCurrency)} ({data.percentage.toFixed(1)}%)
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                            <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                                {pieData.map((entry, index) => (
+                                                    <Cell key={`dcell-bar-${index}`} fill={entry.fill} />
+                                                ))}
+                                                <LabelList dataKey="percentage" position="top" formatter={(val: any) => `${Number(val || 0).toFixed(0)}%`} className="text-[10px] font-bold fill-foreground" />
+                                            </Bar>
+                                        </BarChart>
+                                    )}
+                                </ResponsiveContainer>
+
+                                {/* Centered text only for donut */}
+                                {activeChartType === 'donut' && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1 px-2">
+                                        <span className={cn(
+                                            "text-lg font-bold tracking-tighter drop-shadow-sm leading-none mb-1 whitespace-nowrap",
+                                            balance > 0 ? "bg-gradient-to-br from-emerald-400 to-emerald-600 bg-clip-text text-transparent" : (balance < 0 ? "bg-gradient-to-br from-red-400 to-red-600 bg-clip-text text-transparent" : "text-muted-foreground")
+                                        )}>
+                                            {balanceStr}
+                                        </span>
+                                        <span className="text-[10px] font-medium text-muted-foreground/80">
+                                            {transactions.length} trx
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* ── RIGHT: BREAKDOWN CHART ── */}
+                        <div className="relative z-10 flex flex-col w-1/2 justify-between">
+                            <div className="flex justify-end items-center mb-2 gap-2">
+                                <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+                                    <SelectTrigger className="h-7 w-[110px] text-xs bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
+                                        <SelectValue placeholder="Vista" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-background/95 backdrop-blur-xl border-white/10">
+                                        <SelectItem value="day" className="text-xs">Por día</SelectItem>
+                                        <SelectItem value="week" className="text-xs">Por semana</SelectItem>
+                                        <SelectItem value="month" className="text-xs">Por mes</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="w-full -ml-4 flex-1 min-h-0">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="dColorIncome" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="dColorExpense" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="dColorOther" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="dColorWithdrawal" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#0284c7" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#0284c7" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                        <YAxis
+                                            tickFormatter={(value) => {
+                                                if (value >= 1000000) return `$${(value / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+                                                if (value >= 1000) return `$${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+                                                return `$${value}`;
+                                            }}
+                                            width={40}
+                                            tick={{ fontSize: 10, fill: '#878787' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            domain={[0, 'auto']}
+                                        />
+                                        <XAxis
+                                            dataKey="date"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: '#878787', fontSize: 10 }}
+                                            dy={10}
+                                            minTickGap={20}
+                                        />
+                                        <Tooltip
+                                            content={({ active, payload, label }) => {
+                                                if (active && payload && payload.length) {
+                                                    return (
+                                                        <div className="bg-bg-primary border border-border/50 rounded-lg shadow-lg p-3 text-xs flex flex-col gap-1 z-50">
+                                                            <span className="font-medium text-foreground mb-1">{label}</span>
+                                                            {totalIncome > 0 && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                                    <span className="text-muted-foreground">Ingresos:</span>
+                                                                    <span className="font-semibold text-foreground">
+                                                                        {formatCurrency((payload.find(p => p.dataKey === 'income')?.value as number) || 0, primaryCurrency)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {totalExpense > 0 && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 rounded-full bg-rose-500" />
+                                                                    <span className="text-muted-foreground">Gastos:</span>
+                                                                    <span className="font-semibold text-foreground">
+                                                                        {formatCurrency((payload.find(p => p.dataKey === 'expense')?.value as number) || 0, primaryCurrency)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {totalWithdrawal > 0 && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#0284c7" }} />
+                                                                    <span className="text-muted-foreground">Retiros:</span>
+                                                                    <span className="font-semibold text-foreground">
+                                                                        {formatCurrency((payload.find(p => p.dataKey === 'withdrawal')?.value as number) || 0, primaryCurrency)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {totalOther > 0 && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                                    <span className="text-muted-foreground">Transferencias:</span>
+                                                                    <span className="font-semibold text-foreground">
+                                                                        {formatCurrency((payload.find(p => p.dataKey === 'other')?.value as number) || 0, primaryCurrency)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        {totalIncome > 0 && <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#dColorIncome)" />}
+                                        {totalExpense > 0 && <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#dColorExpense)" />}
+                                        {totalWithdrawal > 0 && <Area type="monotone" dataKey="withdrawal" stroke="#0284c7" strokeWidth={2} fillOpacity={1} fill="url(#dColorWithdrawal)" />}
+                                        {totalOther > 0 && <Area type="monotone" dataKey="other" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#dColorOther)" />}
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
         </div>
     );
 }

@@ -5,12 +5,14 @@ interface RobotLoaderProps {
   className?: string;
   size?: number;
   text?: string;
+  showDots?: boolean;
 }
 
 export function RobotLoader({
   className = '',
   size = 96,
-  text = 'Cargando'
+  text = 'Cargando',
+  showDots = true
 }: RobotLoaderProps) {
   return (
     <div className={`flex flex-col items-center justify-center space-y-6 p-4 ${className}`}>
@@ -49,14 +51,16 @@ export function RobotLoader({
       {/* Texto de carga */}
       {text && (
         <div className="flex flex-col items-center space-y-2">
-          <p className="text-sm font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+          <p className="text-sm font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase text-center max-w-[200px] leading-relaxed">
             {text}
           </p>
-          <span className="flex space-x-1.5">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-          </span>
+          {showDots && (
+            <span className="flex space-x-1.5 mt-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </span>
+          )}
         </div>
       )}
     </div>
