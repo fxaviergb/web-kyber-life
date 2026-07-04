@@ -244,7 +244,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                     <Button asChild variant="ghost" className="h-auto p-0 hover:bg-transparent w-full sm:w-auto lg:w-[160px]">
                                         <Link
                                             href="/market/purchases/new"
-                                            className="flex w-full items-center gap-2.5 lg:gap-3 rounded-2xl bg-violet-500 px-3 py-2.5 lg:px-4 lg:py-3 text-white shadow-lg shadow-violet-500/20 transition-opacity hover:opacity-90"
+                                            className="flex w-full items-center gap-2.5 lg:gap-3 rounded-2xl bg-indigo-500 px-3 py-2.5 lg:px-4 lg:py-3 text-white shadow-lg shadow-indigo-500/20 transition-opacity hover:opacity-90"
                                         >
                                             <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
                                                 <ShoppingCart className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
@@ -258,7 +258,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                     <Button asChild variant="ghost" className="h-auto p-0 hover:bg-transparent w-full sm:w-auto lg:w-[160px]">
                                         <Link
                                             href="/market/purchases"
-                                            className="flex w-full items-center gap-2.5 lg:gap-3 rounded-2xl bg-violet-500 px-3 py-2.5 lg:px-4 lg:py-3 text-white shadow-lg shadow-violet-500/20 transition-opacity hover:opacity-90"
+                                            className="flex w-full items-center gap-2.5 lg:gap-3 rounded-2xl bg-indigo-500 px-3 py-2.5 lg:px-4 lg:py-3 text-white shadow-lg shadow-indigo-500/20 transition-opacity hover:opacity-90"
                                         >
                                             <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
                                                 <ClipboardList className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
@@ -299,7 +299,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                 mobileTab === 'supermercado' ? "bg-bg-tertiary text-text-primary shadow-sm" : "text-text-tertiary hover:text-text-secondary"
                             )}
                         >
-                            <ShoppingCart className="h-4 w-4 text-violet-500" />
+                            <ShoppingCart className="h-4 w-4 text-indigo-500" />
                             Supermercado
                         </button>
                     </div>
@@ -399,7 +399,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                         <div className={cn(mobileTab === 'supermercado' ? 'block' : 'hidden', 'xl:block')}>
                             <ModuleColumn
                                 icon={<ShoppingCart className="h-5 w-5" />}
-                                iconWrapClassName="bg-violet-500 shadow-violet-500/20"
+                                iconWrapClassName="bg-indigo-500 shadow-indigo-500/20"
                                 title="Supermercado"
                                 subtitle="Tu gasto en compras y los productos que más consumes."
                                 filter={
@@ -425,7 +425,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                                 label={`Gasto Total (${marketMetrics.validMonthsCount} meses)`}
                                                 value={currency(marketMetrics.totalSpend)}
                                                 icon={Wallet}
-                                                accentClassName="text-accent-violet"
+                                                accentClassName="text-indigo-500"
                                             />
                                             <StatTile
                                                 label={`Promedio (${marketMetrics.validPastMonthsCount} meses)`}
@@ -455,8 +455,8 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                                 title="Gasto en compras"
                                                 description="Evolución de tu gasto en Supermercado"
                                                 icon={ShoppingCart}
-                                                iconClassName="text-accent-violet"
-                                                color="#8b5cf6"
+                                                iconClassName="text-indigo-500"
+                                                color="#6366f1"
                                                 variant="bar"
                                                 className="h-[320px] sm:h-[280px]"
                                             />
