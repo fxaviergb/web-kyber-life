@@ -17,6 +17,7 @@ import {
     CircleDollarSign,
     ScanSearch,
     ClipboardList,
+    ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,7 +40,7 @@ import { MobileCarousel } from "./MobileCarousel";
  * same size on every screen. Tall enough that trend/bar charts aren't cramped;
  * the mobile carousel shows one chart at a time so the height applies there too.
  */
-const CHART_HEIGHT = "h-[380px] sm:h-[390px] lg:h-[400px]";
+const CHART_HEIGHT = "h-[460px] sm:h-[390px] lg:h-[400px]";
 
 function ChartSkeleton({ className }: { className?: string }) {
     return (
@@ -111,6 +112,8 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
     const [mktEnd, setMktEnd] = useState(initialCustom.end);
 
     const [mobileTab, setMobileTab] = useState<"finanzas" | "supermercado">("finanzas");
+    // Mobile-only: quick actions collapsed by default (accordion).
+    const [actionsOpen, setActionsOpen] = useState(false);
 
     const [categoryLimit, setCategoryLimit] = useState(5);
     const [productLimit, setProductLimit] = useState(5);
@@ -201,14 +204,29 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                     <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-emerald-500/10 blur-3xl" />
                     <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-accent-violet/10 blur-3xl" />
                     <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex flex-col gap-1">
-                            <p className="text-xs font-semibold uppercase tracking-widest text-accent-primary">KyberLife</p>
-                            <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">{greeting}</h1>
-                            <p className="hidden sm:block text-sm text-text-tertiary">Tu actividad financiera y de compras, en un vistazo.</p>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col gap-1">
+                                <p className="text-xs font-semibold uppercase tracking-widest text-accent-primary">KyberLife</p>
+                                <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">{greeting}</h1>
+                                <p className="hidden sm:block text-sm text-text-tertiary">Tu actividad financiera y de compras, en un vistazo.</p>
+                            </div>
+                            {/* Mobile-only accordion toggle for quick actions */}
+                            <button
+                                type="button"
+                                onClick={() => setActionsOpen((o) => !o)}
+                                aria-expanded={actionsOpen}
+                                aria-label={actionsOpen ? "Ocultar acciones" : "Mostrar acciones"}
+                                className="sm:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-primary to-accent-primary-hover text-white shadow-lg shadow-accent-primary/25 transition-transform active:scale-95"
+                            >
+                                <ChevronDown className={cn("h-5 w-5 transition-transform duration-300", actionsOpen && "rotate-180")} />
+                            </button>
                         </div>
 
                         {/* ACCIONES */}
-                        <div className="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center lg:justify-end w-full lg:w-auto">
+                        <div className={cn(
+                            "flex-col gap-2 sm:gap-4 sm:flex sm:flex-row sm:items-center lg:justify-end w-full lg:w-auto",
+                            actionsOpen ? "flex animate-in fade-in slide-in-from-top-2" : "hidden sm:flex",
+                        )}>
                             {/* FINANZAS */}
                             <div className="flex flex-col gap-2 w-full sm:w-auto">
                                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-nowrap">

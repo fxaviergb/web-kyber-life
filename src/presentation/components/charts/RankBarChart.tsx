@@ -52,6 +52,49 @@ const COLORS = [
     "#14b8a6", // teal-500
 ];
 
+/** Split a category label into up to `maxLines` lines of ~`maxChars`, truncating the last if needed. */
+function wrapLabel(text: string, maxChars = 13, maxLines = 2): string[] {
+    const words = text.trim().split(/\s+/);
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length > maxChars && current && lines.length < maxLines - 1) {
+            lines.push(current);
+            current = word;
+        } else {
+            current = candidate;
+        }
+    }
+    if (current) lines.push(current);
+    const lastIdx = lines.length - 1;
+    if (lines[lastIdx] && lines[lastIdx].length > maxChars + 3) {
+        lines[lastIdx] = lines[lastIdx].slice(0, maxChars + 1) + "…";
+    }
+    return lines;
+}
+
+interface CategoryTickProps {
+    x?: number;
+    y?: number;
+    payload?: { value: string };
+}
+
+/** YAxis tick that wraps long category names onto up to two lines, vertically centered. */
+function CategoryTick({ x = 0, y = 0, payload }: CategoryTickProps) {
+    const lines = wrapLabel(payload?.value ?? "");
+    const firstDy = lines.length === 1 ? 0.32 : 0.32 - (lines.length - 1) * 0.6;
+    return (
+        <text x={x} y={y} textAnchor="end" fill="var(--color-text-primary)" fontSize={12} fontWeight={500}>
+            {lines.map((line, i) => (
+                <tspan key={i} x={x} dy={`${i === 0 ? firstDy : 1.15}em`}>
+                    {line}
+                </tspan>
+            ))}
+        </text>
+    );
+}
+
 function RankBarTooltip({
     active,
     payload,
@@ -103,10 +146,6 @@ export function RankBarChart({
         return { ...d, pct, pctLabel: `${pct.toFixed(1)}%` };
     });
 
-    const MIN_HEIGHT = 280;
-    const ITEM_HEIGHT = 46;
-    const calculatedHeight = Math.max(MIN_HEIGHT, data.length * ITEM_HEIGHT);
-
     return (
         <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] border-border/40 shadow-sm overflow-hidden", className)}>
             <CardHeader className="pb-2">
@@ -124,56 +163,55 @@ export function RankBarChart({
                     {headerAction && <div className="shrink-0">{headerAction}</div>}
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 p-2 sm:p-4 flex flex-col">
+            <CardContent className="flex-1 p-2 sm:p-4 flex flex-col min-h-0">
                 {data.length === 0 ? (
-                    <div className="flex-1 min-h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
                         <RobotLoader text={emptyMessage} showDots={false} size={64} />
                     </div>
                 ) : (
-                    <div className="w-full h-full min-h-[300px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-thumb]:rounded-full">
-                        <div style={{ height: calculatedHeight, width: "100%" }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: showPercentage ? 54 : 28, left: 8, bottom: 40 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" horizontal={true} vertical={true} />
-                                    <XAxis
-                                        type="number"
-                                        hide={false}
-                                        height={40}
-                                        domain={[0, 'dataMax']}
-                                        tickFormatter={valueFormatter}
-                                        tick={{ fontSize: 11, fill: "var(--color-muted-foreground)", dy: 10 }}
-                                        axisLine={{ stroke: "var(--color-border-base)", strokeWidth: 1 }}
-                                        tickLine={{ stroke: "var(--color-border-base)" }}
-                                    />
-                                    <YAxis
-                                        dataKey="name"
-                                        type="category"
-                                        tick={{ fontSize: 12, fill: "var(--color-text-primary)", fontWeight: 500 }}
-                                        width={150}
-                                        axisLine={{ stroke: "var(--color-border-base)" }}
-                                        tickLine={false}
-                                        tickFormatter={(value: string) => (value.length > 22 ? value.substring(0, 20) + "…" : value)}
-                                    />
-                                    <Tooltip
-                                        content={<RankBarTooltip valueFormatter={valueFormatter} showPercentage={showPercentage} />}
-                                        cursor={{ fill: "var(--color-muted)", opacity: 0.15 }}
-                                    />
-                                    <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={18}>
-                                        {chartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                                        ))}
-                                        {showPercentage && (
-                                            <LabelList
-                                                dataKey="pctLabel"
-                                                position="right"
-                                                fill="var(--color-text-tertiary)"
-                                                fontSize={11}
-                                            />
-                                        )}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
+                    <div className="flex-1 w-full min-h-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            {/* Bars auto-size to fill the fixed height: fewer categories → thicker,
+                                more → thinner (capped by maxBarSize). Axes stay put; no scroll/growth. */}
+                            <BarChart data={chartData} layout="vertical" barCategoryGap="18%" margin={{ top: 6, right: showPercentage ? 50 : 22, left: 0, bottom: 2 }}>
+                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" horizontal={true} vertical={true} />
+                                <XAxis
+                                    type="number"
+                                    hide={false}
+                                    height={26}
+                                    domain={[0, 'dataMax']}
+                                    tickFormatter={valueFormatter}
+                                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)", dy: 6 }}
+                                    axisLine={{ stroke: "var(--color-border-base)", strokeWidth: 1 }}
+                                    tickLine={{ stroke: "var(--color-border-base)" }}
+                                />
+                                <YAxis
+                                    dataKey="name"
+                                    type="category"
+                                    width={106}
+                                    axisLine={{ stroke: "var(--color-border-base)" }}
+                                    tickLine={false}
+                                    tick={<CategoryTick />}
+                                />
+                                <Tooltip
+                                    content={<RankBarTooltip valueFormatter={valueFormatter} showPercentage={showPercentage} />}
+                                    cursor={{ fill: "var(--color-muted)", opacity: 0.15 }}
+                                />
+                                <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={48}>
+                                    {chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                                    ))}
+                                    {showPercentage && (
+                                        <LabelList
+                                            dataKey="pctLabel"
+                                            position="right"
+                                            fill="var(--color-text-tertiary)"
+                                            fontSize={11}
+                                        />
+                                    )}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
                 )}
             </CardContent>
