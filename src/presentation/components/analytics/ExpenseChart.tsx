@@ -25,6 +25,7 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
                     axisLine={false}
                 />
                 <YAxis
+                    domain={[0, 'auto']}
                     stroke="var(--text-secondary)"
                     fontSize={12}
                     tickLine={false}

@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { ResponsiveContainer, BarChart, AreaChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import type { LucideIcon } from "lucide-react";
+import { BarChart3, Activity } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { RobotLoader } from "@/components/ui/RobotLoader";
 import { bucketKey, bucketLabel, formatChartCurrency, suggestViewMode, type ChartViewMode } from "@/lib/date-bucketing";
 
 export interface SpendTrendDatum {
@@ -22,6 +25,9 @@ interface SpendTrendChartProps {
     color?: string;
     seriesName?: string;
     emptyMessage?: string;
+    /** "area" (default) draws a filled trend; "bar" draws a spend distribution. */
+    variant?: "area" | "bar";
+    className?: string;
 }
 
 export function SpendTrendChart({
@@ -32,9 +38,12 @@ export function SpendTrendChart({
     iconClassName = "text-accent-primary",
     color = "#6366f1",
     seriesName = "Gasto",
-    emptyMessage = "No hay datos para el período seleccionado",
+    emptyMessage = "Sin datos",
+    variant = "area",
+    className,
 }: SpendTrendChartProps) {
     const [userMode, setUserMode] = useState<ChartViewMode | null>(null);
+    const [chartType, setChartType] = useState<"area" | "bar">(variant);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Intelligent default granularity based on the dataset span, overridable by
@@ -69,7 +78,7 @@ export function SpendTrendChart({
     const gradientId = `spend-grad-${useId().replace(/:/g, "")}`;
 
     return (
-        <Card className="flex flex-col h-full border-border/40 shadow-sm overflow-hidden">
+        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] border-border/40 shadow-sm overflow-hidden", className)}>
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 gap-3">
                 <div className="flex items-center gap-2.5">
                     {Icon && (
@@ -79,9 +88,25 @@ export function SpendTrendChart({
                     )}
                     <div>
                         <CardTitle className="text-lg">{title}</CardTitle>
-                        {description && <CardDescription>{description}</CardDescription>}
                     </div>
                 </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="flex items-center p-1 bg-muted/40 border border-border/40 rounded-xl">
+                        <button
+                            onClick={() => setChartType("bar")}
+                            className={`p-1.5 rounded-lg transition-all ${chartType === "bar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                            title="Gráfico de barras"
+                        >
+                            <BarChart3 className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setChartType("area")}
+                            className={`p-1.5 rounded-lg transition-all ${chartType === "area" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                            title="Gráfico de área"
+                        >
+                            <Activity className="w-4 h-4" />
+                        </button>
+                    </div>
                 <div className="w-full sm:w-[140px]">
                     <Select value={viewMode} onValueChange={(v) => handleViewChange(v as ChartViewMode)}>
                         <SelectTrigger className="w-full bg-muted/40 border-border/40 rounded-xl h-9 text-sm">
@@ -94,65 +119,113 @@ export function SpendTrendChart({
                         </SelectContent>
                     </Select>
                 </div>
+                </div>
             </CardHeader>
-            <CardContent className="flex-1 p-0 pb-6">
+            <CardContent className="flex-1 p-0 pb-6 flex flex-col min-h-0">
                 {chartData.length === 0 ? (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-                        {emptyMessage}
+                    <div className="flex-1 min-h-[220px] flex items-center justify-center text-muted-foreground text-sm">
+                        <RobotLoader text={emptyMessage} showDots={false} size={64} />
                     </div>
                 ) : (
-                    <div className="w-full overflow-x-auto overflow-y-hidden" ref={scrollRef}>
-                        <div style={{ minWidth: minChartWidth, height: 300 }} className="px-2">
+                    <div className="flex-1 w-full overflow-x-auto overflow-y-hidden custom-scrollbar min-h-0" ref={scrollRef}>
+                        <div style={{ minWidth: minChartWidth, height: "100%" }} className="px-2">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-                                    <defs>
-                                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={color} stopOpacity={0.35} />
-                                            <stop offset="95%" stopColor={color} stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
-                                    <XAxis
-                                        dataKey="label"
-                                        tick={{ fontSize: 11, fill: "currentColor" }}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        className="text-muted-foreground font-medium"
-                                        dy={10}
-                                    />
-                                    <YAxis
-                                        tickFormatter={(value) => (value === 0 ? "0" : `$${value / 1000}k`)}
-                                        tick={{ fontSize: 11, fill: "currentColor" }}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        className="text-muted-foreground font-medium"
-                                        width={50}
-                                        dx={-5}
-                                    />
-                                    <Tooltip
-                                        formatter={(value: number | undefined) => [formatChartCurrency(value ?? 0), seriesName]}
-                                        contentStyle={{
-                                            backgroundColor: "var(--color-bg-secondary)",
-                                            borderColor: "var(--color-border-base)",
-                                            borderRadius: "12px",
-                                            color: "var(--color-text-primary)",
-                                            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
-                                            padding: "10px 14px",
-                                            border: "1px solid rgba(255,255,255,0.05)",
-                                        }}
-                                        itemStyle={{ paddingTop: "4px", fontSize: "13px", fontWeight: 500 }}
-                                        labelStyle={{ color: "var(--color-text-secondary)", marginBottom: "4px", fontSize: "12px", fontWeight: 500 }}
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="total"
-                                        name={seriesName}
-                                        stroke={color}
-                                        strokeWidth={2.5}
-                                        fillOpacity={1}
-                                        fill={`url(#${gradientId})`}
-                                    />
-                                </AreaChart>
+                                {chartType === "bar" ? (
+                                    <BarChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }}>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
+                                        <XAxis
+                                            dataKey="label"
+                                            tick={{ fontSize: 11, fill: "currentColor" }}
+                                            tickLine={{ stroke: "var(--color-border-base)" }}
+                                            axisLine={{ stroke: "var(--color-border-base)" }}
+                                            className="text-muted-foreground font-medium"
+                                            dy={10}
+                                        />
+                                        <YAxis
+                                            tickFormatter={(value) => (value === 0 ? "0" : `$${value / 1000}k`)}
+                                            tick={{ fontSize: 11, fill: "currentColor" }}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            className="text-muted-foreground font-medium"
+                                            width={45}
+                                            dx={-5}
+                                            domain={[0, 'auto']}
+                                        />
+                                        <Tooltip
+                                            cursor={{ fill: 'var(--color-muted)', opacity: 0.4 }}
+                                            formatter={(value: number | undefined) => [formatChartCurrency(value ?? 0), seriesName]}
+                                            contentStyle={{
+                                                backgroundColor: "var(--color-bg-secondary)",
+                                                borderColor: "var(--color-border-base)",
+                                                borderRadius: "12px",
+                                                color: "var(--color-text-primary)",
+                                                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+                                                padding: "10px 14px",
+                                                border: "1px solid rgba(255,255,255,0.05)",
+                                            }}
+                                            itemStyle={{ paddingTop: "4px", fontSize: "13px", fontWeight: 500 }}
+                                            labelStyle={{ color: "var(--color-text-secondary)", marginBottom: "4px", fontSize: "12px", fontWeight: 500 }}
+                                        />
+                                        <Bar
+                                            dataKey="total"
+                                            name={seriesName}
+                                            fill={color}
+                                            radius={[6, 6, 0, 0]}
+                                            maxBarSize={40}
+                                        />
+                                    </BarChart>
+                                ) : (
+                                    <AreaChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }}>
+                                        <defs>
+                                            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
+                                        <XAxis
+                                            dataKey="label"
+                                            tick={{ fontSize: 11, fill: "currentColor" }}
+                                            tickLine={{ stroke: "var(--color-border-base)" }}
+                                            axisLine={{ stroke: "var(--color-border-base)" }}
+                                            className="text-muted-foreground font-medium"
+                                            dy={10}
+                                        />
+                                        <YAxis
+                                            tickFormatter={(value) => (value === 0 ? "0" : `$${value / 1000}k`)}
+                                            tick={{ fontSize: 11, fill: "currentColor" }}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            className="text-muted-foreground font-medium"
+                                            width={45}
+                                            dx={-5}
+                                            domain={[0, 'auto']}
+                                        />
+                                        <Tooltip
+                                            formatter={(value: number | undefined) => [formatChartCurrency(value ?? 0), seriesName]}
+                                            contentStyle={{
+                                                backgroundColor: "var(--color-bg-secondary)",
+                                                borderColor: "var(--color-border-base)",
+                                                borderRadius: "12px",
+                                                color: "var(--color-text-primary)",
+                                                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+                                                padding: "10px 14px",
+                                                border: "1px solid rgba(255,255,255,0.05)",
+                                            }}
+                                            itemStyle={{ paddingTop: "4px", fontSize: "13px", fontWeight: 500 }}
+                                            labelStyle={{ color: "var(--color-text-secondary)", marginBottom: "4px", fontSize: "12px", fontWeight: 500 }}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="total"
+                                            name={seriesName}
+                                            stroke={color}
+                                            strokeWidth={2.5}
+                                            fillOpacity={1}
+                                            fill={`url(#${gradientId})`}
+                                        />
+                                    </AreaChart>
+                                )}
                             </ResponsiveContainer>
                         </div>
                     </div>
