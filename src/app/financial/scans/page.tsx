@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { FinancialInbox } from "@/presentation/financial/components/FinancialInbox";
 import { Suspense } from "react";
-import { Inbox as InboxIcon, Search } from "lucide-react";
+import { Inbox as InboxIcon, Search, Receipt } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { TransactionTabs } from "@/presentation/financial/components/TransactionTabs";
@@ -25,12 +25,20 @@ export default async function ScansInboxPage() {
                     </p>
                 </div>
                 
-                <Link href="/financial/scanner" className="hidden sm:block">
-                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-medium shadow-sm transition-all">
-                        <Search className="w-4 h-4" />
-                        Iniciar Escaneo
-                    </Button>
-                </Link>
+                <div className="hidden sm:flex items-center gap-2">
+                    <Link href="/financial/transactions">
+                        <Button variant="outline" className="rounded-xl gap-2 font-medium transition-all">
+                            <Receipt className="w-4 h-4" />
+                            Ver transacciones
+                        </Button>
+                    </Link>
+                    <Link href="/financial/scanner">
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-medium shadow-sm transition-all">
+                            <Search className="w-4 h-4" />
+                            Iniciar Escaneo
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             <div className="mb-4 mt-2">

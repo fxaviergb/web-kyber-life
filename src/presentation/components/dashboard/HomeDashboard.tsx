@@ -33,9 +33,17 @@ import { DashboardLoading } from "./DashboardLoading";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 import { MobileCarousel } from "./MobileCarousel";
 
+/**
+ * Shared vertical size for every dashboard chart. Kept identical across both
+ * columns and both chart rows so the sections stay horizontally aligned and the
+ * same size on every screen. Tall enough that trend/bar charts aren't cramped;
+ * the mobile carousel shows one chart at a time so the height applies there too.
+ */
+const CHART_HEIGHT = "h-[380px] sm:h-[390px] lg:h-[400px]";
+
 function ChartSkeleton({ className }: { className?: string }) {
     return (
-        <div className={cn("h-[320px] sm:h-[280px] rounded-2xl border border-border-base bg-bg-secondary flex items-center justify-center", className)}>
+        <div className={cn(CHART_HEIGHT, "rounded-2xl border border-border-base bg-bg-secondary flex items-center justify-center", className)}>
             <RobotLoader size={64} text="Cargando datos" />
         </div>
     );
@@ -359,7 +367,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                     {/* Evolución financiera */}
                                     <div className="space-y-2">
                                         <BlockTitle className="hidden sm:block">Evolución financiera</BlockTitle>
-                                        {finLoading ? <ChartSkeleton /> : <UnifiedTrendChart data={fin.daily} iconLegend className="h-[320px] sm:h-[280px]" />}
+                                        {finLoading ? <ChartSkeleton /> : <UnifiedTrendChart data={fin.daily} iconLegend className={CHART_HEIGHT} />}
                                     </div>
 
                                     {/* Top categorías de gasto */}
@@ -376,7 +384,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                                 data={financialCategoryData}
                                                 emptyMessage="Sin datos"
                                                 showPercentage
-                                                className="h-[320px] sm:h-[280px]"
+                                                className={CHART_HEIGHT}
                                                 headerAction={
                                                     <Select value={String(categoryLimit)} onValueChange={(v) => setCategoryLimit(Number(v))}>
                                                         <SelectTrigger className="h-8 w-[92px] rounded-lg border-border/40 bg-muted/40 text-xs">
@@ -458,7 +466,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                                 iconClassName="text-indigo-500"
                                                 color="#6366f1"
                                                 variant="bar"
-                                                className="h-[320px] sm:h-[280px]"
+                                                className={CHART_HEIGHT}
                                             />
                                         )}
                                     </div>
@@ -471,7 +479,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                         ) : (
                                             <FrequentProductsCard
                                                 products={frequentProducts}
-                                                className="h-[320px] sm:h-[280px]"
+                                                className={CHART_HEIGHT}
                                                 headerAction={
                                                     <Select value={String(productLimit)} onValueChange={(v) => setProductLimit(Number(v))}>
                                                         <SelectTrigger className="h-8 w-[92px] rounded-lg border-border/40 bg-muted/40 text-xs">

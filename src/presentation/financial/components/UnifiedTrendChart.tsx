@@ -16,6 +16,7 @@ import {
     getStartOfWeek,
     suggestViewMode,
     formatChartCurrency as formatCurrency,
+    formatAxisCurrency,
 } from "@/lib/date-bucketing";
 
 interface UnifiedTrendChartProps {
@@ -194,7 +195,7 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
                         <div style={{ minWidth: minChartWidth, height: "100%" }} className="px-2">
                             <ResponsiveContainer width="100%" height="100%">
                                 {chartType === "bar" ? (
-                                    <BarChart data={chartData} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
+                                    <BarChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
                                         <XAxis
                                             dataKey="label"
@@ -206,13 +207,13 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
                                         />
                                         <YAxis
                                             domain={[0, 'auto']}
-                                            tickFormatter={(value) => value === 0 ? "0" : `$${(value / 1000)}k`}
+                                            tickFormatter={formatAxisCurrency}
                                             tick={{ fontSize: 11, fill: 'currentColor' }}
                                             tickLine={false}
                                             axisLine={false}
                                             className="text-muted-foreground font-medium"
-                                            width={50}
-                                            dx={-5}
+                                            width={58}
+                                            dx={0}
                                         />
                                         <Tooltip
                                             cursor={{ fill: 'var(--color-muted)', opacity: 0.4 }}
@@ -236,7 +237,7 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
                                         <Bar dataKey="other" name="Transferencias" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                     </BarChart>
                                 ) : (
-                                    <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
+                                    <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
@@ -266,13 +267,13 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
                                         />
                                         <YAxis
                                             domain={[0, 'auto']}
-                                            tickFormatter={(value) => value === 0 ? "0" : `$${(value / 1000)}k`}
+                                            tickFormatter={formatAxisCurrency}
                                             tick={{ fontSize: 11, fill: 'currentColor' }}
                                             tickLine={false}
                                             axisLine={false}
                                             className="text-muted-foreground font-medium"
-                                            width={50}
-                                            dx={-5}
+                                            width={58}
+                                            dx={0}
                                         />
                                         <Tooltip
                                             formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
