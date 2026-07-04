@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { AreaChart, Area, ResponsiveContainer, YAxis, XAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, BarChart, Bar, LabelList } from 'recharts';
-import { ChevronDown, BarChart2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, PieChart as PieChartIcon, BarChart3 as BarChartIcon } from "lucide-react";
+import { ChevronDown, BarChart2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, Scale, PieChart as PieChartIcon, BarChart3 as BarChartIcon, type LucideIcon } from "lucide-react";
 import type { FinancialTransaction, FinancialTransactionType } from "@/domain/entities/financial";
 import { cn } from "@/lib/utils";
 import {
@@ -13,6 +13,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { MobileCarousel } from "@/presentation/components/dashboard/MobileCarousel";
+import { formatAxisCurrency } from "@/lib/date-bucketing";
 
 // ─── Type visual metadata ────────────────────────────────────
 
@@ -210,23 +211,32 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         );
     };
 
-    // Shared per-type summary badges used in both mobile and desktop triggers
-    const summaryBadges = pieData.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            {pieData.map((item) => {
-                const Icon = item.icon;
-                return (
-                    <div key={item.name} className="flex items-center gap-1.5 min-w-0 shrink-0">
-                        <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: item.fill }} />
-                        <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">{item.name}</span>
-                        <span className="text-[11px] font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
-                            {formatCurrency(item.value, primaryCurrency)}
-                        </span>
-                    </div>
-                );
-            })}
+    // Balance accent color by sign; used for its own chip.
+    const balanceColor = balance > 0 ? "#10b981" : balance < 0 ? "#f43f5e" : "#64748b";
+
+    // A single tinted "box" (chip): icon + uppercase label + bold amount.
+    const renderChip = (key: string, Icon: LucideIcon, label: string, value: string, color: string) => (
+        <div
+            key={key}
+            className="flex items-center gap-2 rounded-xl border px-2.5 py-1.5 shrink-0"
+            style={{ backgroundColor: `${color}14`, borderColor: `${color}33` }}
+        >
+            <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
+                style={{ backgroundColor: `${color}26`, color }}
+            >
+                <Icon className="w-3.5 h-3.5" />
+            </span>
+            <div className="flex flex-col leading-tight">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                    {label}
+                </span>
+                <span className="text-xs font-bold tracking-tight text-foreground/90 tabular-nums whitespace-nowrap">
+                    {value}
+                </span>
+            </div>
         </div>
-    ) : null;
+    );
 
     return (
         <div className="flex flex-col gap-3">
@@ -266,7 +276,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
             {/* ═══════════════ DESKTOP ACCORDION TRIGGER ═══════════════ */}
             <div
                 className={cn(
-                    "hidden sm:flex relative items-center justify-between py-3.5 px-5 rounded-2xl border cursor-pointer transition-all group",
+                    "hidden sm:block relative py-4 px-5 rounded-2xl border cursor-pointer transition-all group",
                     isDesktopExpanded
                         ? "border-white/15 bg-background/60 shadow-md"
                         : "border-border/50 dark:border-white/10 bg-gradient-to-b from-black/[0.02] dark:from-white/[0.04] to-transparent shadow-lg shadow-black/5 dark:shadow-black/20 hover:border-white/15 hover:bg-background/40"
@@ -276,26 +286,26 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 aria-expanded={isDesktopExpanded}
             >
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/10 dark:via-white/20 to-transparent rounded-t-2xl" aria-hidden="true" />
-                <div className="flex flex-col gap-2 relative z-10">
-                    <div className="flex items-center gap-2.5">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-accent-primary/20 to-accent-primary/5 border border-accent-primary/20 text-accent-primary">
-                            <BarChart2 className="w-4 h-4" />
+                <div className="relative z-10 flex items-center gap-4">
+                    {/* Identity */}
+                    <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-accent-primary/20 to-accent-primary/5 border border-accent-primary/20 text-accent-primary">
+                            <BarChart2 className="w-4.5 h-4.5" />
                         </div>
-                        <span className="text-base font-bold tracking-tight text-foreground/90">Resumen Visual</span>
-                        <span className="text-xs text-muted-foreground font-medium">·</span>
-                        <span className="text-sm font-medium text-muted-foreground">Balance</span>
-                        <span className={cn(
-                            "text-base font-bold tracking-tight",
-                            balance > 0 ? "text-emerald-500" : balance < 0 ? "text-rose-500" : "text-foreground/70"
-                        )}>
-                            {balanceStr}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-medium">({transactions.length} transacciones)</span>
+                        <div className="flex flex-col">
+                            <span className="text-base font-bold tracking-tight text-foreground/90 leading-tight whitespace-nowrap">Resumen Visual</span>
+                            <span className="text-xs text-muted-foreground font-medium leading-tight whitespace-nowrap">{transactions.length} transacciones</span>
+                        </div>
                     </div>
-                    <div className="pl-[2.625rem]">{summaryBadges}</div>
-                </div>
-                <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-black/5 dark:bg-white/5 border border-border/50 dark:border-white/10 shadow-sm transition-colors group-hover:bg-black/10 dark:group-hover:bg-white/10">
-                    <ChevronDown className={cn("w-4 h-4 text-foreground/70 transition-transform duration-300", isDesktopExpanded && "rotate-180")} />
+                    {/* Boxes: balance + per-type, right-aligned on the same row */}
+                    <div className="flex flex-1 items-center justify-end gap-2 flex-wrap min-w-0">
+                        {renderChip("balance", Scale, "Balance", balanceStr, balanceColor)}
+                        {pieData.map((item) => renderChip(item.name, item.icon, item.name, formatCurrency(item.value, primaryCurrency), item.fill))}
+                    </div>
+                    {/* Chevron */}
+                    <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-black/5 dark:bg-white/5 border border-border/50 dark:border-white/10 shadow-sm transition-colors group-hover:bg-black/10 dark:group-hover:bg-white/10">
+                        <ChevronDown className={cn("w-4 h-4 text-foreground/70 transition-transform duration-300", isDesktopExpanded && "rotate-180")} />
+                    </div>
                 </div>
             </div>
 
@@ -375,8 +385,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                         />
                                     </PieChart>
                                 ) : (
-                                    <BarChart data={pieData} margin={{ top: 20, right: 10, left: 10, bottom: 20 }}>
-                                        <XAxis dataKey="name" tick={renderCustomXAxisTick} axisLine={false} tickLine={false} />
+                                    <BarChart data={pieData} margin={{ top: 20, right: 10, left: 10, bottom: 6 }} barCategoryGap="20%">
+                                        <XAxis dataKey="name" tick={renderCustomXAxisTick} axisLine={false} tickLine={false} height={36} interval={0} />
                                         <YAxis type="number" hide domain={[0, 'dataMax + 10']} />
                                         <Tooltip
                                             cursor={{ fill: 'transparent' }}
@@ -398,7 +408,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                                 return null;
                                             }}
                                         />
-                                        <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                        <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={64}>
                                             {pieData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.fill} />
                                             ))}
@@ -465,12 +475,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                                     <YAxis
-                                        tickFormatter={(value) => {
-                                            if (value >= 1000000) return `$${(value / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
-                                            if (value >= 1000) return `$${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
-                                            return `$${value}`;
-                                        }}
-                                        width={40}
+                                        tickFormatter={formatAxisCurrency}
+                                        width={52}
                                         tick={{ fontSize: 10, fill: '#878787' }}
                                         axisLine={false}
                                         tickLine={false}
@@ -637,8 +643,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                             />
                                         </PieChart>
                                     ) : (
-                                        <BarChart data={pieData} margin={{ top: 20, right: 10, left: 10, bottom: 20 }}>
-                                            <XAxis dataKey="name" tick={renderCustomXAxisTick} axisLine={false} tickLine={false} />
+                                        <BarChart data={pieData} margin={{ top: 20, right: 10, left: 10, bottom: 6 }} barCategoryGap="20%">
+                                            <XAxis dataKey="name" tick={renderCustomXAxisTick} axisLine={false} tickLine={false} height={36} interval={0} />
                                             <YAxis type="number" hide domain={[0, 'dataMax + 10']} />
                                             <Tooltip
                                                 cursor={{ fill: 'transparent' }}
@@ -660,7 +666,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                                     return null;
                                                 }}
                                             />
-                                            <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                            <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={64}>
                                                 {pieData.map((entry, index) => (
                                                     <Cell key={`dcell-bar-${index}`} fill={entry.fill} />
                                                 ))}
@@ -725,12 +731,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                                         <YAxis
-                                            tickFormatter={(value) => {
-                                                if (value >= 1000000) return `$${(value / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
-                                                if (value >= 1000) return `$${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
-                                                return `$${value}`;
-                                            }}
-                                            width={40}
+                                            tickFormatter={formatAxisCurrency}
+                                            width={52}
                                             tick={{ fontSize: 10, fill: '#878787' }}
                                             axisLine={false}
                                             tickLine={false}

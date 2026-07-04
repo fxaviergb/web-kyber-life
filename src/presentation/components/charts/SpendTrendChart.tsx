@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { RobotLoader } from "@/components/ui/RobotLoader";
-import { bucketKey, bucketLabel, formatChartCurrency, suggestViewMode, type ChartViewMode } from "@/lib/date-bucketing";
+import { bucketKey, bucketLabel, formatAxisCurrency, formatChartCurrency, suggestViewMode, type ChartViewMode } from "@/lib/date-bucketing";
 
 export interface SpendTrendDatum {
     date: string; // YYYY-MM-DD
@@ -121,7 +121,7 @@ export function SpendTrendChart({
                 </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 p-0 pb-6 flex flex-col min-h-0">
+            <CardContent className="flex-1 p-0 pb-4 flex flex-col min-h-0">
                 {chartData.length === 0 ? (
                     <div className="flex-1 min-h-[220px] flex items-center justify-center text-muted-foreground text-sm">
                         <RobotLoader text={emptyMessage} showDots={false} size={64} />
@@ -131,7 +131,7 @@ export function SpendTrendChart({
                         <div style={{ minWidth: minChartWidth, height: "100%" }} className="px-2">
                             <ResponsiveContainer width="100%" height="100%">
                                 {chartType === "bar" ? (
-                                    <BarChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }}>
+                                    <BarChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
                                         <XAxis
                                             dataKey="label"
@@ -142,7 +142,7 @@ export function SpendTrendChart({
                                             dy={10}
                                         />
                                         <YAxis
-                                            tickFormatter={(value) => (value === 0 ? "0" : `$${value / 1000}k`)}
+                                            tickFormatter={formatAxisCurrency}
                                             tick={{ fontSize: 11, fill: "currentColor" }}
                                             tickLine={false}
                                             axisLine={false}
@@ -175,7 +175,7 @@ export function SpendTrendChart({
                                         />
                                     </BarChart>
                                 ) : (
-                                    <AreaChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 30 }}>
+                                    <AreaChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor={color} stopOpacity={0.35} />
@@ -192,7 +192,7 @@ export function SpendTrendChart({
                                             dy={10}
                                         />
                                         <YAxis
-                                            tickFormatter={(value) => (value === 0 ? "0" : `$${value / 1000}k`)}
+                                            tickFormatter={formatAxisCurrency}
                                             tick={{ fontSize: 11, fill: "currentColor" }}
                                             tickLine={false}
                                             axisLine={false}

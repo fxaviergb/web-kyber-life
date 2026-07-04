@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Check, CircleAlert, Inbox as InboxIcon, RefreshCw, FileText, X, Edit2, Search, Eye, ChevronDown, ChevronUp, Clock, Tag } from "lucide-react";
+import { Check, CircleAlert, Inbox as InboxIcon, RefreshCw, FileText, X, Edit2, Search, Eye, ChevronDown, ChevronUp, Clock, Tag, Receipt } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -476,12 +476,20 @@ export function FinancialInbox() {
                         </p>
                     </div>
 
-                    <Button className="mt-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium" asChild>
-                        <Link href="/financial/scanner" className="gap-2">
-                            <Search className="w-4 h-4" />
-                            Iniciar Nuevo Escaneo
-                        </Link>
-                    </Button>
+                    <div className="mt-4 flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
+                        <Button className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium" asChild>
+                            <Link href="/financial/scanner" className="gap-2">
+                                <Search className="w-4 h-4" />
+                                Iniciar Nuevo Escaneo
+                            </Link>
+                        </Button>
+                        <Button variant="outline" className="rounded-xl font-medium" asChild>
+                            <Link href="/financial/transactions" className="gap-2">
+                                <Receipt className="w-4 h-4" />
+                                Ver transacciones
+                            </Link>
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
         );
@@ -500,6 +508,12 @@ export function FinancialInbox() {
                             No hay transacciones pendientes para la categoría seleccionada.
                         </p>
                     </div>
+                    <Button variant="outline" className="mt-4 rounded-xl font-medium" asChild>
+                        <Link href="/financial/transactions" className="gap-2">
+                            <Receipt className="w-4 h-4" />
+                            Ver transacciones
+                        </Link>
+                    </Button>
                 </CardContent>
             </Card>
         );
@@ -551,11 +565,17 @@ export function FinancialInbox() {
                         </div>
                     </div>
 
-                    <div className="flex w-full sm:hidden mt-4">
+                    <div className="grid grid-cols-2 gap-2 w-full sm:hidden mt-4">
+                        <Link href="/financial/transactions" className="w-full">
+                            <Button variant="outline" className="w-full rounded-xl gap-2 font-medium h-10">
+                                <Receipt className="w-4 h-4" />
+                                Transacciones
+                            </Button>
+                        </Link>
                         <Link href="/financial/scanner" className="w-full">
                             <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-medium shadow-sm transition-all h-10">
                                 <Search className="w-4 h-4" />
-                                Iniciar Escaneo
+                                Escanear
                             </Button>
                         </Link>
                     </div>

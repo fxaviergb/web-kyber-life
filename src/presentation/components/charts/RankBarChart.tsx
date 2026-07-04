@@ -149,10 +149,10 @@ export function RankBarChart({
                                         dataKey="name"
                                         type="category"
                                         tick={{ fontSize: 12, fill: "var(--color-text-primary)", fontWeight: 500 }}
-                                        width={120}
+                                        width={150}
                                         axisLine={{ stroke: "var(--color-border-base)" }}
                                         tickLine={false}
-                                        tickFormatter={(value: string) => (value.length > 16 ? value.substring(0, 14) + "…" : value)}
+                                        tickFormatter={(value: string) => (value.length > 22 ? value.substring(0, 20) + "…" : value)}
                                     />
                                     <Tooltip
                                         content={<RankBarTooltip valueFormatter={valueFormatter} showPercentage={showPercentage} />}

@@ -57,6 +57,22 @@ export function formatChartCurrency(value: number): string {
     return `$${value.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+/**
+ * Compact, human-readable currency for chart axes. Keeps small amounts as plain
+ * values ($75, $1,200) and only abbreviates once numbers get large ($50k, $1.5M),
+ * so users never see confusing fractional-k labels like "$0.075k".
+ */
+export function formatAxisCurrency(value: number): string {
+    if (!value) return "$0";
+    const abs = Math.abs(value);
+    const sign = value < 0 ? "-" : "";
+    // Strip a trailing ".0" (e.g. 2.0 → "2") while keeping "1.5".
+    const trim = (n: number) => `${parseFloat(n.toFixed(1))}`;
+    if (abs >= 1_000_000) return `${sign}$${trim(abs / 1_000_000)}M`;
+    if (abs >= 10_000) return `${sign}$${trim(abs / 1_000)}k`;
+    return `${sign}$${Math.round(abs).toLocaleString("es-ES")}`;
+}
+
 /** Resolve the axis label for a bucket key given the active view mode. */
 export function bucketLabel(key: string, viewMode: ChartViewMode): string {
     if (viewMode === "day") return formatDay(key);
