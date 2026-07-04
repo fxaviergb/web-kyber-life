@@ -18,6 +18,7 @@ import {
     ScanSearch,
     ClipboardList,
     ChevronDown,
+    SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -69,11 +70,12 @@ interface ModuleColumnProps {
     title: string;
     subtitle: string;
     filter: ReactNode;
+    filtersOpen: boolean;
     children: ReactNode;
 }
 
 /** One dashboard column (Finanzas / Supermercado): header, own filter, then a vertical stack of blocks. */
-function ModuleColumn({ icon, iconWrapClassName, title, subtitle, filter, children }: ModuleColumnProps) {
+function ModuleColumn({ icon, iconWrapClassName, title, subtitle, filter, filtersOpen, children }: ModuleColumnProps) {
     return (
         <section className="flex flex-col gap-4 sm:gap-5">
             <div className="hidden xl:flex items-center gap-2.5">
@@ -85,7 +87,10 @@ function ModuleColumn({ icon, iconWrapClassName, title, subtitle, filter, childr
                     <p className="hidden sm:block truncate text-xs text-text-tertiary mt-1">{subtitle}</p>
                 </div>
             </div>
-            <div className="py-1 sm:py-2">
+            <div className={cn(
+                "py-1 sm:py-2",
+                filtersOpen ? "block animate-in fade-in slide-in-from-top-2" : "hidden sm:block",
+            )}>
                 {filter}
             </div>
             <div className="flex flex-col gap-4 sm:gap-6">{children}</div>
@@ -114,6 +119,8 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
     const [mobileTab, setMobileTab] = useState<"finanzas" | "supermercado">("finanzas");
     // Mobile-only: quick actions collapsed by default (accordion).
     const [actionsOpen, setActionsOpen] = useState(false);
+    // Mobile-only: per-tab filters collapsed by default (accordion).
+    const [filtersOpen, setFiltersOpen] = useState(false);
 
     const [categoryLimit, setCategoryLimit] = useState(5);
     const [productLimit, setProductLimit] = useState(5);
@@ -210,16 +217,32 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                 <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">{greeting}</h1>
                                 <p className="hidden sm:block text-sm text-text-tertiary">Tu actividad financiera y de compras, en un vistazo.</p>
                             </div>
-                            {/* Mobile-only accordion toggle for quick actions */}
-                            <button
-                                type="button"
-                                onClick={() => setActionsOpen((o) => !o)}
-                                aria-expanded={actionsOpen}
-                                aria-label={actionsOpen ? "Ocultar acciones" : "Mostrar acciones"}
-                                className="sm:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-primary to-accent-primary-hover text-white shadow-lg shadow-accent-primary/25 transition-transform active:scale-95"
-                            >
-                                <ChevronDown className={cn("h-5 w-5 transition-transform duration-300", actionsOpen && "rotate-180")} />
-                            </button>
+                            {/* Mobile-only toggles: filters visibility + quick actions accordion */}
+                            <div className="flex items-center gap-2 sm:hidden">
+                                <button
+                                    type="button"
+                                    onClick={() => setFiltersOpen((o) => !o)}
+                                    aria-expanded={filtersOpen}
+                                    aria-label={filtersOpen ? "Ocultar filtros" : "Mostrar filtros"}
+                                    className={cn(
+                                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm transition-transform active:scale-95",
+                                        filtersOpen
+                                            ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
+                                            : "border-border-base bg-bg-tertiary text-text-secondary",
+                                    )}
+                                >
+                                    <SlidersHorizontal className="h-4 w-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActionsOpen((o) => !o)}
+                                    aria-expanded={actionsOpen}
+                                    aria-label={actionsOpen ? "Ocultar acciones" : "Mostrar acciones"}
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-primary to-accent-primary-hover text-white shadow-lg shadow-accent-primary/25 transition-transform active:scale-95"
+                                >
+                                    <ChevronDown className={cn("h-5 w-5 transition-transform duration-300", actionsOpen && "rotate-180")} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* ACCIONES */}
@@ -339,6 +362,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                 iconWrapClassName="bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/20"
                                 title="Finanzas"
                                 subtitle="Ingresos, gastos y categorías de tu dinero."
+                                filtersOpen={filtersOpen}
                                 filter={
                                     <DateRangeFilter
                                         value={finFilterType}
@@ -428,6 +452,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                 iconWrapClassName="bg-indigo-500 shadow-indigo-500/20"
                                 title="Supermercado"
                                 subtitle="Tu gasto en compras y los productos que más consumes."
+                                filtersOpen={filtersOpen}
                                 filter={
                                     <DateRangeFilter
                                         value={mktFilterType}
