@@ -14,6 +14,7 @@ export function OverviewChart({ data }: { data: { date: string, amount: number }
                     axisLine={false}
                 />
                 <YAxis
+                    domain={[0, 'auto']}
                     stroke="#888888"
                     fontSize={12}
                     tickLine={false}

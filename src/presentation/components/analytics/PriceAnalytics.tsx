@@ -334,7 +334,7 @@ export function PriceAnalytics({ searchableProducts, searchableGenericItems }: P
                                                 tickLine={false}
                                                 tick={{ fill: 'var(--text-tertiary)', fontSize: 10 }}
                                                 tickFormatter={(val) => `$${val}`}
-                                                domain={['auto', 'auto']}
+                                                domain={[0, 'auto']}
                                             />
                                             <Tooltip
                                                 contentStyle={{

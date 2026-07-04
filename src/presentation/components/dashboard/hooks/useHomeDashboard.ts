@@ -1,59 +1,60 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getDailyBreakdownAction, getCategoryBreakdownAction } from "@/app/actions/financial-dashboard";
+import {
+    getDailyBreakdownAction,
+    getCategoryBreakdownAction,
+    getFinancialKPIsAction,
+} from "@/app/actions/financial-dashboard";
 import { getMarketDailySpendAction, getMarketTopProductsAction } from "@/app/actions/analytics";
-import type { DailyBreakdown, CategoryBreakdown } from "@/application/services/financial-dashboard-service";
+import type {
+    DailyBreakdown,
+    CategoryBreakdown,
+    FinancialKPIs,
+} from "@/application/services/financial-dashboard-service";
 
-export interface HomeDashboardData {
-    financialDaily: DailyBreakdown[];
-    financialCategories: CategoryBreakdown[];
-    marketDaily: { date: string; total: number }[];
-    marketTopProducts: { id: string; name: string; value: number }[];
+export interface FinancialOverviewData {
+    kpis: FinancialKPIs | null;
+    daily: DailyBreakdown[];
+    categories: CategoryBreakdown[];
 }
 
-const EMPTY_DATA: HomeDashboardData = {
-    financialDaily: [],
-    financialCategories: [],
-    marketDaily: [],
-    marketTopProducts: [],
-};
+export interface MarketProduct {
+    id: string;
+    name: string;
+    value: number;
+}
+
+export interface MarketOverviewData {
+    daily: { date: string; total: number }[];
+    topProducts: MarketProduct[];
+}
+
+const EMPTY_FINANCIAL: FinancialOverviewData = { kpis: null, daily: [], categories: [] };
+const EMPTY_MARKET: MarketOverviewData = { daily: [], topProducts: [] };
 
 /**
- * Fetches every chart dataset for the main dashboard hub for a single shared
- * date range. Financial datasets come from the (Supabase-auth) financial
- * actions; market datasets from the range-aware, data-source-agnostic market
- * actions. Each source degrades independently — a failure leaves that section
- * empty rather than breaking the whole hub.
+ * Financial column of the hub dashboard: KPIs (balance / income / expense),
+ * the income-vs-expense trend and the category breakdown, all for one shared
+ * date range. Degrades gracefully — a failing source leaves its slice empty.
  */
-export function useHomeDashboard(startDate?: string, endDate?: string) {
-    const [data, setData] = useState<HomeDashboardData>(EMPTY_DATA);
+export function useFinancialOverview(startDate?: string, endDate?: string) {
+    const [data, setData] = useState<FinancialOverviewData>(EMPTY_FINANCIAL);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
     const fetchAll = useCallback(async () => {
         setLoading(true);
-        setError(null);
         try {
-            const [finDaily, finCat, mktDaily, mktTop] = await Promise.all([
+            const [kpis, daily, categories] = await Promise.all([
+                getFinancialKPIsAction(startDate, endDate),
                 getDailyBreakdownAction(startDate, endDate),
                 getCategoryBreakdownAction(startDate, endDate),
-                getMarketDailySpendAction(startDate, endDate),
-                getMarketTopProductsAction(startDate, endDate, 10),
             ]);
-
             setData({
-                financialDaily: finDaily.success && finDaily.data ? finDaily.data : [],
-                financialCategories: finCat.success && finCat.data ? finCat.data : [],
-                marketDaily: mktDaily.success && mktDaily.data ? mktDaily.data : [],
-                marketTopProducts: mktTop.success && mktTop.data ? mktTop.data : [],
+                kpis: kpis.success && kpis.data ? kpis.data : null,
+                daily: daily.success && daily.data ? daily.data : [],
+                categories: categories.success && categories.data ? categories.data : [],
             });
-
-            if (!finDaily.success && !finCat.success && !mktDaily.success && !mktTop.success) {
-                setError("No se pudieron cargar los datos del panel.");
-            }
-        } catch (e) {
-            setError((e as Error).message);
         } finally {
             setLoading(false);
         }
@@ -63,5 +64,37 @@ export function useHomeDashboard(startDate?: string, endDate?: string) {
         fetchAll();
     }, [fetchAll]);
 
-    return { data, loading, error, refresh: fetchAll };
+    return { data, loading, refresh: fetchAll };
+}
+
+/**
+ * Market column of the hub dashboard: the spend distribution and the top
+ * products (which also power the frequent-products table), for one shared
+ * date range. A high product limit lets the summary count distinct items.
+ */
+export function useMarketOverview(startDate?: string, endDate?: string) {
+    const [data, setData] = useState<MarketOverviewData>(EMPTY_MARKET);
+    const [loading, setLoading] = useState(true);
+
+    const fetchAll = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [daily, top] = await Promise.all([
+                getMarketDailySpendAction(startDate, endDate),
+                getMarketTopProductsAction(startDate, endDate, 100),
+            ]);
+            setData({
+                daily: daily.success && daily.data ? daily.data : [],
+                topProducts: top.success && top.data ? top.data : [],
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, [startDate, endDate]);
+
+    useEffect(() => {
+        fetchAll();
+    }, [fetchAll]);
+
+    return { data, loading, refresh: fetchAll };
 }

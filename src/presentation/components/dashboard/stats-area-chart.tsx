@@ -61,6 +61,7 @@ export function StatsAreaChart({ data }: StatsAreaChartProps) {
                             }}
                         />
                         <YAxis
+                            domain={[0, 'auto']}
                             axisLine={false}
                             tickLine={false}
                             tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }}

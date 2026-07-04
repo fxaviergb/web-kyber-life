@@ -6,6 +6,8 @@ import { BarChart3, Activity, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, 
 import { DailyBreakdown } from "@/application/services/financial-dashboard-service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RobotLoader } from '@/components/ui/RobotLoader';
+import { cn } from "@/lib/utils";
 import {
     formatDay,
     formatMonth,
@@ -20,6 +22,7 @@ interface UnifiedTrendChartProps {
     data: DailyBreakdown[];
     /** Render a custom legend with the per-type icon + color used by the KPIs. */
     iconLegend?: boolean;
+    className?: string;
 }
 
 type ViewMode = "day" | "week" | "month";
@@ -35,21 +38,21 @@ interface TypeTotals {
 const TYPE_LEGEND: { key: keyof TypeTotals; label: string; color: string; Icon: LucideIcon }[] = [
     { key: "income", label: "Ingresos", color: "hsl(142, 71%, 45%)", Icon: TrendingUp },
     { key: "expenses", label: "Gastos", color: "hsl(0, 84%, 60%)", Icon: TrendingDown },
-    { key: "withdrawals", label: "Retiros", color: "#0284c7", Icon: Wallet },
     { key: "other", label: "Transferencias", color: "#f59e0b", Icon: ArrowRightLeft },
+    { key: "withdrawals", label: "Retiros", color: "#0284c7", Icon: Wallet },
 ];
 
 /** Bottom legend: per-type icon + period total (no text labels), tied by color. */
 function TypeLegend({ totals }: { totals?: TypeTotals }) {
     return (
-        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-5">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
             {TYPE_LEGEND.map(({ key, label, color, Icon }) => (
                 <div key={key} className="flex items-center gap-1.5" title={label} aria-label={label}>
                     <span className="flex h-5 w-5 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
                         <Icon className="h-3 w-3" />
                     </span>
-                    <span className="text-xs font-semibold tabular-nums" style={{ color }}>
-                        {formatCurrency(totals?.[key] ?? 0)}
+                    <span className="text-sm font-bold leading-none" style={{ color }}>
+                        {formatCurrency(totals?.[key] || 0)}
                     </span>
                 </div>
             ))}
@@ -57,7 +60,7 @@ function TypeLegend({ totals }: { totals?: TypeTotals }) {
     );
 }
 
-export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChartProps) {
+export function UnifiedTrendChart({ data, iconLegend = false, className }: UnifiedTrendChartProps) {
     const [chartType, setChartType] = useState<"bar" | "curve">("curve");
     const [userMode, setUserMode] = useState<ViewMode | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -97,7 +100,7 @@ export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChar
         }
 
         const groups: Record<string, { income: number; expenses: number; withdrawals: number; other: number; net: number }> = {};
-        
+
         for (const d of data) {
             let key = d.date;
             if (viewMode === "week") key = getStartOfWeek(d.date);
@@ -139,11 +142,11 @@ export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChar
     }, [chartData]);
 
     return (
-        <Card className="flex flex-col h-full border-border/40 shadow-sm overflow-hidden">
+        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] border-border/40 shadow-sm overflow-hidden", className)}>
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 gap-4">
-                <div>
-                    <CardTitle className="text-xl">Resumen Financiero</CardTitle>
-                    <CardDescription>Evolución de ingresos y gastos</CardDescription>
+                <div className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-emerald-500" />
+                    <CardTitle className="text-xl">Evolución de transacciones</CardTitle>
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <div className="flex items-center p-1 bg-muted/40 border border-border/40 rounded-xl">
@@ -176,17 +179,22 @@ export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChar
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 p-0 pb-6">
+            {iconLegend && (
+                <div className="px-4 sm:px-6 pb-2 pt-1">
+                    <TypeLegend totals={totals} />
+                </div>
+            )}
+            <CardContent className="flex-1 p-0 pb-4 flex flex-col min-h-0">
                 {chartData.length === 0 ? (
-                    <div className="h-[320px] flex items-center justify-center text-muted-foreground text-sm">
-                        No hay datos para el período seleccionado
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+                        <RobotLoader text="Sin datos" showDots={false} size={64} />
                     </div>
                 ) : (
-                    <div className="w-full overflow-x-auto overflow-y-hidden custom-scrollbar" ref={scrollRef}>
-                        <div style={{ minWidth: minChartWidth, height: 320 }} className="px-2">
+                    <div className="flex-1 w-full overflow-x-auto overflow-y-hidden custom-scrollbar min-h-0" ref={scrollRef}>
+                        <div style={{ minWidth: minChartWidth, height: "100%" }} className="px-2">
                             <ResponsiveContainer width="100%" height="100%">
                                 {chartType === "bar" ? (
-                                    <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                                    <BarChart data={chartData} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
                                         <XAxis
                                             dataKey="label"
@@ -197,6 +205,7 @@ export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChar
                                             dy={10}
                                         />
                                         <YAxis
+                                            domain={[0, 'auto']}
                                             tickFormatter={(value) => value === 0 ? "0" : `$${(value / 1000)}k`}
                                             tick={{ fontSize: 11, fill: 'currentColor' }}
                                             tickLine={false}
@@ -220,30 +229,30 @@ export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChar
                                             itemStyle={{ paddingTop: "4px", fontSize: "13px", fontWeight: 500 }}
                                             labelStyle={{ color: "var(--color-text-secondary)", marginBottom: "4px", fontSize: "12px", fontWeight: 500 }}
                                         />
-                                        <Legend content={iconLegend ? <TypeLegend totals={totals} /> : undefined} wrapperStyle={{ paddingTop: "20px", fontSize: "12px", fontWeight: 500 }} iconType="circle" />
+
                                         <Bar dataKey="income" name="Ingresos" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                         <Bar dataKey="expenses" name="Gastos" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                         <Bar dataKey="withdrawals" name="Retiros" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                         <Bar dataKey="other" name="Transferencias" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                     </BarChart>
                                 ) : (
-                                    <AreaChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                                    <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
                                             </linearGradient>
                                             <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0} />
                                             </linearGradient>
                                             <linearGradient id="colorWithdrawals" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#0284c7" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#0284c7" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="#0284c7" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#0284c7" stopOpacity={0} />
                                             </linearGradient>
                                             <linearGradient id="colorOther" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
@@ -256,6 +265,7 @@ export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChar
                                             dy={10}
                                         />
                                         <YAxis
+                                            domain={[0, 'auto']}
                                             tickFormatter={(value) => value === 0 ? "0" : `$${(value / 1000)}k`}
                                             tick={{ fontSize: 11, fill: 'currentColor' }}
                                             tickLine={false}
@@ -278,7 +288,7 @@ export function UnifiedTrendChart({ data, iconLegend = false }: UnifiedTrendChar
                                             itemStyle={{ paddingTop: "4px", fontSize: "13px", fontWeight: 500 }}
                                             labelStyle={{ color: "var(--color-text-secondary)", marginBottom: "4px", fontSize: "12px", fontWeight: 500 }}
                                         />
-                                        <Legend content={iconLegend ? <TypeLegend totals={totals} /> : undefined} wrapperStyle={{ paddingTop: "20px", fontSize: "12px", fontWeight: 500 }} iconType="circle" />
+
                                         <Area type="monotone" dataKey="income" name="Ingresos" stroke="hsl(142, 71%, 45%)" fillOpacity={1} fill="url(#colorIncome)" strokeWidth={2} />
                                         <Area type="monotone" dataKey="expenses" name="Gastos" stroke="hsl(0, 84%, 60%)" fillOpacity={1} fill="url(#colorExpenses)" strokeWidth={2} />
                                         <Area type="monotone" dataKey="withdrawals" name="Retiros" stroke="#0284c7" fillOpacity={1} fill="url(#colorWithdrawals)" strokeWidth={2} />
