@@ -29,16 +29,32 @@ export async function triggerFinancialScanAction(startDate: string, endDate: str
             return { success: false, error: "Configuración de sistema incompleta. Contacte soporte." };
         }
 
-        // The exact n8n payload from the prompt
-        // { "startDate": "2026-05-01", "endDate": "2026-05-14", "user": "4aba0e45-..." }
+        // Encode the selected calendar dates as precise Ecuador-day (America/Guayaquil,
+        // UTC-5, no DST) boundaries so the remote scanner searches exactly
+        // 00:00:00.000–23:59:59.999 of each chosen day in Ecuador local time — any
+        // email received within that window is included — independent of where n8n or
+        // the mailbox runs. We keep the explicit "-05:00" offset instead of a
+        // Z-normalized UTC instant on purpose: the literal date part stays the Ecuador
+        // calendar date (start "2026-07-06T00:00:00.000-05:00", end
+        // "2026-07-06T23:59:59.999-05:00"), so an n8n step that reads only the date
+        // still gets the correct day for BOTH bounds, while the full value remains an
+        // unambiguous instant for time-aware steps.
+        const startDay = startDate.split('T')[0];
+        const endDay = endDate.split('T')[0];
+        const startInstant = `${startDay}T00:00:00.000-05:00`;
+        const endInstant = `${endDay}T23:59:59.999-05:00`;
+        if (isNaN(new Date(startInstant).getTime()) || isNaN(new Date(endInstant).getTime())) {
+            return { success: false, error: "Fechas inválidas" };
+        }
+
         const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                startDate,
-                endDate,
+                startDate: startInstant,
+                endDate: endInstant,
                 user: user.id
             }),
         });
