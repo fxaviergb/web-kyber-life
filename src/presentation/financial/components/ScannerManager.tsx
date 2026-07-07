@@ -134,6 +134,48 @@ function parsePayload(payload: any) {
     };
 }
 
+// Extract the ORIGINAL startDate/endDate strings from the request payload,
+// WITHOUT the local-date normalization parsePayload() applies. We need the raw
+// form to distinguish a plain calendar-date scan ("2026-07-06") from an
+// instant-based one ("2026-07-07T02:30:02.856Z"): the former has no meaningful
+// time-of-day, the latter does.
+function rawPayloadDates(payload: any): { startDate?: string; endDate?: string } {
+    let parsed = payload;
+    let iter = 0;
+    while (typeof parsed === 'string' && iter < 5) {
+        try { parsed = JSON.parse(parsed); } catch (e) { break; }
+        iter++;
+    }
+    if (!parsed || typeof parsed !== 'object') return {};
+
+    let source: any = parsed;
+    if (!parsed.startDate && !parsed.endDate && parsed.body) {
+        let body = parsed.body;
+        if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { } }
+        if (body && typeof body === 'object') source = body;
+    }
+    return {
+        startDate: typeof source.startDate === 'string' ? source.startDate : undefined,
+        endDate: typeof source.endDate === 'string' ? source.endDate : undefined,
+    };
+}
+
+// Render a calendar-date window as a full Ecuador day span with explicit
+// boundary times — "dd MMM 00:00 – dd MMM 23:59" — even for a single day. A date
+// scan always covers 00:00:00.000–23:59:59.999 (Ecuador) of each chosen day.
+// Parses at local noon so the day label never drifts across a timezone boundary.
+function formatDateOnlyRange(sDate?: string, eDate?: string): string | null {
+    if (!sDate) return null;
+    const dayLabel = (d: string) => {
+        const dt = new Date(`${d.split('T')[0]}T12:00:00`);
+        return isNaN(dt.getTime()) ? null : format(dt, "dd MMM", { locale: es });
+    };
+    const sf = dayLabel(sDate);
+    const ef = dayLabel(eDate || sDate);
+    if (!sf || !ef) return null;
+    return `${sf} 00:00 – ${ef} 23:59`;
+}
+
 const EXECUTION_STATUS_STYLES: Record<string, { label: string; badge: string; ring: string; Icon: React.ElementType }> = {
     COMPLETED: { label: 'COMPLETADO', badge: 'bg-success-bg/30 border-accent-success/30 text-success-text', ring: 'border-accent-success/40', Icon: CheckCircle2 },
     FAILED: { label: 'FALLIDO', badge: 'bg-danger-bg/30 border-accent-danger/30 text-danger-text', ring: 'border-accent-danger/40', Icon: XCircle },
@@ -146,26 +188,26 @@ function ExecutionHistoryCard({ exec, dayCount, defaultExpanded = false }: { exe
     const meta = EXECUTION_STATUS_STYLES[exec.status] ?? EXECUTION_STATUS_STYLES.PROCESSING;
     const StatusIcon = meta.Icon;
 
-    // Scan window. Primary source: search_range_start/end (with time, Ecuador TZ),
-    // e.g. "23 jun 23:59 – 29 jun 21:13". Fallback when absent: the payload dates
-    // (local, date-only) — even if the time can't be shown.
+    // Scan window. A manual/date-range scan carries plain calendar dates in the
+    // payload (e.g. "2026-07-06"); the backend also stores search_range_start/end
+    // as UTC-midnight instants, which — rendered in Ecuador time — drift a day
+    // back to "05-jul 19:00". So for a calendar-date scan we show the requested
+    // date(s) with no misleading time. Only automated/incremental scans carry
+    // real ISO instants, which we render in Ecuador local time with the hour,
+    // e.g. "06 jul 21:30 – 06 jul 23:59".
     let rangoText = "Rango no determinado";
-    if (exec.searchRangeStart && exec.searchRangeEnd) {
+    const rawDates = rawPayloadDates(exec.requestPayload);
+    const isCalendarDateScan = !!rawDates.startDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDates.startDate);
+
+    if (isCalendarDateScan) {
+        rangoText = formatDateOnlyRange(rawDates.startDate, rawDates.endDate) ?? rangoText;
+    } else if (exec.searchRangeStart && exec.searchRangeEnd) {
         rangoText = `${formatEcuadorDayMonth(exec.searchRangeStart)} ${formatEcuadorTime(exec.searchRangeStart)} – ${formatEcuadorDayMonth(exec.searchRangeEnd)} ${formatEcuadorTime(exec.searchRangeEnd)}`;
     } else {
         const payload = parsePayload(exec.requestPayload);
         const sDate = payload?.startDate || exec.stats?.startDate;
         const eDate = payload?.endDate || exec.stats?.endDate;
-        if (sDate && eDate) {
-            const parseSafe = (d: string) => new Date(`${d.split('T')[0]}T12:00:00`);
-            const s = parseSafe(sDate);
-            const e = parseSafe(eDate);
-            if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
-                const sf = format(s, "dd MMM", { locale: es });
-                const ef = format(e, "dd MMM", { locale: es });
-                rangoText = sf === ef ? sf : `${sf} – ${ef}`;
-            }
-        }
+        rangoText = formatDateOnlyRange(sDate, eDate) ?? rangoText;
     }
 
     const timeLabel = formatEcuadorTime(exec.startedAt);
@@ -278,6 +320,25 @@ export function ScannerManager() {
     // scan shows only the portion of its findings that fall on the selected day.
     const [dayCountsByDate, setDayCountsByDate] = useState<Record<string, Record<string, number>>>({});
 
+    // Force-refresh a day's counts, bypassing the lazy cache. Used by realtime so
+    // the processing card's "Transacciones detectadas" climbs as scans find rows.
+    const fetchDayCounts = useCallback(async (dateStr: string) => {
+        const res = await getScannerDayCountsAction(dateStr);
+        if (res.success && res.data) {
+            setDayCountsByDate(prev => ({ ...prev, [dateStr]: res.data as Record<string, number> }));
+        }
+    }, []);
+
+    // Keep the selected date reachable from realtime callbacks without
+    // re-subscribing the channel every time the user picks a different day.
+    const selectedDateRef = useRef(selectedDate);
+    useEffect(() => { selectedDateRef.current = selectedDate; }, [selectedDate]);
+
+    const refreshSelectedDayCounts = useCallback(() => {
+        void fetchDayCounts(format(selectedDateRef.current, 'yyyy-MM-dd'));
+    }, [fetchDayCounts]);
+
+    // Lazy initial load for a newly selected day (only when not already cached).
     useEffect(() => {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         if (dayCountsByDate[dateStr]) return;
@@ -347,6 +408,9 @@ export function ScannerManager() {
         () => [
             { table: "financial_scanner_executions", event: "UPDATE" as const },
             { table: "financial_scanner_executions", event: "INSERT" as const },
+            // New scanner rows land as a scan runs — used to keep the day's
+            // "Transacciones detectadas" count live for the processing card.
+            { table: "financial_scanner_transactions", event: "INSERT" as const },
         ],
         [],
     );
@@ -354,20 +418,37 @@ export function ScannerManager() {
     const callbacks = useMemo(
         () => ({
             onUpdate: () => {
+                // Execution status/stats changed (e.g. PROCESSING → COMPLETED):
+                // reload the history (recolors the calendar, updates the badge)
+                // and settle the final transaction count.
                 void pollHistoryInBackground();
+                refreshSelectedDayCounts();
             },
-            onInsert: () => {
+            onInsert: (payload: { table?: string }) => {
+                if (payload?.table === "financial_scanner_transactions") {
+                    // A scan found another transaction — bump the day's count only.
+                    refreshSelectedDayCounts();
+                    return;
+                }
                 void pollHistoryInBackground();
+                refreshSelectedDayCounts();
             },
         }),
-        [pollHistoryInBackground],
+        [pollHistoryInBackground, refreshSelectedDayCounts],
     );
+
+    // Combined poll used when Realtime is unavailable: refresh both the history
+    // (calendar/status) and the selected day's transaction count.
+    const pollFallback = useCallback(() => {
+        void pollHistoryInBackground();
+        refreshSelectedDayCounts();
+    }, [pollHistoryInBackground, refreshSelectedDayCounts]);
 
     const { isPollingFallback } = useFinancialRealtime({
         channelName: "scanner-executions-realtime",
         subscriptions,
         callbacks,
-        onPollFallback: pollHistoryInBackground,
+        onPollFallback: pollFallback,
     });
     // ----------------------------------------
 
