@@ -59,17 +59,13 @@ export function FormSheet({
             {trigger && <ResponsiveDialogTrigger asChild>{trigger}</ResponsiveDialogTrigger>}
             <ResponsiveDialogContent className={cn("sm:max-w-[480px]", contentClassName)}>
                 <ResponsiveDialogHeader>
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                            <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
-                            {description && (
-                                <ResponsiveDialogDescription className="mt-1">
-                                    {description}
-                                </ResponsiveDialogDescription>
-                            )}
-                        </div>
-                        {headerAccessory ? <div className="shrink-0">{headerAccessory}</div> : null}
-                    </div>
+                    <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+                    {description && (
+                        <ResponsiveDialogDescription className="mt-1">
+                            {description}
+                        </ResponsiveDialogDescription>
+                    )}
+                    {headerAccessory ? <div className="mt-2">{headerAccessory}</div> : null}
                 </ResponsiveDialogHeader>
 
                 {footer !== undefined ? (
