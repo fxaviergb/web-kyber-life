@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { FormSheet, FormSheetBody, FormSheetFooter } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -40,28 +40,27 @@ const NONE_TYPE = "__none__";
  */
 export function InstitutionEditDialog({ open, onOpenChange, institution, types, onApply }: InstitutionEditDialogProps) {
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-blue-500" />
-                        Editar institución
-                    </DialogTitle>
-                    <DialogDescription>
-                        Corrige el nombre, el tipo o la descripción. Los cambios se guardarán al confirmar o guardar la transacción.
-                    </DialogDescription>
-                </DialogHeader>
-                {open && institution && (
-                    <InstitutionEditForm
-                        key={institution.id}
-                        institution={institution}
-                        types={types}
-                        onApply={onApply}
-                        onClose={() => onOpenChange(false)}
-                    />
-                )}
-            </DialogContent>
-        </Dialog>
+        <FormSheet
+            open={open}
+            onOpenChange={onOpenChange}
+            title={
+                <span className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-blue-500" />
+                    Editar institución
+                </span>
+            }
+            description="Corrige el nombre, el tipo o la descripción. Los cambios se guardarán al confirmar o guardar la transacción."
+        >
+            {open && institution && (
+                <InstitutionEditForm
+                    key={institution.id}
+                    institution={institution}
+                    types={types}
+                    onApply={onApply}
+                    onClose={() => onOpenChange(false)}
+                />
+            )}
+        </FormSheet>
     );
 }
 
@@ -94,19 +93,17 @@ function InstitutionEditForm({
 
     return (
         <>
-            <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                    <Label htmlFor="inst-edit-name">Nombre</Label>
+            <FormSheetBody className="space-y-4 py-2">
+                <Field label="Nombre" htmlFor="inst-edit-name">
                     <Input
                         id="inst-edit-name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Ej. Banco Pichincha"
                     />
-                </div>
+                </Field>
 
-                <div className="space-y-2">
-                    <Label>Tipo de institución</Label>
+                <Field label="Tipo de institución">
                     <Select value={institutionTypeId} onValueChange={setInstitutionTypeId}>
                         <SelectTrigger>
                             <SelectValue placeholder="Selecciona un tipo" />
@@ -118,10 +115,9 @@ function InstitutionEditForm({
                             ))}
                         </SelectContent>
                     </Select>
-                </div>
+                </Field>
 
-                <div className="space-y-2">
-                    <Label htmlFor="inst-edit-desc">Descripción (opcional)</Label>
+                <Field label="Descripción" htmlFor="inst-edit-desc" optional>
                     <Textarea
                         id="inst-edit-desc"
                         rows={3}
@@ -129,13 +125,13 @@ function InstitutionEditForm({
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Notas sobre esta institución..."
                     />
-                </div>
-            </div>
+                </Field>
+            </FormSheetBody>
 
-            <DialogFooter>
+            <FormSheetFooter className="sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={onClose}>Cancelar</Button>
                 <Button onClick={handleApply} disabled={!name.trim()}>Aplicar</Button>
-            </DialogFooter>
+            </FormSheetFooter>
         </>
     );
 }

@@ -1,21 +1,13 @@
 "use client";
 
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormSheet, FormSheetForm, FormSheetBody, FormSheetFooter } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import { useActionState } from "react";
 import { createCategoryAction, updateCategoryAction } from "@/app/actions/master-data";
 import { useEffect, useState } from "react";
 import { Category } from "@/domain/entities";
-import { Loader2, Plus, Edit } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface CategoryDialogProps {
@@ -47,50 +39,46 @@ export function CategoryDialog({ mode, category, trigger, open: controlledOpen, 
         : "Modifica el nombre de tu categoría personal.";
 
     return (
-        <Dialog open={effectiveOpen} onOpenChange={effectiveSetOpen}>
-            {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-            <DialogContent className="bg-bg-1 border-border sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle className="text-text-1">{title}</DialogTitle>
-                    <DialogDescription className="text-text-2">
-                        {description}
-                    </DialogDescription>
-                </DialogHeader>
-                <form action={formAction} className="grid gap-4 py-4">
+        <FormSheet
+            open={effectiveOpen}
+            onOpenChange={effectiveSetOpen}
+            trigger={trigger}
+            title={title}
+            description={description}
+            contentClassName="sm:max-w-[425px]"
+        >
+            <FormSheetForm action={formAction}>
+                <FormSheetBody>
                     {mode === 'edit' && category && (
                         <input type="hidden" name="id" value={category.id} />
                     )}
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="name" className="text-text-1">
-                            Nombre
-                        </Label>
+                    <Field label="Nombre" htmlFor="name" required>
                         <Input
                             id="name"
                             name="name"
                             defaultValue={category?.name}
-                            className="bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
                             placeholder="Ej. Lácteos, Limpieza..."
                             required
                         />
-                    </div>
+                    </Field>
 
                     {state?.error && (
-                        <p className="text-sm text-destructive font-medium">{state.error}</p>
+                        <p className="text-sm text-accent-danger font-medium">{state.error}</p>
                     )}
+                </FormSheetBody>
 
-                    <DialogFooter>
-                        <Button
-                            type="submit"
-                            disabled={isPending}
-                            className="bg-accent-violet text-white hover:bg-accent-violet/90"
-                        >
-                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {mode === 'create' ? "Crear" : "Guardar Cambios"}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                <FormSheetFooter>
+                    <Button
+                        type="submit"
+                        disabled={isPending}
+                        className="w-full bg-accent-violet text-white hover:bg-accent-violet/90"
+                    >
+                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {mode === 'create' ? "Crear" : "Guardar Cambios"}
+                    </Button>
+                </FormSheetFooter>
+            </FormSheetForm>
+        </FormSheet>
     );
 }
