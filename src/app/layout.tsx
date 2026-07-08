@@ -54,6 +54,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false, // App-like feel
+  // Shrink the layout viewport when the soft keyboard opens so dvh-based sheets
+  // (bottom drawers / full-screen sheets) track the space above the keyboard and
+  // keep their sticky footer actions visible instead of being covered.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

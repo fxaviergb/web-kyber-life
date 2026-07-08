@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
     Dialog,
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import {
     Drawer,
-    DrawerClose,
     DrawerContent,
     DrawerDescription,
     DrawerFooter,
@@ -56,10 +56,31 @@ export function ResponsiveDialogContent({ children, className, ...props }: React
 
     return (
         <DrawerContent className={className} {...props}>
-            <div className="mx-auto w-full max-w-sm flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="w-full flex-1 min-h-0 overflow-hidden flex flex-col">
                 {children}
             </div>
         </DrawerContent>
+    );
+}
+
+/**
+ * The single scrollable region of a responsive dialog. On mobile it flexes to
+ * fill the space between the sticky header and footer (so only this area scrolls
+ * and the footer actions stay pinned above the keyboard). On desktop it caps its
+ * height so the centered dialog never overflows the screen.
+ */
+export function ResponsiveDialogBody({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+    const isDesktop = useMediaQuery("(min-width: 768px)");
+    return (
+        <div
+            className={cn(
+                isDesktop
+                    ? "max-h-[65vh] overflow-y-auto"
+                    : "flex-1 min-h-0 overflow-y-auto overscroll-contain",
+                className,
+            )}
+            {...props}
+        />
     );
 }
 

@@ -4,16 +4,8 @@ import { useActionState, useState, useEffect } from "react";
 import { updateTemplateItemAction } from "@/app/actions/template";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+import { FormSheet, FormSheetForm, FormSheetBody, FormSheetFooter } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import {
     Select,
     SelectContent,
@@ -52,40 +44,36 @@ export function EditTemplateItemDialog({ templateId, item, units }: EditTemplate
     }, [state]);
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-text-3 hover:text-accent-violet h-8 w-8">
+        <FormSheet
+            open={open}
+            onOpenChange={setOpen}
+            trigger={
+                <Button variant="ghost" size="icon" className="text-text-tertiary hover:text-accent-violet h-8 w-8">
                     <Edit2 className="w-4 h-4" />
                 </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-bg-1 border-border sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle className="text-text-1">Editar Valores por Defecto</DialogTitle>
-                    <DialogDescription className="text-text-2">
-                        Configura la cantidad y unidad sugerida para <strong>{item.genericName}</strong>.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <form action={formAction} className="space-y-4 py-4">
+            }
+            title="Editar Valores por Defecto"
+            description={<>Configura la cantidad y unidad sugerida para <strong>{item.genericName}</strong>.</>}
+            contentClassName="sm:max-w-[425px]"
+        >
+            <FormSheetForm action={formAction}>
+                <FormSheetBody>
                     {/* Hidden inputs to pass required data */}
                     {item.genericItemId && <input type="hidden" name="genericItemId" value={item.genericItemId} />}
                     <input type="hidden" name="currencyCode" value={item.currencyCode || "USD"} />
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-text-2">Cant. Sugerida</Label>
+                        <Field label="Cant. Sugerida">
                             <Input
                                 name="defaultQty"
                                 type="number"
                                 step="0.01"
                                 defaultValue={item.defaultQty || ""}
-                                className="bg-bg-2 border-border"
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-text-2">Unidad</Label>
+                        </Field>
+                        <Field label="Unidad">
                             <Select name="defaultUnitId" defaultValue={item.defaultUnitId || units.find(u => u.symbol?.toLowerCase() === "und" || u.name.toLowerCase() === "unidad")?.id}>
-                                <SelectTrigger className="bg-bg-2 border-border">
+                                <SelectTrigger>
                                     <SelectValue placeholder="Unidad" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -95,37 +83,36 @@ export function EditTemplateItemDialog({ templateId, item, units }: EditTemplate
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </div>
+                        </Field>
 
-                        {/* Global Price Input */}
-                        <div className="space-y-2 col-span-2 border-t border-border pt-4 mt-2">
-                            <Label className="text-text-2 flex justify-between">
-                                <span>Precio Referencial</span>
-                                <span className="text-xs text-text-3">Actualiza producto en todo el sistema</span>
-                            </Label>
+                        <Field
+                            label="Precio Referencial"
+                            className="col-span-2 border-t border-border-base pt-4 mt-2"
+                            labelAside="Actualiza producto en todo el sistema"
+                        >
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3 font-semibold">$</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary font-semibold">$</span>
                                 <Input
                                     name="globalPrice"
                                     type="number"
                                     step="0.01"
                                     defaultValue={item.globalPrice || ""}
-                                    className="pl-7 bg-bg-2 border-border"
+                                    className="pl-7"
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-3 text-xs">{item.currencyCode || "USD"}</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary text-xs">{item.currencyCode || "USD"}</span>
                             </div>
-                        </div>
+                        </Field>
                     </div>
 
-                    {state?.error && <p className="text-destructive text-xs">{state.error}</p>}
+                    {state?.error && <p className="text-accent-danger text-xs">{state.error}</p>}
+                </FormSheetBody>
 
-                    <DialogFooter>
-                        <Button type="submit" disabled={isPending} className="w-full bg-accent-violet">
-                            {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Guardar Cambios"}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                <FormSheetFooter>
+                    <Button type="submit" disabled={isPending} className="w-full bg-accent-violet text-white">
+                        {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Guardar Cambios"}
+                    </Button>
+                </FormSheetFooter>
+            </FormSheetForm>
+        </FormSheet>
     );
 }
