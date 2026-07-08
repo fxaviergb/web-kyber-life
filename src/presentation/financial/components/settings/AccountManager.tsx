@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, CreditCard } from "lucide-react";
 import { createAccountAction, updateAccountAction, deleteAccountAction } from "@/app/actions/financial-settings";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { FormSheet } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -105,80 +105,72 @@ export function AccountManager({ initialData, institutions }: AccountManagerProp
                         <CardTitle>Tus Cuentas</CardTitle>
                         <CardDescription>Cuentas corrientes, ahorros, tarjetas, y efectivo.</CardDescription>
                     </div>
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
+                    <FormSheet
+                        open={isDialogOpen}
+                        onOpenChange={setIsDialogOpen}
+                        trigger={
                             <Button onClick={() => handleOpenDialog()} className="gap-2">
                                 <Plus className="w-4 h-4" />
                                 <span className="hidden sm:inline">Nueva Cuenta</span>
                             </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>{editingId ? "Editar Cuenta" : "Nueva Cuenta"}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="acc-name">Nombre</Label>
-                                    <Input 
-                                        id="acc-name" 
-                                        value={name} 
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Ej. Ahorros Principal"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Tipo</Label>
-                                    <Select value={accountType} onValueChange={setAccountType}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="CHECKING">Corriente</SelectItem>
-                                            <SelectItem value="SAVINGS">Ahorros</SelectItem>
-                                            <SelectItem value="CREDIT_CARD">Tarjeta de Crédito</SelectItem>
-                                            <SelectItem value="CASH">Efectivo</SelectItem>
-                                            <SelectItem value="INVESTMENT">Inversión</SelectItem>
-                                            <SelectItem value="LOAN">Préstamo</SelectItem>
-                                            <SelectItem value="OTHER">Otro</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Institución (Opcional)</Label>
-                                    <Select value={institutionId} onValueChange={setInstitutionId}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">Sin institución</SelectItem>
-                                            {activeInstitutions.map(inst => (
-                                                <SelectItem key={inst.id} value={inst.id!}>{inst.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Moneda</Label>
-                                    <Select value={currency} onValueChange={setCurrency}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="USD">USD ($)</SelectItem>
-                                            <SelectItem value="EUR">EUR (€)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <Button 
-                                    className="w-full" 
-                                    onClick={handleSave} 
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? "Guardando..." : "Guardar"}
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                        }
+                        title={editingId ? "Editar Cuenta" : "Nueva Cuenta"}
+                        bodyClassName="space-y-4 py-4"
+                        footer={
+                            <Button className="w-full" onClick={handleSave} disabled={isSubmitting}>
+                                {isSubmitting ? "Guardando..." : "Guardar"}
+                            </Button>
+                        }
+                    >
+                        <Field label="Nombre" htmlFor="acc-name">
+                            <Input
+                                id="acc-name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Ej. Ahorros Principal"
+                            />
+                        </Field>
+                        <Field label="Tipo">
+                            <Select value={accountType} onValueChange={setAccountType}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="CHECKING">Corriente</SelectItem>
+                                    <SelectItem value="SAVINGS">Ahorros</SelectItem>
+                                    <SelectItem value="CREDIT_CARD">Tarjeta de Crédito</SelectItem>
+                                    <SelectItem value="CASH">Efectivo</SelectItem>
+                                    <SelectItem value="INVESTMENT">Inversión</SelectItem>
+                                    <SelectItem value="LOAN">Préstamo</SelectItem>
+                                    <SelectItem value="OTHER">Otro</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                        <Field label="Institución" optional>
+                            <Select value={institutionId} onValueChange={setInstitutionId}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Sin institución</SelectItem>
+                                    {activeInstitutions.map(inst => (
+                                        <SelectItem key={inst.id} value={inst.id!}>{inst.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                        <Field label="Moneda">
+                            <Select value={currency} onValueChange={setCurrency}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="USD">USD ($)</SelectItem>
+                                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                    </FormSheet>
                 </div>
             </CardHeader>
             <CardContent className="px-0">

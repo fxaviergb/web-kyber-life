@@ -1,14 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-    ResponsiveDialog,
-    ResponsiveDialogContent,
-    ResponsiveDialogHeader,
-    ResponsiveDialogTitle,
-    ResponsiveDialogDescription,
-    ResponsiveDialogFooter,
-} from "@/components/ui/responsive-dialog";
+import { FormSheet, FormSheetBody, FormSheetFooter } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -429,32 +423,28 @@ export function UnplannedProductDialog({
 
             {step === "create" && (
                 <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label className="text-text-1">Nombre del producto</Label>
+                    <Field label="Nombre del producto">
                         <Input
                             placeholder="Ej: Salsa de Tomate"
                             value={name}
                             onChange={e => setName(e.target.value)}
-                            className="bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
                         />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-text-1">Precio (Opcional)</Label>
+                    </Field>
+                    <Field label="Precio" optional>
                         <div className="relative">
-                            <span className="absolute left-3 top-2.5 text-text-3">$</span>
+                            <span className="absolute left-3 top-2.5 text-text-tertiary">$</span>
                             <Input
                                 type="number"
                                 placeholder="0.00"
-                                className="pl-7 bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
+                                className="pl-7"
                                 value={price}
                                 onChange={e => setPrice(e.target.value)}
                             />
                         </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-text-1">Categoría (Opcional)</Label>
+                    </Field>
+                    <Field label="Categoría" optional>
                         <select
-                            className="w-full h-10 rounded-md border border-input bg-bg-0 px-3 py-2 text-sm text-text-1 focus:ring-2 focus:ring-accent-violet outline-none"
+                            className="w-full h-10 rounded-lg border border-border-base bg-bg-primary px-3 py-2 text-sm text-text-primary focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary outline-none"
                             value={categoryId}
                             onChange={e => setCategoryId(e.target.value)}
                         >
@@ -463,23 +453,20 @@ export function UnplannedProductDialog({
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </select>
-                    </div>
+                    </Field>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-text-1">Cantidad</Label>
+                        <Field label="Cantidad">
                             <Input
                                 type="number"
                                 step="0.1"
                                 min="0"
                                 value={qty}
                                 onChange={(e) => setQty(e.target.value)}
-                                className="bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-text-1">Unidad</Label>
+                        </Field>
+                        <Field label="Unidad">
                             <select
-                                className="w-full h-10 rounded-md border border-input bg-bg-0 px-3 py-2 text-sm text-text-1 focus:ring-2 focus:ring-accent-violet outline-none"
+                                className="w-full h-10 rounded-lg border border-border-base bg-bg-primary px-3 py-2 text-sm text-text-primary focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary outline-none"
                                 value={unitId}
                                 onChange={(e) => setUnitId(e.target.value)}
                             >
@@ -490,9 +477,9 @@ export function UnplannedProductDialog({
                                     </option>
                                 ))}
                             </select>
-                        </div>
+                        </Field>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2 pt-2">
                         <Checkbox 
                             id="markAsBoughtCreate" 
@@ -623,7 +610,7 @@ export function UnplannedProductDialog({
     const sharedFooter = (
         <>
             {step === "create" && (
-                <div className="flex gap-2 w-full justify-between items-center border-t border-border pt-4 mt-4">
+                <div className="flex gap-2 w-full justify-between items-center">
                     <Button variant="ghost" className="text-text-3 hover:text-text-1" onClick={() => setStep("search")}>Atrás</Button>
                     <Button
                         onClick={() => handleCreate()}
@@ -642,20 +629,20 @@ export function UnplannedProductDialog({
         </>
     );
 
+    const hasFooter = step === "create" || step === "confirm_existing";
+
     return (
-        <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-            <ResponsiveDialogContent className="bg-bg-1 border-border sm:max-w-[425px]">
-                <ResponsiveDialogHeader>
-                    <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
-                    <ResponsiveDialogDescription>{description}</ResponsiveDialogDescription>
-                </ResponsiveDialogHeader>
-                <div className="overflow-y-auto px-1 max-h-[70vh]">
-                    {sharedContent}
-                </div>
-                <ResponsiveDialogFooter>
-                    {sharedFooter}
-                </ResponsiveDialogFooter>
-            </ResponsiveDialogContent>
-        </ResponsiveDialog>
+        <FormSheet
+            open={open}
+            onOpenChange={onOpenChange}
+            title={title}
+            description={description}
+            contentClassName="sm:max-w-[425px]"
+        >
+            <FormSheetBody className="px-1">
+                {sharedContent}
+            </FormSheetBody>
+            {hasFooter && <FormSheetFooter>{sharedFooter}</FormSheetFooter>}
+        </FormSheet>
     );
 }

@@ -1,16 +1,8 @@
 "use client";
 
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormSheet, FormSheetForm, FormSheetBody, FormSheetFooter } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import { useActionState } from "react";
 import { createUnitAction, updateUnitAction } from "@/app/actions/master-data";
 import { useEffect, useState } from "react";
@@ -47,63 +39,55 @@ export function UnitDialog({ mode, unit, trigger, open: controlledOpen, onOpenCh
         : "Modifica tu unidad personalizada.";
 
     return (
-        <Dialog open={effectiveOpen} onOpenChange={effectiveSetOpen}>
-            {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-            <DialogContent className="bg-bg-1 border-border sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle className="text-text-1">{title}</DialogTitle>
-                    <DialogDescription className="text-text-2">
-                        {description}
-                    </DialogDescription>
-                </DialogHeader>
-                <form action={formAction} className="grid gap-4 py-4">
+        <FormSheet
+            open={effectiveOpen}
+            onOpenChange={effectiveSetOpen}
+            trigger={trigger}
+            title={title}
+            description={description}
+            contentClassName="sm:max-w-[425px]"
+        >
+            <FormSheetForm action={formAction}>
+                <FormSheetBody className="space-y-4">
                     {mode === 'edit' && unit && (
                         <input type="hidden" name="id" value={unit.id} />
                     )}
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="name" className="text-text-1">
-                            Nombre
-                        </Label>
+                    <Field label="Nombre" htmlFor="name" required>
                         <Input
                             id="name"
                             name="name"
                             defaultValue={unit?.name}
-                            className="bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
                             placeholder="Ej. Paquete, Botella..."
                             required
                         />
-                    </div>
+                    </Field>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="symbol" className="text-text-1">
-                            Símbolo (Opcional)
-                        </Label>
+                    <Field label="Símbolo" htmlFor="symbol" optional>
                         <Input
                             id="symbol"
                             name="symbol"
                             defaultValue={unit?.symbol || ""}
-                            className="bg-bg-0 border-input text-text-1 focus-visible:ring-accent-violet"
                             placeholder="Ej. pk, bt..."
                         />
-                    </div>
+                    </Field>
 
                     {state?.error && (
-                        <p className="text-sm text-destructive font-medium">{state.error}</p>
+                        <p className="text-sm text-accent-danger font-medium">{state.error}</p>
                     )}
+                </FormSheetBody>
 
-                    <DialogFooter>
-                        <Button
-                            type="submit"
-                            disabled={isPending}
-                            className="bg-accent-violet text-white hover:bg-accent-violet/90"
-                        >
-                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {mode === 'create' ? "Crear" : "Guardar Cambios"}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                <FormSheetFooter>
+                    <Button
+                        type="submit"
+                        disabled={isPending}
+                        className="w-full bg-accent-violet text-white hover:bg-accent-violet/90"
+                    >
+                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {mode === 'create' ? "Crear" : "Guardar Cambios"}
+                    </Button>
+                </FormSheetFooter>
+            </FormSheetForm>
+        </FormSheet>
     );
 }

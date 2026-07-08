@@ -3,16 +3,8 @@
 import { createTemplateAction } from "@/app/actions/template";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-    ResponsiveDialog,
-    ResponsiveDialogContent,
-    ResponsiveDialogHeader,
-    ResponsiveDialogTitle,
-    ResponsiveDialogDescription,
-    ResponsiveDialogTrigger,
-    ResponsiveDialogFooter
-} from "@/components/ui/responsive-dialog";
-import { Label } from "@/components/ui/label";
+import { FormSheet, FormSheetForm, FormSheetBody, FormSheetFooter } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import { Plus, Tag as TagIcon, Loader2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
@@ -29,83 +21,84 @@ export function CreateTemplateDialog() {
     }, [state]);
 
     return (
-        <ResponsiveDialog open={open} onOpenChange={setOpen}>
-            <ResponsiveDialogTrigger asChild>
+        <FormSheet
+            open={open}
+            onOpenChange={setOpen}
+            trigger={
                 <Button className="bg-accent-violet hover:bg-accent-violet/90 text-white font-medium shadow-lg shadow-accent-violet/20 hover:shadow-accent-violet/30 transition-all">
                     <Plus className="w-4 h-4 mr-2" />
                     Nueva Plantilla
                 </Button>
-            </ResponsiveDialogTrigger>
-            <ResponsiveDialogContent className="bg-bg-1 border-border text-text-1 sm:max-w-[500px]">
-                <ResponsiveDialogHeader>
-                    <ResponsiveDialogTitle className="text-xl font-bold text-text-1">Crear Nueva Plantilla</ResponsiveDialogTitle>
-                    <ResponsiveDialogDescription className="text-text-2">
-                        Define un nombre para tu lista recurrente para agilizar tus compras futuras.
-                    </ResponsiveDialogDescription>
-                </ResponsiveDialogHeader>
-
-                <form ref={formRef} action={formAction} className="space-y-6 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="name" className="text-text-1 font-medium">Nombre de la Plantilla</Label>
+            }
+            title="Crear Nueva Plantilla"
+            description="Define un nombre para tu lista recurrente para agilizar tus compras futuras."
+            contentClassName="sm:max-w-[500px]"
+        >
+            <FormSheetForm ref={formRef} action={formAction}>
+                <FormSheetBody className="space-y-6">
+                    <Field label="Nombre de la Plantilla" htmlFor="name" required>
                         <Input
                             id="name"
                             name="name"
                             placeholder="Ej. Supermercado Semanal"
-                            className="bg-bg-2 border-border text-text-1 h-11"
+                            className="h-11"
                             required
                         />
-                    </div>
+                    </Field>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="tags" className="text-text-1 font-medium">Etiquetas <span className="text-text-3 font-normal text-xs ml-1">(Opcional)</span></Label>
+                    <Field
+                        label="Etiquetas"
+                        htmlFor="tags"
+                        optional
+                        hint="Separa las etiquetas usando comas."
+                    >
                         <div className="relative">
-                            <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-3" />
+                            <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                             <Input
                                 id="tags"
                                 name="tags"
                                 placeholder="casa, comida, mensual..."
-                                className="bg-bg-2 border-border text-text-1 pl-10 h-11"
+                                className="pl-10 h-11"
                             />
                         </div>
-                        <p className="text-[11px] text-text-3 pl-1">Separa las etiquetas usando comas.</p>
-                    </div>
+                    </Field>
 
                     {state?.error && (
-                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+                        <div className="p-3 rounded-lg bg-accent-danger/10 border border-accent-danger/20 text-accent-danger text-sm">
                             {state.error}
                         </div>
                     )}
+                </FormSheetBody>
 
-                    <ResponsiveDialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => setOpen(false)}
-                            disabled={isPending}
-                            className="w-full sm:w-auto text-text-2 hover:text-text-1 hover:bg-bg-2"
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={isPending}
-                            className="w-full sm:w-auto bg-accent-violet hover:bg-accent-violet/90 text-white min-w-[140px]"
-                        >
-                            {isPending ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                    Creando...
-                                </>
-                            ) : (
-                                <>
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Crear Plantilla
-                                </>
-                            )}
-                        </Button>
-                    </ResponsiveDialogFooter>
-                </form>
-            </ResponsiveDialogContent>
-        </ResponsiveDialog>
+                <FormSheetFooter className="sm:flex-row sm:justify-end">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setOpen(false)}
+                        disabled={isPending}
+                        className="w-full sm:w-auto text-text-secondary hover:text-text-primary"
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={isPending}
+                        className="w-full sm:w-auto bg-accent-violet hover:bg-accent-violet/90 text-white min-w-[140px]"
+                    >
+                        {isPending ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                Creando...
+                            </>
+                        ) : (
+                            <>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Crear Plantilla
+                            </>
+                        )}
+                    </Button>
+                </FormSheetFooter>
+            </FormSheetForm>
+        </FormSheet>
     );
 }

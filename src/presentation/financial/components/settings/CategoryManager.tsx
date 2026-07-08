@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, Tags } from "lucide-react";
 import { createCategoryAction, updateCategoryAction, deleteCategoryAction } from "@/app/actions/financial-settings";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { FormSheet } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { UUID } from "@/domain/core";
@@ -94,50 +94,44 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                         <CardTitle>Tus Categorías</CardTitle>
                         <CardDescription>Clasifica tus transacciones para mejores reportes.</CardDescription>
                     </div>
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
+                    <FormSheet
+                        open={isDialogOpen}
+                        onOpenChange={setIsDialogOpen}
+                        trigger={
                             <Button onClick={() => handleOpenDialog()} className="gap-2">
                                 <Plus className="w-4 h-4" />
                                 <span className="hidden sm:inline">Nueva Categoría</span>
                             </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>{editingId ? "Editar Categoría" : "Nueva Categoría"}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="cat-name">Nombre</Label>
-                                    <Input 
-                                        id="cat-name" 
-                                        value={name} 
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Ej. Alimentación"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="cat-color">Color</Label>
-                                    <div className="flex gap-3 items-center">
-                                        <Input 
-                                            id="cat-color" 
-                                            type="color"
-                                            value={color} 
-                                            onChange={(e) => setColor(e.target.value)}
-                                            className="w-14 h-10 p-1 cursor-pointer"
-                                        />
-                                        <span className="text-sm text-gray-500 uppercase">{color}</span>
-                                    </div>
-                                </div>
-                                <Button 
-                                    className="w-full" 
-                                    onClick={handleSave} 
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? "Guardando..." : "Guardar"}
-                                </Button>
+                        }
+                        title={editingId ? "Editar Categoría" : "Nueva Categoría"}
+                        bodyClassName="space-y-4 py-4"
+                        footer={
+                            <Button className="w-full" onClick={handleSave} disabled={isSubmitting}>
+                                {isSubmitting ? "Guardando..." : "Guardar"}
+                            </Button>
+                        }
+                    >
+                        <Field label="Nombre" htmlFor="cat-name">
+                            <Input
+                                id="cat-name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Ej. Alimentación"
+                            />
+                        </Field>
+                        <Field label="Color" htmlFor="cat-color">
+                            <div className="flex gap-3 items-center">
+                                <Input
+                                    id="cat-color"
+                                    type="color"
+                                    value={color}
+                                    onChange={(e) => setColor(e.target.value)}
+                                    className="w-14 h-10 p-1 cursor-pointer"
+                                />
+                                <span className="text-sm text-gray-500 uppercase">{color}</span>
                             </div>
-                        </DialogContent>
-                    </Dialog>
+                        </Field>
+                    </FormSheet>
                 </div>
             </CardHeader>
             <CardContent className="px-0">

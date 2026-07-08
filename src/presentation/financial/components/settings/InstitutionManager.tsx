@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, Building2 } from "lucide-react";
 import { createInstitutionAction, updateInstitutionAction, deleteInstitutionAction, createInstitutionTypeAction } from "@/app/actions/financial-settings";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { FormSheet } from "@/components/ui/form-sheet";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -131,62 +131,55 @@ export function InstitutionManager({ initialData, institutionTypes }: Institutio
                         <CardTitle>Tus Instituciones</CardTitle>
                         <CardDescription>Instituciones, comercios y otras entidades vinculadas a tus transacciones.</CardDescription>
                     </div>
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
+                    <FormSheet
+                        open={isDialogOpen}
+                        onOpenChange={setIsDialogOpen}
+                        trigger={
                             <Button onClick={() => handleOpenDialog()} className="gap-2">
                                 <Plus className="w-4 h-4" />
                                 <span className="hidden sm:inline">Nueva Institución</span>
                             </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>{editingId ? "Editar Institución" : "Nueva Institución"}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="inst-name">Nombre</Label>
-                                    <Input 
-                                        id="inst-name" 
-                                        value={name} 
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Ej. Banco Pichincha"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Tipo de Institución</Label>
-                                    <Select value={institutionTypeId} onValueChange={setInstitutionTypeId}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecciona un tipo" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {types.map(type => (
-                                                <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>
-                                            ))}
-                                            <SelectItem value="CUSTOM">Otro (Personalizado)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {institutionTypeId === 'CUSTOM' && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="inst-custom-type">Especificar Tipo</Label>
-                                        <Input 
-                                            id="inst-custom-type" 
-                                            value={customType} 
-                                            onChange={(e) => setCustomType(e.target.value)}
-                                            placeholder="Ej. Proveedor de Internet"
-                                        />
-                                    </div>
-                                )}
-                                <Button 
-                                    className="w-full" 
-                                    onClick={handleSave} 
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? "Guardando..." : "Guardar"}
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                        }
+                        title={editingId ? "Editar Institución" : "Nueva Institución"}
+                        bodyClassName="space-y-4 py-4"
+                        footer={
+                            <Button className="w-full" onClick={handleSave} disabled={isSubmitting}>
+                                {isSubmitting ? "Guardando..." : "Guardar"}
+                            </Button>
+                        }
+                    >
+                        <Field label="Nombre" htmlFor="inst-name">
+                            <Input
+                                id="inst-name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Ej. Banco Pichincha"
+                            />
+                        </Field>
+                        <Field label="Tipo de Institución">
+                            <Select value={institutionTypeId} onValueChange={setInstitutionTypeId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona un tipo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {types.map(type => (
+                                        <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>
+                                    ))}
+                                    <SelectItem value="CUSTOM">Otro (Personalizado)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                        {institutionTypeId === 'CUSTOM' && (
+                            <Field label="Especificar Tipo" htmlFor="inst-custom-type">
+                                <Input
+                                    id="inst-custom-type"
+                                    value={customType}
+                                    onChange={(e) => setCustomType(e.target.value)}
+                                    placeholder="Ej. Proveedor de Internet"
+                                />
+                            </Field>
+                        )}
+                    </FormSheet>
                 </div>
             </CardHeader>
             <CardContent className="px-0">

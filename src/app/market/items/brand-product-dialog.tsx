@@ -1,14 +1,6 @@
 "use client";
 
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+import { FormSheet, FormSheetBody } from "@/components/ui/form-sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -117,25 +109,24 @@ export function BrandProductDialog({
     }
 
     const title = mode === 'create' ? "Nueva Opción de Marca" : "Editar Opción";
+    const sheetTitle = step === "form" ? title : "Marca Existente";
+    const sheetDescription = step === "form"
+        ? "Define la marca, presentación y precios."
+        : `Ya existe la marca "${brandName}" para este producto.`;
 
     return (
-        <Dialog open={effectiveOpen} onOpenChange={(o) => {
-            effectiveSetOpen(o);
-            if (!o) setTimeout(() => setStep("form"), 200);
-        }}>
-            {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-            <DialogContent className="bg-bg-1 border-border sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="text-text-1">
-                        {step === "form" ? title : "Marca Existente"}
-                    </DialogTitle>
-                    <DialogDescription className="text-text-2">
-                        {step === "form"
-                            ? "Define la marca, presentación y precios."
-                            : `Ya existe la marca "${brandName}" para este producto.`}
-                    </DialogDescription>
-                </DialogHeader>
-
+        <FormSheet
+            open={effectiveOpen}
+            onOpenChange={(o) => {
+                effectiveSetOpen(o);
+                if (!o) setTimeout(() => setStep("form"), 200);
+            }}
+            trigger={trigger}
+            title={sheetTitle}
+            description={sheetDescription}
+            contentClassName="sm:max-w-[500px]"
+        >
+            <FormSheetBody>
                 {step === "form" ? (
                     <form onSubmit={handlePreSubmit} action={mode === 'edit' ? formAction : undefined} className="grid gap-4 py-4">
                         {mode === 'edit' && product && <input type="hidden" name="id" value={product.id} />}
@@ -189,11 +180,11 @@ export function BrandProductDialog({
 
                         {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 
-                        <DialogFooter>
+                        <div className="flex justify-end pt-2">
                             <Button type="submit" disabled={isPending || localLoading} className="bg-accent-violet text-white">
                                 {isPending || localLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (mode === 'create' ? "Crear Opción" : "Guardar Cambios")}
                             </Button>
-                        </DialogFooter>
+                        </div>
                     </form>
                 ) : (
                     <div className="space-y-6 py-6">
@@ -289,7 +280,7 @@ export function BrandProductDialog({
                         </div>
                     </div>
                 )}
-            </DialogContent>
-        </Dialog>
+            </FormSheetBody>
+        </FormSheet>
     );
 }

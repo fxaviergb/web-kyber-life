@@ -6,15 +6,7 @@ import { createGenericItemAction } from "@/app/actions/product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+import { FormSheet, FormSheetBody } from "@/components/ui/form-sheet";
 import {
     Select,
     SelectContent,
@@ -155,32 +147,29 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
         }
     }
 
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            {trigger ? (
-                <DialogTrigger asChild>{trigger}</DialogTrigger>
-            ) : (
-                <DialogTrigger asChild>
-                    <Button className="bg-accent-violet hover:bg-accent-violet/90 text-white">
-                        <Plus className="w-4 h-4 mr-2" /> Añadir Producto
-                    </Button>
-                </DialogTrigger>
-            )}
-            <DialogContent className="bg-bg-1 border-border sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle className="text-text-1">
-                        {step === "search" && "Añadir Producto a Plantilla"}
-                        {step === "create" && "Crear Nuevo Producto"}
-                        {step === "configure" && "Configurar Producto"}
-                    </DialogTitle>
-                    <DialogDescription className="text-text-2">
-                        {step === "search" && "Selecciona uno o varios productos para añadir."}
-                        {step === "create" && "Agrega un nuevo producto a tu catálogo."}
-                        {step === "configure" && "Define la cantidad y unidad por defecto para este producto."}
-                    </DialogDescription>
-                </DialogHeader>
+    const title =
+        step === "search" ? "Añadir Producto a Plantilla" :
+        step === "create" ? "Crear Nuevo Producto" :
+        "Configurar Producto";
+    const description =
+        step === "search" ? "Selecciona uno o varios productos para añadir." :
+        step === "create" ? "Agrega un nuevo producto a tu catálogo." :
+        "Define la cantidad y unidad por defecto para este producto.";
 
-                <div className="space-y-4 py-4">
+    return (
+        <FormSheet
+            open={open}
+            onOpenChange={setOpen}
+            trigger={trigger ?? (
+                <Button className="bg-accent-violet hover:bg-accent-violet/90 text-white">
+                    <Plus className="w-4 h-4 mr-2" /> Añadir Producto
+                </Button>
+            )}
+            title={title}
+            description={description}
+            contentClassName="sm:max-w-[425px]"
+        >
+            <FormSheetBody className="space-y-4 py-4">
                     {step === "search" && (
                         <div className="space-y-4">
                             <div className="relative">
@@ -386,16 +375,15 @@ export function AddItemDialog({ templateId, genericItems, units, categories, exi
 
                             {state?.error && <p className="text-destructive text-xs">{state.error}</p>}
 
-                            <DialogFooter>
+                            <div className="pt-2">
                                 <Button type="submit" disabled={isPending} className="w-full bg-accent-violet text-white hover:bg-accent-violet/90">
                                     {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
                                     Agregar a Plantilla
                                 </Button>
-                            </DialogFooter>
+                            </div>
                         </form>
                     )}
-                </div>
-            </DialogContent>
-        </Dialog>
+            </FormSheetBody>
+        </FormSheet>
     );
 }
