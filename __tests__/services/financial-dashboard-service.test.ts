@@ -120,6 +120,33 @@ describe("FinancialDashboardService", () => {
             expect(apr!.expenses).toBe(200);
             expect(apr!.net).toBe(-200);
         });
+
+        it("should correctly group transactions using monthsBack (no dates provided)", async () => {
+            jest.useFakeTimers();
+            jest.setSystemTime(new Date("2026-06-15T12:00:00Z")); // Simulate current date as Jun 2026
+
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "INCOME", amount: 1000, date: "2026-06-10T10:00:00Z" }, // current month
+                { ...baseTransaction, id: "2", type: "EXPENSE", amount: 300, date: "2026-05-10T10:00:00Z" }, // 1 month ago
+                { ...baseTransaction, id: "3", type: "WITHDRAWAL", amount: 100, date: "2026-04-15T10:00:00Z" }, // 2 months ago
+                { ...baseTransaction, id: "4", type: "TRANSFER", amount: 50, date: "2026-04-16T10:00:00Z" }, // 2 months ago
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+
+            const breakdown = await service.getMonthlyBreakdown(mockUserId, 3); // Last 3 months (Apr, May, Jun)
+
+            expect(breakdown).toHaveLength(3);
+            const jun = breakdown.find(m => m.month === "2026-06");
+            const may = breakdown.find(m => m.month === "2026-05");
+            const apr = breakdown.find(m => m.month === "2026-04");
+
+            expect(jun?.income).toBe(1000);
+            expect(may?.expenses).toBe(300);
+            expect(apr?.withdrawals).toBe(100);
+            expect(apr?.other).toBe(50);
+
+            jest.useRealTimers();
+        });
     });
 
     describe("getTypeBreakdown", () => {
@@ -204,12 +231,15 @@ describe("FinancialDashboardService", () => {
                 { ...baseTransaction, id: "1", type: "INCOME", amount: 1000, date: "2026-05-15T10:00:00Z" },
                 { ...baseTransaction, id: "2", type: "EXPENSE", amount: 300, date: "2026-05-15T15:00:00Z" },
                 { ...baseTransaction, id: "3", type: "EXPENSE", amount: 200, date: "2026-05-16T10:00:00Z" },
+                { ...baseTransaction, id: "4", type: "WITHDRAWAL", amount: 100, date: "2026-05-17T10:00:00Z" },
+                { ...baseTransaction, id: "5", type: "TRANSFER", amount: 50, date: "2026-05-18T10:00:00Z" },
+                { ...baseTransaction, id: "6", type: "OTHER", amount: 50, date: "2026-05-18T15:00:00Z" },
             ];
             transactionRepo.findByOwnerId.mockResolvedValue(transactions);
 
             const breakdown = await service.getDailyBreakdown(mockUserId);
 
-            expect(breakdown).toHaveLength(2);
+            expect(breakdown).toHaveLength(4);
             
             const day15 = breakdown.find(b => b.date === "2026-05-15");
             expect(day15!.income).toBe(1000);
@@ -220,6 +250,84 @@ describe("FinancialDashboardService", () => {
             expect(day16!.income).toBe(0);
             expect(day16!.expenses).toBe(200);
             expect(day16!.net).toBe(-200);
+
+            const day17 = breakdown.find(b => b.date === "2026-05-17");
+            expect(day17!.withdrawals).toBe(100);
+
+            const day18 = breakdown.find(b => b.date === "2026-05-18");
+            expect(day18!.other).toBe(100); // 50 TRANSFER + 50 OTHER
+        });
+    });
+
+    describe("getRecentTransactions", () => {
+        it("should return the latest transactions and map their related entity names", async () => {
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "INCOME", amount: 1000, categoryId: "cat-1", institutionId: "inst-1", date: "2026-05-15T10:00:00Z" },
+                { ...baseTransaction, id: "2", type: "EXPENSE", amount: 300, categoryId: null, institutionId: null, date: "2026-05-14T10:00:00Z" },
+            ];
+            transactionRepo.findRecent.mockResolvedValue(transactions);
+            categoryRepo.findAllBaseAndUser.mockResolvedValue([
+                { id: "cat-1", name: "Food", color: "#FF0000", type: "EXPENSE", isBase: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), isDeleted: false } as FinancialCategory
+            ]);
+            institutionRepo.findByOwnerId.mockResolvedValue([
+                { id: "inst-1", name: "Bank A", ownerUserId: mockUserId, status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), isDeleted: false } as FinancialInstitution
+            ]);
+
+            const recent = await service.getRecentTransactions(mockUserId, 1);
+            expect(recent).toHaveLength(1);
+            expect((recent[0] as any).categoryName).toBe("Food");
+            expect((recent[0] as any).categoryColor).toBe("#FF0000");
+            expect((recent[0] as any).institutionName).toBe("Bank A");
+        });
+
+        it("should respect date filters in recent transactions", async () => {
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", date: "2026-05-15T10:00:00Z" },
+                { ...baseTransaction, id: "2", date: "2026-04-15T10:00:00Z" },
+            ];
+            transactionRepo.findRecent.mockResolvedValue(transactions);
+            categoryRepo.findAllBaseAndUser.mockResolvedValue([]);
+            institutionRepo.findByOwnerId.mockResolvedValue([]);
+
+            const startDate = new Date("2026-05-01T00:00:00Z");
+            const recent = await service.getRecentTransactions(mockUserId, 5, startDate);
+            expect(recent).toHaveLength(1);
+            expect(recent[0].id).toBe("1");
+        });
+    });
+
+    describe("KPIs with scanner repository", () => {
+        it("should use scanner pending count if scannerRepo is provided", async () => {
+            const scannerRepo = {
+                findUnprocessedByOwnerId: jest.fn().mockResolvedValue([
+                    { id: "scan-1", date: "2026-05-15T10:00:00Z" },
+                    { id: "scan-2", date: "2026-04-15T10:00:00Z" }
+                ])
+            } as any;
+            
+            const serviceWithScanner = new FinancialDashboardService(transactionRepo, categoryRepo, institutionRepo, scannerRepo);
+            
+            // Should get transactions as empty to focus on pending counts
+            transactionRepo.findByOwnerId.mockResolvedValue([]);
+
+            const startDate = new Date("2026-05-01T00:00:00Z");
+            const kpis = await serviceWithScanner.getKPIs(mockUserId, startDate);
+            
+            expect(scannerRepo.findUnprocessedByOwnerId).toHaveBeenCalledWith(mockUserId);
+            expect(kpis.pendingTransactionsCount).toBe(1); // Only scan-1 is within date
+        });
+
+        it("should include withdrawal and transfer in KPI calculation", async () => {
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "WITHDRAWAL", amount: 100, status: "CONFIRMED" },
+                { ...baseTransaction, id: "2", type: "TRANSFER", amount: 200, status: "CONFIRMED" },
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+
+            const kpis = await service.getKPIs(mockUserId);
+            expect(kpis.totalWithdrawals).toBe(100);
+            expect(kpis.totalTransfers).toBe(200);
+            expect(kpis.avgTransactionAmount).toBe(150); // (100 + 200) / 2
         });
     });
 });

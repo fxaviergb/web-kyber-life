@@ -172,5 +172,117 @@ describe("PurchaseService", () => {
         expect(obs[0].brandProductId).toBe(newBrandId);
         expect(obs[0].unitPrice).toBe(12.50);
     });
+
+    it("should use recent purchases and observations to recommend items during creation", async () => {
+        // Setup past completed purchase for recommendation
+        const genericItemId = uuidv4();
+        const brandProductId = uuidv4();
+        const templateId = uuidv4();
+
+        // Template with one generic item
+        await templateItemRepo.create({ id: uuidv4(), templateId, genericItemId, defaultQty: 1, defaultUnitId: null, sortOrder: 0 });
+        
+        // Brand product belongs to this generic
+        await brandRepo.create({ id: brandProductId, genericItemId, brand: "Brand", presentation: "1L", ownerUserId: userId, aliases: [], imageUrl: null, barcode: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), isDeleted: false });
+
+        // Past purchase
+        const pastPurchaseId = uuidv4();
+        await purchaseRepo.create({
+            id: pastPurchaseId, ownerUserId: userId, supermarketId, date: "2024-01-01", currencyCode: "USD", selectedTemplateIds: [], status: 'completed', createdAt: "", updatedAt: "", isDeleted: false, totalPaid: 10
+        });
+        await lineRepo.create({
+            id: uuidv4(), purchaseId: pastPurchaseId, genericItemId, brandProductId, qty: 1, unitId: null, unitPrice: 5, checked: true, lineAmountOverride: null, note: null, createdAt: "", updatedAt: "", isDeleted: false
+        });
+
+        // Observation
+        await obsRepo.create({
+            id: uuidv4(), ownerUserId: userId, brandProductId, supermarketId, currencyCode: "USD", unitPrice: 6, observedAt: "2024-01-05", sourcePurchaseId: null, createdAt: "", updatedAt: "", isDeleted: false
+        });
+
+        // Create new purchase
+        const purchase = await purchaseService.createPurchase(userId, supermarketId, "2024-02-01", [templateId]);
+        const lines = await lineRepo.findByPurchaseId(purchase.id);
+
+        expect(lines).toHaveLength(1);
+        expect(lines[0].genericItemId).toBe(genericItemId);
+        expect(lines[0].brandProductId).toBe(brandProductId); // Recommends brand from last purchase
+        expect(lines[0].unitPrice).toBe(6); // Price from recent observation
+    });
+
+    it("should retrieve a purchase with lines", async () => {
+        const purchase = await purchaseService.createPurchase(userId, supermarketId, "2024-01-01", []);
+        const line = await purchaseService.addPurchaseLine(userId, purchase.id, uuidv4());
+
+        const result = await purchaseService.getPurchase(userId, purchase.id);
+        expect(result).toBeDefined();
+        expect(result?.purchase.id).toBe(purchase.id);
+        expect(result?.lines).toHaveLength(1);
+        expect(result?.lines[0].id).toBe(line.id);
+    });
+
+    it("should update a purchase and retroactively update observations", async () => {
+        const purchase = await purchaseService.createPurchase(userId, supermarketId, "2024-01-01", []);
+        const brandProductId = uuidv4();
+        const lineId = uuidv4();
+        
+        await lineRepo.create({ id: lineId, purchaseId: purchase.id, genericItemId: uuidv4(), brandProductId, qty: 1, unitPrice: 10, checked: true, unitId: null, lineAmountOverride: null, note: null, createdAt: "", updatedAt: "", isDeleted: false });
+        await purchaseService.finishPurchase(userId, purchase.id, 10);
+
+        // Edit purchase supermarket
+        const newSupermarketId = uuidv4();
+        await purchaseService.updatePurchase(userId, purchase.id, { supermarketId: newSupermarketId, totalPaid: 15 });
+
+        const updated = await purchaseRepo.findById(purchase.id);
+        expect(updated?.supermarketId).toBe(newSupermarketId);
+        expect(updated?.totalPaid).toBe(15);
+
+        // Verify observation was updated to new supermarket
+        const obs = await obsRepo.findAll();
+        expect(obs[0].supermarketId).toBe(newSupermarketId);
+    });
+
+    it("should add and remove lines", async () => {
+        const purchase = await purchaseService.createPurchase(userId, supermarketId, "2024-01-01", []);
+        
+        // Add
+        const genericItemId = uuidv4();
+        const line = await purchaseService.addPurchaseLine(userId, purchase.id, genericItemId, 5, false, 2, "unit");
+        expect(line.qty).toBe(2);
+        expect(line.unitPrice).toBe(5);
+        expect(line.unitId).toBe("unit");
+
+        const linesAfterAdd = await lineRepo.findByPurchaseId(purchase.id);
+        expect(linesAfterAdd).toHaveLength(1);
+
+        // Remove
+        await purchaseService.removeLine(userId, line.id);
+        const linesAfterRemove = await lineRepo.findByPurchaseId(purchase.id);
+        expect(linesAfterRemove).toHaveLength(0);
+    });
+
+    it("should retroactively delete observation when a line is removed from a completed purchase", async () => {
+        const purchase = await purchaseService.createPurchase(userId, supermarketId, "2024-01-01", []);
+        const brandProductId = uuidv4();
+        const lineId = uuidv4();
+        
+        await lineRepo.create({ id: lineId, purchaseId: purchase.id, genericItemId: uuidv4(), brandProductId, qty: 1, unitPrice: 10, checked: true, unitId: null, lineAmountOverride: null, note: null, createdAt: "", updatedAt: "", isDeleted: false });
+        await purchaseService.finishPurchase(userId, purchase.id, 10);
+
+        expect(await obsRepo.findAll()).toHaveLength(1);
+
+        await purchaseService.removeLine(userId, lineId);
+
+        expect(await obsRepo.findAll()).toHaveLength(0);
+    });
+
+    it("should delete a purchase", async () => {
+        const purchase = await purchaseService.createPurchase(userId, supermarketId, "2024-01-01", []);
+        await purchaseService.addPurchaseLine(userId, purchase.id, uuidv4());
+
+        await purchaseService.deletePurchase(userId, purchase.id);
+
+        expect(await purchaseRepo.findById(purchase.id)).toBeNull();
+        expect(await lineRepo.findByPurchaseId(purchase.id)).toHaveLength(0);
+    });
 });
 

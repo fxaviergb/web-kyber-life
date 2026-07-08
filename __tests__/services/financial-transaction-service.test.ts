@@ -26,6 +26,7 @@ describe("FinancialTransactionService", () => {
             delete: jest.fn(),
             getUniqueTags: jest.fn(),
             findPaginated: jest.fn(),
+            search: jest.fn(),
         };
 
         auditLogRepoMock = {
@@ -141,6 +142,62 @@ describe("FinancialTransactionService", () => {
                 })
             );
         });
+
+        it("should implicitly create institution, account and category if they don't exist", async () => {
+            const institutionRepoMock = { findByOwnerId: jest.fn().mockResolvedValue([]), create: jest.fn().mockResolvedValue({ id: "new-inst" }) };
+            const accountRepoMock = { findByOwnerId: jest.fn().mockResolvedValue([]), create: jest.fn().mockResolvedValue({ id: "new-acc" }) };
+            const categoryRepoMock = { findAllBaseAndUser: jest.fn().mockResolvedValue([]), create: jest.fn().mockResolvedValue({ id: "new-cat" }) };
+            
+            const serviceWithRepos = new FinancialTransactionService(
+                transactionRepoMock, auditLogRepoMock, institutionRepoMock as any, accountRepoMock as any, categoryRepoMock as any
+            );
+
+            transactionRepoMock.findByOwnerId.mockResolvedValue([]);
+            transactionRepoMock.create.mockImplementation(async (tx: any) => tx);
+            auditLogRepoMock.create.mockResolvedValue({} as any);
+
+            const dto: CreateFinancialTransactionDTO = {
+                ownerUserId: mockUserId, type: "EXPENSE", amount: 100, currency: "USD", date: "2026-05-18T10:00:00Z",
+                institutionName: "New Institution", accountName: "New Account", categoryName: "New Category", description: "Test"
+            };
+
+            const result = await serviceWithRepos.createTransaction(dto);
+
+            expect(result.institutionId).toBe("new-inst");
+            expect(result.accountId).toBe("new-acc");
+            expect(result.categoryId).toBe("new-cat");
+            expect(institutionRepoMock.create).toHaveBeenCalled();
+            expect(accountRepoMock.create).toHaveBeenCalled();
+            expect(categoryRepoMock.create).toHaveBeenCalled();
+        });
+
+        it("should use existing institution, account and category if they exist by name", async () => {
+            const institutionRepoMock = { findByOwnerId: jest.fn().mockResolvedValue([{ id: "exist-inst", name: "Existing Inst" }]), create: jest.fn() };
+            const accountRepoMock = { findByOwnerId: jest.fn().mockResolvedValue([{ id: "exist-acc", name: "Existing Acc" }]), create: jest.fn() };
+            const categoryRepoMock = { findAllBaseAndUser: jest.fn().mockResolvedValue([{ id: "exist-cat", name: "Existing Cat" }]), create: jest.fn() };
+            
+            const serviceWithRepos = new FinancialTransactionService(
+                transactionRepoMock, auditLogRepoMock, institutionRepoMock as any, accountRepoMock as any, categoryRepoMock as any
+            );
+
+            transactionRepoMock.findByOwnerId.mockResolvedValue([]);
+            transactionRepoMock.create.mockImplementation(async (tx: any) => tx);
+            auditLogRepoMock.create.mockResolvedValue({} as any);
+
+            const dto: CreateFinancialTransactionDTO = {
+                ownerUserId: mockUserId, type: "EXPENSE", amount: 100, currency: "USD", date: "2026-05-18T10:00:00Z",
+                institutionName: "existing inst", accountName: "EXISTING ACC", categoryName: "Existing Cat", description: "Test"
+            };
+
+            const result = await serviceWithRepos.createTransaction(dto);
+
+            expect(result.institutionId).toBe("exist-inst");
+            expect(result.accountId).toBe("exist-acc");
+            expect(result.categoryId).toBe("exist-cat");
+            expect(institutionRepoMock.create).not.toHaveBeenCalled();
+            expect(accountRepoMock.create).not.toHaveBeenCalled();
+            expect(categoryRepoMock.create).not.toHaveBeenCalled();
+        });
     });
 
     describe("institution enrichment", () => {
@@ -208,6 +265,28 @@ describe("FinancialTransactionService", () => {
             await expect(service.updateTransaction(mockTransactionId, mockUserId, { amount: 200 }))
                 .rejects.toThrow("Transaction not found or unauthorized");
         });
+        it("should implicitly create institution, account and category if they don't exist on update", async () => {
+            const institutionRepoMock = { findByOwnerId: jest.fn().mockResolvedValue([]), create: jest.fn().mockResolvedValue({ id: "new-inst" }) };
+            const accountRepoMock = { findByOwnerId: jest.fn().mockResolvedValue([]), create: jest.fn().mockResolvedValue({ id: "new-acc" }) };
+            const categoryRepoMock = { findAllBaseAndUser: jest.fn().mockResolvedValue([]), create: jest.fn().mockResolvedValue({ id: "new-cat" }) };
+            
+            const serviceWithRepos = new FinancialTransactionService(
+                transactionRepoMock, auditLogRepoMock, institutionRepoMock as any, accountRepoMock as any, categoryRepoMock as any
+            );
+
+            const existingTx = { id: mockTransactionId, ownerUserId: mockUserId, type: "EXPENSE", amount: 100 };
+            transactionRepoMock.findById.mockResolvedValue(existingTx);
+            transactionRepoMock.update.mockImplementation(async (tx: any) => tx);
+            auditLogRepoMock.create.mockResolvedValue({} as any);
+
+            const result = await serviceWithRepos.updateTransaction(mockTransactionId, mockUserId, {
+                institutionName: "New Institution", accountName: "New Account", categoryName: "New Category"
+            });
+
+            expect(result.institutionId).toBe("new-inst");
+            expect(result.accountId).toBe("new-acc");
+            expect(result.categoryId).toBe("new-cat");
+        });
     });
 
     describe("workflow transitions", () => {
@@ -261,6 +340,141 @@ describe("FinancialTransactionService", () => {
             expect(result[0].status).toBe("CONFIRMED");
             expect(result[1].status).toBe("CONFIRMED");
             expect(transactionRepoMock.update).toHaveBeenCalledTimes(2);
+        });
+
+        it("should bulk reject transactions", async () => {
+            const tx1 = { id: uuidv4(), ownerUserId: mockUserId, status: "DETECTED" };
+            transactionRepoMock.findById.mockResolvedValue(tx1);
+            transactionRepoMock.update.mockImplementation(async (tx: any) => tx);
+            const result = await service.bulkRejectTransactions([tx1.id], mockUserId);
+            expect(result[0].status).toBe("REJECTED");
+        });
+
+        it("should bulk archive transactions", async () => {
+            const tx1 = { id: uuidv4(), ownerUserId: mockUserId, status: "CONFIRMED" };
+            transactionRepoMock.findById.mockResolvedValue(tx1);
+            transactionRepoMock.update.mockImplementation(async (tx: any) => tx);
+            const result = await service.bulkArchiveTransactions([tx1.id], mockUserId);
+            expect(result[0].status).toBe("ARCHIVED");
+        });
+
+        it("should bulk delete transactions", async () => {
+            const tx1 = { id: uuidv4(), ownerUserId: mockUserId, status: "DETECTED" };
+            transactionRepoMock.findById.mockResolvedValue(tx1);
+            transactionRepoMock.delete.mockResolvedValue(undefined);
+            const result = await service.bulkDeleteTransactions([tx1.id], mockUserId);
+            expect(result[0].status).toBe("DELETED");
+            expect(transactionRepoMock.delete).toHaveBeenCalled();
+        });
+
+        it("should bulk categorize transactions", async () => {
+            const tx1 = { id: mockTransactionId, ownerUserId: mockUserId, type: "EXPENSE", categoryId: null };
+            transactionRepoMock.findById.mockResolvedValue(tx1);
+            transactionRepoMock.update.mockImplementation(async (tx: any) => tx);
+            const newCatId = uuidv4();
+            const result = await service.bulkCategorizeTransactions([tx1.id], newCatId, mockUserId);
+            expect(result[0].categoryId).toBe(newCatId);
+        });
+    });
+
+    describe("duplicate operations", () => {
+        it("should mark a transaction as duplicate", async () => {
+            const tx = { id: mockTransactionId, ownerUserId: mockUserId, status: "DETECTED" };
+            transactionRepoMock.findById.mockResolvedValue(tx);
+            transactionRepoMock.update.mockImplementation(async (tx: any) => tx);
+            
+            const duplicateOfId = uuidv4();
+            const result = await service.markAsDuplicate(mockTransactionId, duplicateOfId, mockUserId);
+            
+            expect(result.status).toBe("DUPLICATE");
+            expect(result.possibleDuplicate).toBe(true);
+            expect(auditLogRepoMock.create).toHaveBeenCalledWith(
+                expect.objectContaining({ action: "MARKED_DUPLICATE" })
+            );
+        });
+
+        it("should resolve a duplicate transaction", async () => {
+            const tx = { id: mockTransactionId, ownerUserId: mockUserId, status: "DUPLICATE", possibleDuplicate: true };
+            transactionRepoMock.findById.mockResolvedValue(tx);
+            transactionRepoMock.update.mockImplementation(async (tx: any) => tx);
+            
+            const result = await service.resolveDuplicate(mockTransactionId, mockUserId);
+            
+            expect(result.status).toBe("CONFIRMED");
+            expect(result.possibleDuplicate).toBe(false);
+            expect(auditLogRepoMock.create).toHaveBeenCalledWith(
+                expect.objectContaining({ action: "DUPLICATE_RESOLVED" })
+            );
+        });
+    });
+
+    describe("queries and searching", () => {
+        it("should get transactions by user with enrichment", async () => {
+            const tx = { id: mockTransactionId, ownerUserId: mockUserId };
+            transactionRepoMock.findByOwnerId.mockResolvedValue([tx]);
+            
+            const result = await service.getTransactionsByUser(mockUserId);
+            expect(result).toHaveLength(1);
+            expect(result[0].id).toBe(mockTransactionId);
+        });
+
+        it("should return unique tags", async () => {
+            transactionRepoMock.getUniqueTags.mockResolvedValue(["tag1", "tag2"]);
+            const result = await service.getUniqueTags(mockUserId);
+            expect(result).toEqual(["tag1", "tag2"]);
+        });
+
+        it("should search paginated results", async () => {
+            const tx = { id: mockTransactionId, ownerUserId: mockUserId };
+            transactionRepoMock.findPaginated.mockResolvedValue({
+                data: [tx],
+                total: 1,
+                page: 1,
+                pageSize: 20
+            });
+            const filters = { query: "test" };
+            
+            const result = await service.searchPaginated(mockUserId, filters, { page: 1, pageSize: 20 });
+            expect(result.data).toHaveLength(1);
+            expect(result.total).toBe(1);
+            expect(transactionRepoMock.findPaginated).toHaveBeenCalled();
+        });
+
+        it("should search all filtered", async () => {
+            const tx = { id: mockTransactionId, ownerUserId: mockUserId };
+            transactionRepoMock.search.mockResolvedValue([tx]);
+            const filters = { query: "test query" };
+            
+            const categoryRepoMock = { findAllBaseAndUser: jest.fn().mockResolvedValue([{ id: "cat1", name: "test cat" }]) };
+            const institutionRepoMock = { findByOwnerId: jest.fn().mockResolvedValue([{ id: "inst1", name: "query inst" }]) };
+            
+            const serviceWithRepos = new FinancialTransactionService(
+                transactionRepoMock, auditLogRepoMock, institutionRepoMock as any, undefined, categoryRepoMock as any
+            );
+            
+            const result = await serviceWithRepos.searchAllFiltered(mockUserId, filters);
+            expect(result).toHaveLength(1);
+            expect(transactionRepoMock.search).toHaveBeenCalled();
+            // It modifies filters object with wordCategoryIds and wordInstitutionIds implicitly
+            expect((filters as any).words).toEqual(["test", "query"]);
+        });
+    });
+
+    describe("additional workflow transitions", () => {
+        it("should reject a transaction", async () => {
+            const tx = { id: mockTransactionId, ownerUserId: mockUserId, status: "DETECTED" };
+            transactionRepoMock.findById.mockResolvedValue(tx);
+            transactionRepoMock.update.mockImplementation(async (tx: any) => tx);
+            const result = await service.rejectTransaction(mockTransactionId, mockUserId);
+            expect(result.status).toBe("REJECTED");
+        });
+
+        it("should archive a transaction", async () => {
+            const tx = { id: mockTransactionId, ownerUserId: mockUserId, status: "CONFIRMED" };
+            transactionRepoMock.findById.mockResolvedValue(tx);
+            transactionRepoMock.update.mockImplementation(async (tx: any) => tx);
+            const result = await service.archiveTransaction(mockTransactionId, mockUserId);
+            expect(result.status).toBe("ARCHIVED");
         });
     });
 });
