@@ -15,8 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, Tags, X, FileJson, Info, Pencil, Building2, Landmark, FolderGit2, FileText } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, Tags, X, FileJson, Info, Pencil, Building2, Landmark, FolderGit2, FileText, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 
@@ -89,6 +90,7 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
             accountName: "",
             categoryName: initialData.category || "",
             tags: [] as string[],
+            paidWithCredit: false,
         };
     });
 
@@ -168,6 +170,7 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
                 accountName: formData.accountName || null,
                 categoryName: formData.categoryName || null,
                 tags: formData.tags,
+                paidWithCredit: formData.type === "EXPENSE" ? formData.paidWithCredit : null,
             });
 
             if (!result.success) {
@@ -273,6 +276,20 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                {formData.type === "EXPENSE" && (
+                                    <div className="flex items-center gap-2 p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
+                                        <Checkbox
+                                            id="paidWithCredit"
+                                            checked={formData.paidWithCredit}
+                                            onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, paidWithCredit: checked === true }))}
+                                        />
+                                        <Label htmlFor="paidWithCredit" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground cursor-pointer">
+                                            <CreditCard className="h-4 w-4 text-orange-500" />
+                                            Pagado con tarjeta de crédito
+                                        </Label>
+                                    </div>
+                                )}
 
                                 <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
                                     <Label htmlFor="amount" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">

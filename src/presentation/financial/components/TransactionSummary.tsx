@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { AreaChart, Area, ResponsiveContainer, YAxis, XAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, BarChart, Bar, LabelList } from 'recharts';
 import { ChevronDown, BarChart2, TrendingUp, TrendingDown, Wallet, ArrowRightLeft, Scale, PieChart as PieChartIcon, BarChart3 as BarChartIcon, type LucideIcon } from "lucide-react";
 import type { FinancialTransaction, FinancialTransactionType } from "@/domain/entities/financial";
+import { computeNetBalance } from "@/domain/services/financial-balance";
 import { cn } from "@/lib/utils";
 import {
     Select,
@@ -151,7 +152,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         // Ordenar cronológicamente para el gráfico
         const chartData = Object.values(chartDataMap).sort((a, b) => a.timestamp - b.timestamp);
 
-        const finalBalance = incomeSum - expenseSum;
+        // Single source of truth for "Balance", shared with the rest of the module.
+        const finalBalance = computeNetBalance(transactions);
 
         return {
             balance: finalBalance,

@@ -72,6 +72,8 @@ export interface FinancialTransaction extends BaseEntity {
     executionId?: UUID | null;
     originStats?: Record<string, any> | null;
     date: ISODate;
+    /** True when an expense-like transaction was paid with a credit card (cash outflow deferred to the card-bill payment). */
+    paidWithCredit?: boolean | null;
 }
 
 export interface FinancialScannerTransaction extends BaseEntity {

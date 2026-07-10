@@ -15,8 +15,12 @@ import { FinancialTransactionType, FinancialInstitution, FinancialInstitutionTyp
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toDateTimeLocalValue, isoToWallClockInput, wallClockInputToISO } from "@/lib/date-range";
-import { Building2, Landmark, FolderGit2, FileText, Pencil } from "lucide-react";
+import { Building2, Landmark, FolderGit2, FileText, Pencil, CreditCard } from "lucide-react";
+
+/** Types for which "paid with credit card" is a meaningful, editable flag. */
+const CREDIT_ELIGIBLE_TYPES: readonly FinancialTransactionType[] = ["EXPENSE", "SUBSCRIPTION"];
 
 // Lowercase type labels for natural-reading auto notes.
 const NOTE_TYPE_LABELS: Record<string, string> = {
@@ -78,6 +82,7 @@ export function TransactionForm() {
     const [institutionName, setInstitutionName] = useState("");
     const [accountName, setAccountName] = useState("");
     const [categoryName, setCategoryName] = useState("");
+    const [paidWithCredit, setPaidWithCredit] = useState(false);
 
     const [institutions, setInstitutions] = useState<FinancialInstitution[]>([]);
     const [institutionTypes, setInstitutionTypes] = useState<FinancialInstitutionType[]>([]);
@@ -130,6 +135,7 @@ export function TransactionForm() {
                     if (data.institutionName) setInstitutionName(draftInstitution);
                     if (data.accountName) setAccountName(draftAccount);
                     if (data.categoryName) setCategoryName(data.categoryName);
+                    if (data.paidWithCredit) setPaidWithCredit(Boolean(data.paidWithCredit));
 
                     if (data.notes) {
                         // Resume auto-generation only if the draft notes still match what
@@ -171,6 +177,7 @@ export function TransactionForm() {
                         institutionName,
                         accountName,
                         categoryName,
+                        paidWithCredit,
                         status: "MANUAL",
                         currency: "USD",
                     });
@@ -183,7 +190,7 @@ export function TransactionForm() {
         // Use a small timeout to debounce saving
         const timeoutId = setTimeout(saveDraft, 500);
         return () => clearTimeout(timeoutId);
-    }, [type, amount, description, date, notes, institutionName, accountName, categoryName]);
+    }, [type, amount, description, date, notes, institutionName, accountName, categoryName, paidWithCredit]);
 
     // Auto-generate the notes from the form fields until the user customises them.
     const autoNotes = useMemo(
@@ -264,6 +271,7 @@ export function TransactionForm() {
             institutionName: institutionName || undefined,
             accountName: accountName || undefined,
             categoryName: categoryName || undefined,
+            paidWithCredit: CREDIT_ELIGIBLE_TYPES.includes(type) ? paidWithCredit : undefined,
         };
 
         if (!navigator.onLine) {
@@ -422,6 +430,20 @@ export function TransactionForm() {
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {CREDIT_ELIGIBLE_TYPES.includes(type) && (
+                            <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-bg-primary/30 px-3 py-2.5">
+                                <Checkbox
+                                    id="paidWithCredit"
+                                    checked={paidWithCredit}
+                                    onCheckedChange={(checked) => setPaidWithCredit(checked === true)}
+                                />
+                                <Label htmlFor="paidWithCredit" className="flex items-center gap-2 font-normal cursor-pointer">
+                                    <CreditCard className="w-4 h-4 text-muted-foreground" />
+                                    Pagado con tarjeta de crédito
+                                </Label>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <Label htmlFor="amount">Monto (USD)</Label>

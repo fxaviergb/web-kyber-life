@@ -24,6 +24,7 @@ export interface CreateFinancialTransactionDTO {
     executionId?: UUID | null;
     originalAmount?: number | null;
     originStats?: Record<string, unknown> | null;
+    paidWithCredit?: boolean | null;
 }
 
 // ─── Valid Workflow Transitions ───────────────────────────────
@@ -137,6 +138,7 @@ export class FinancialTransactionService {
             executionId: dto.executionId ?? null,
             originalAmount: dto.originalAmount ?? null,
             originStats: dto.originStats ?? null,
+            paidWithCredit: dto.paidWithCredit ?? false,
             createdAt: now,
             updatedAt: now,
             isDeleted: false,
