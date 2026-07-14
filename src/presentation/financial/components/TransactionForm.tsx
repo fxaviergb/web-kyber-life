@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useScrollFieldIntoView } from "@/hooks/use-scroll-field-into-view";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,8 @@ function buildAutoNotes(p: AutoNotesInput): string {
 export function TransactionForm() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
+    useScrollFieldIntoView(formRef);
 
     // Which accordion section is open (only one or none).
     const [expanded, setExpanded] = useState<SectionId | null>(null);
@@ -298,13 +301,15 @@ export function TransactionForm() {
     };
 
     // Collapsed previews
+    const paidWithCreditActive = paidWithCredit && creditEligible;
     const accountPreview = accountName
-        ? (paidWithCredit && creditEligible ? `${accountName} · Tarjeta de crédito` : accountName)
-        : "Ej. Ahorros Múltiple, Tarjeta Visa";
+        ? (paidWithCreditActive ? `${accountName} · Tarjeta de crédito` : accountName)
+        : (paidWithCreditActive ? "Tarjeta de crédito" : "Ej. Ahorros Múltiple, Tarjeta Visa");
+    const accountHasValue = !!accountName || paidWithCreditActive;
     const datePreview = formatNotesDateTime(date) || "Selecciona fecha y hora";
 
     return (
-        <form onSubmit={handleSubmit} className="relative mx-auto w-full max-w-lg">
+        <form ref={formRef} onSubmit={handleSubmit} className="relative mx-auto w-full max-w-lg">
             <div className="space-y-3 pb-24">
                 <TransactionTypeChips value={type} onChange={setType} />
 
@@ -363,7 +368,7 @@ export function TransactionForm() {
                     iconClass="bg-emerald-500/15 text-emerald-500"
                     label="Cuenta"
                     preview={accountPreview}
-                    hasValue={!!accountName}
+                    hasValue={accountHasValue}
                     expanded={expanded === "account"}
                     onToggle={() => toggle("account")}
                 >
