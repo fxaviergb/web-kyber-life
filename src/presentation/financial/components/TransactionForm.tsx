@@ -19,8 +19,10 @@ import { InstitutionPicker, type PendingInstitutionEdit } from "./InstitutionPic
 import { CategoryPicker } from "./CategoryPicker";
 import { TransactionTypeChips } from "./TransactionTypeChips";
 import { AmountHeroInput } from "./AmountHeroInput";
+import { AccountSelect } from "./AccountSelect";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import { toDateTimeLocalValue, isoToWallClockInput, wallClockInputToISO, roundToNearestFiveMinutes } from "@/lib/date-range";
-import { Building2, Landmark, FileText, CreditCard, Calendar, MessageSquare, Tag, ChevronDown } from "lucide-react";
+import { Building2, Landmark, FileText, CreditCard, Calendar, MessageSquare, Tag } from "lucide-react";
 
 /** Types for which "paid with credit card" is a meaningful, editable flag. */
 const CREDIT_ELIGIBLE_TYPES: readonly FinancialTransactionType[] = ["EXPENSE"];
@@ -372,20 +374,7 @@ export function TransactionForm() {
                     expanded={expanded === "account"}
                     onToggle={() => toggle("account")}
                 >
-                    <div className="relative">
-                        <select
-                            id="accountName"
-                            value={accountName}
-                            onChange={(e) => setAccountName(e.target.value)}
-                            className="h-10 w-full appearance-none rounded-lg border border-border-base bg-bg-primary px-3 pr-9 text-sm text-text-primary outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20"
-                        >
-                            <option value="">Selecciona una cuenta</option>
-                            {accountsList.map((a) => (
-                                <option key={a} value={a}>{a}</option>
-                            ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-                    </div>
+                    <AccountSelect id="accountName" accounts={accountsList} value={accountName} onChange={setAccountName} />
 
                     {creditEligible && (
                         <div className={cn(
@@ -465,7 +454,7 @@ export function TransactionForm() {
             </div>
 
             {/* Floating save button — always visible */}
-            <div className="sticky bottom-0 z-10 -mx-1 border-t border-border/40 bg-bg-primary/85 px-1 pb-4 pt-3 backdrop-blur-md">
+            <StickyActionBar>
                 <Button
                     type="submit"
                     disabled={isSubmitting}
@@ -473,7 +462,7 @@ export function TransactionForm() {
                 >
                     {isSubmitting ? "Guardando..." : "Guardar transacción"}
                 </Button>
-            </div>
+            </StickyActionBar>
         </form>
     );
 }
