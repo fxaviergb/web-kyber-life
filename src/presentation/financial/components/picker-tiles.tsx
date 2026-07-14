@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { MoreHorizontal, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PickerGridTileProps {
@@ -48,12 +48,12 @@ export function PickerMoreTile({ expanded, onClick }: PickerMoreTileProps) {
         <button
             type="button"
             onClick={onClick}
-            className="flex h-full w-full flex-col items-center gap-1.5 rounded-xl border border-border/40 bg-bg-secondary/40 p-2 transition-all hover:border-border"
+            className="flex h-full w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-accent-primary/40 bg-accent-primary/5 p-2 transition-all hover:bg-accent-primary/10"
         >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-bg-primary text-text-tertiary">
-                <MoreHorizontal className="h-4 w-4" />
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-primary/15 text-accent-primary">
+                <Plus className={cn("h-4 w-4 transition-transform", expanded && "rotate-45")} />
             </span>
-            <span className="text-center text-[11px] leading-tight text-text-secondary">{expanded ? "Menos" : "Más"}</span>
+            <span className="text-center text-[11px] font-medium leading-tight text-accent-primary">{expanded ? "Menos" : "Más"}</span>
         </button>
     );
 }
