@@ -20,9 +20,9 @@ export default function NewTransactionPage() {
                     </Link>
                 </Button>
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Agregar transacción</h2>
+                    <h2 className="text-3xl font-bold tracking-tight">Nueva transacción</h2>
                     <p className="text-muted-foreground">
-                        Ingresa manualmente un nuevo registro financiero.
+                        Ingresa un nuevo registro financiero.
                     </p>
                 </div>
             </div>

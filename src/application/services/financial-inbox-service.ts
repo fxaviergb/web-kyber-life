@@ -27,6 +27,7 @@ export interface MapScannerTransactionDTO {
     amount?: number;
     date?: string;
     tags?: string[];
+    paidWithCredit?: boolean;
 }
 
 export class FinancialInboxService {
@@ -153,6 +154,7 @@ export class FinancialInboxService {
             description: resolvedDescription,
             notes: dto.notes ?? (scannerTx.originStats as Record<string, string>)?.emailBody ?? (scannerTx.originStats as Record<string, string>)?.snippet ?? null,
             possibleDuplicate: false,
+            paidWithCredit: dto.paidWithCredit ?? false,
             executionId: validExecutionId,
             originStats: {
                 ...((scannerTx.originStats as Record<string, unknown>) || {}),

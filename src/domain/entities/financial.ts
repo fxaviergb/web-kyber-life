@@ -1,6 +1,6 @@
 import { BaseEntity, UUID, ISODate } from "../core";
 
-export type FinancialTransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER' | 'SUBSCRIPTION' | 'PAYMENT' | 'REFUND' | 'WITHDRAWAL' | 'DEPOSIT' | 'FEE' | 'TAX' | 'OTHER';
+export type FinancialTransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER' | 'PAYMENT' | 'REFUND' | 'WITHDRAWAL' | 'DEPOSIT' | 'FEE' | 'TAX' | 'OTHER';
 export type FinancialTransactionStatus = 'DETECTED' | 'REVIEWED' | 'CONFIRMED' | 'REJECTED' | 'DUPLICATE' | 'ARCHIVED' | 'MANUAL' | 'DELETED';
 export type FinancialScanStatus = 'PROCESSING' | 'FAILED' | 'COMPLETED';
 
@@ -72,6 +72,8 @@ export interface FinancialTransaction extends BaseEntity {
     executionId?: UUID | null;
     originStats?: Record<string, any> | null;
     date: ISODate;
+    /** True when an expense-like transaction was paid with a credit card (cash outflow deferred to the card-bill payment). */
+    paidWithCredit?: boolean | null;
 }
 
 export interface FinancialScannerTransaction extends BaseEntity {

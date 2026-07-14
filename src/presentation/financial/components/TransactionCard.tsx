@@ -27,7 +27,6 @@ import {
     TrendingUp,
     ArrowRightLeft,
     Wallet,
-    Repeat,
     CreditCard,
     Undo2,
     ArrowDownToLine,
@@ -68,7 +67,6 @@ const TYPE_STYLE: Record<string, TypeStyle> = {
     INCOME:       { label: "Ingreso",       badge: "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20", amount: "text-emerald-500 dark:text-emerald-400", icon: TrendingUp },
     TRANSFER:     { label: "Transferencia", badge: "bg-yellow-500/10 text-yellow-500 dark:text-yellow-400 border-yellow-500/20",             amount: "text-yellow-500 dark:text-yellow-400", icon: ArrowRightLeft },
     WITHDRAWAL:   { label: "Retiro",        badge: "bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border-indigo-500/20",    amount: "text-indigo-500 dark:text-indigo-400", icon: Wallet },
-    SUBSCRIPTION: { label: "Suscripción",   badge: "bg-fuchsia-500/10 text-fuchsia-500 dark:text-fuchsia-400 border-fuchsia-500/20", amount: "text-fuchsia-500 dark:text-rose-400", icon: Repeat },
     PAYMENT:      { label: "Pago",          badge: "bg-rose-500/10 text-rose-500 dark:text-rose-400 border-rose-500/20",          amount: "text-rose-500 dark:text-rose-400", icon: CreditCard },
     REFUND:       { label: "Reembolso",     badge: "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20", amount: "text-emerald-500 dark:text-emerald-400", icon: Undo2 },
     DEPOSIT:      { label: "Depósito",      badge: "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20", amount: "text-emerald-500 dark:text-emerald-400", icon: ArrowDownToLine },
@@ -141,7 +139,7 @@ export function TransactionCard({
     const [isExpanded, setIsExpanded] = useState(false);
 
     const isIncome = ["INCOME", "DEPOSIT", "REFUND"].includes(transaction.type);
-    const isExpense = ["EXPENSE", "PAYMENT", "FEE", "TAX", "SUBSCRIPTION"].includes(transaction.type);
+    const isExpense = ["EXPENSE", "PAYMENT", "FEE", "TAX"].includes(transaction.type);
     // Retiro y transferencia son neutros: no llevan signo + / -.
     const amountSign = isIncome ? "+" : isExpense ? "-" : "";
     const style = TYPE_STYLE[transaction.type] ?? DEFAULT_TYPE_STYLE;

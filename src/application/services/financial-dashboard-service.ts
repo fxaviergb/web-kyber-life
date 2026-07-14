@@ -1,6 +1,7 @@
 import { UUID } from "../../domain/core";
 import { FinancialTransaction } from "../../domain/entities/financial";
 import { IFinancialTransactionRepository, IFinancialCategoryRepository, IFinancialInstitutionRepository, IFinancialScannerTransactionRepository } from "../../domain/repositories/financial";
+import { computeNetBalance, isIncomeType, isWithdrawalType, isOtherType } from "../../domain/services/financial-balance";
 export interface FinancialKPIs {
     totalIncome: number;
     totalExpenses: number;
@@ -92,11 +93,11 @@ export class FinancialDashboardService {
         }
 
         const totalIncome = confirmed
-            .filter(t => this.isIncomeType(t.type))
+            .filter(t => isIncomeType(t.type))
             .reduce((sum, t) => sum + Number(t.amount), 0);
 
         const totalWithdrawals = confirmed
-            .filter(t => this.isWithdrawalType(t.type))
+            .filter(t => isWithdrawalType(t.type))
             .reduce((sum, t) => sum + Number(t.amount), 0);
 
         const totalTransfers = confirmed
@@ -104,10 +105,12 @@ export class FinancialDashboardService {
             .reduce((sum, t) => sum + Number(t.amount), 0);
 
         const totalExpenses = confirmed
-            .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type) && t.type !== "TRANSFER")
+            .filter(t => !isIncomeType(t.type) && !isWithdrawalType(t.type) && t.type !== "TRANSFER")
             .reduce((sum, t) => sum + Number(t.amount), 0);
 
-        const netBalance = totalIncome - totalExpenses;
+        const categories = await this.categoryRepo.findAllBaseAndUser(userId);
+        const categoryNameById = new Map(categories.map(c => [c.id!, c.name]));
+        const netBalance = computeNetBalance(confirmed, categoryNameById);
         const transactionCount = confirmed.length;
         const avgTransactionAmount = transactionCount > 0
             ? (totalIncome + totalExpenses + totalWithdrawals + totalTransfers) / transactionCount
@@ -151,15 +154,15 @@ export class FinancialDashboardService {
                 });
 
                 const income = monthTransactions
-                    .filter(t => this.isIncomeType(t.type))
+                    .filter(t => isIncomeType(t.type))
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 const withdrawals = monthTransactions
-                    .filter(t => this.isWithdrawalType(t.type))
+                    .filter(t => isWithdrawalType(t.type))
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 const expenses = monthTransactions
-                    .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type) && t.type !== "TRANSFER")
+                    .filter(t => !isIncomeType(t.type) && !isWithdrawalType(t.type) && t.type !== "TRANSFER")
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 const other = monthTransactions
@@ -189,15 +192,15 @@ export class FinancialDashboardService {
                 });
 
                 const income = monthTransactions
-                    .filter(t => this.isIncomeType(t.type))
+                    .filter(t => isIncomeType(t.type))
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 const withdrawals = monthTransactions
-                    .filter(t => this.isWithdrawalType(t.type))
+                    .filter(t => isWithdrawalType(t.type))
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 const expenses = monthTransactions
-                    .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type) && t.type !== "TRANSFER")
+                    .filter(t => !isIncomeType(t.type) && !isWithdrawalType(t.type) && t.type !== "TRANSFER")
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
                 const other = monthTransactions
@@ -252,7 +255,7 @@ export class FinancialDashboardService {
         // Category breakdown is about spending: keep strictly expense-type transactions,
         // excluding income, transfers and withdrawals (same definition as the "Gastos" KPI).
         const confirmed = this.filterActive(transactions, startDate, endDate)
-            .filter(t => !this.isIncomeType(t.type) && !this.isWithdrawalType(t.type) && t.type !== "TRANSFER");
+            .filter(t => !isIncomeType(t.type) && !isWithdrawalType(t.type) && t.type !== "TRANSFER");
         const categories = await this.categoryRepo.findAllBaseAndUser(userId);
         const catMap = new Map(categories.map(c => [c.id, c]));
 
@@ -338,12 +341,12 @@ export class FinancialDashboardService {
                 groups[dateStr] = { date: dateStr, income: 0, expenses: 0, withdrawals: 0, other: 0, net: 0 };
             }
             const amount = Number(t.amount);
-            if (this.isIncomeType(t.type)) {
+            if (isIncomeType(t.type)) {
                 groups[dateStr].income += amount;
                 groups[dateStr].net += amount;
-            } else if (this.isWithdrawalType(t.type)) {
+            } else if (isWithdrawalType(t.type)) {
                 groups[dateStr].withdrawals += amount;
-            } else if (this.isOtherType(t.type)) {
+            } else if (isOtherType(t.type)) {
                 groups[dateStr].other += amount;
             } else {
                 groups[dateStr].expenses += amount;
@@ -416,17 +419,5 @@ export class FinancialDashboardService {
 
     private filterPending(transactions: FinancialTransaction[]): FinancialTransaction[] {
         return transactions.filter(t => t.status === "DETECTED");
-    }
-
-    private isIncomeType(type: string): boolean {
-        return type === "INCOME" || type === "DEPOSIT" || type === "REFUND";
-    }
-
-    private isWithdrawalType(type: string): boolean {
-        return type === "WITHDRAWAL";
-    }
-
-    private isOtherType(type: string): boolean {
-        return type === "TRANSFER" || type === "OTHER";
     }
 }
