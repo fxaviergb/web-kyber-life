@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { createTransactionAction } from "@/app/actions/financial-transactions";
-import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction, createCategoryAction } from "@/app/actions/financial-settings";
+import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction, createInstitutionAction, createCategoryAction } from "@/app/actions/financial-settings";
 import { FinancialTransactionType, FinancialInstitution, FinancialInstitutionType, FinancialCategory } from "@/domain/entities/financial";
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
@@ -79,6 +79,17 @@ interface AutoNotesInput {
     amount: string;
     date: string;
     accountName: string;
+}
+
+/** Move the currently-selected item (matched by name, case-insensitive) to the front of the list. */
+function withSelectedFirst<T extends { name: string }>(list: T[], selectedName: string): T[] {
+    if (!selectedName) return list;
+    const idx = list.findIndex((item) => item.name.trim().toLowerCase() === selectedName.trim().toLowerCase());
+    if (idx <= 0) return list;
+    const copy = list.slice();
+    const [selected] = copy.splice(idx, 1);
+    copy.unshift(selected);
+    return copy;
 }
 
 /** Build the auto-generated notes sentence from the current form fields. */
@@ -156,7 +167,13 @@ export function TransactionForm() {
 
     // Which accordion section is open (only one or none).
     const [expanded, setExpanded] = useState<SectionId | null>(null);
-    const toggle = (id: SectionId) => setExpanded((cur) => (cur === id ? null : id));
+    const toggle = (id: SectionId) => {
+        // Re-entering a search section always starts with a blank query; the
+        // already-selected value is preserved and shown first in the grid.
+        if (id === "institution" && expanded !== "institution") setInstitutionQuery("");
+        if (id === "category" && expanded !== "category") setCategoryQuery("");
+        setExpanded((cur) => (cur === id ? null : id));
+    };
 
     // Form State
     const [type, setType] = useState<FinancialTransactionType>("EXPENSE");
@@ -179,7 +196,9 @@ export function TransactionForm() {
 
     const [showAllInstitutions, setShowAllInstitutions] = useState(false);
     const [showAllCategories, setShowAllCategories] = useState(false);
+    const [institutionQuery, setInstitutionQuery] = useState("");
     const [categoryQuery, setCategoryQuery] = useState("");
+    const [creatingInstitution, setCreatingInstitution] = useState(false);
     const [creatingCategory, setCreatingCategory] = useState(false);
 
     // Institution inline-edit (staged; persisted on submit).
@@ -311,22 +330,49 @@ export function TransactionForm() {
     };
 
     const activeInstitutions = useMemo(() => institutions.filter(i => !i.isDeleted), [institutions]);
+    const orderedInstitutions = useMemo(
+        () => withSelectedFirst(activeInstitutions, institutionName),
+        [activeInstitutions, institutionName],
+    );
 
+    const instQuery = institutionQuery.trim().toLowerCase();
     const matchedInstitutionList = useMemo(() => {
-        const q = institutionName.trim().toLowerCase();
-        return q ? activeInstitutions.filter(i => i.name.toLowerCase().includes(q)) : activeInstitutions;
-    }, [activeInstitutions, institutionName]);
+        return instQuery ? orderedInstitutions.filter(i => i.name.toLowerCase().includes(instQuery)) : orderedInstitutions;
+    }, [orderedInstitutions, instQuery]);
 
     const filteredInstitutions = showAllInstitutions ? matchedInstitutionList : matchedInstitutionList.slice(0, INSTITUTION_SUGGESTIONS);
     const hiddenInstitutionCount = Math.max(0, matchedInstitutionList.length - INSTITUTION_SUGGESTIONS);
+    const institutionExactExists = activeInstitutions.some(i => i.name.trim().toLowerCase() === instQuery);
+
+    const handleCreateInstitution = async () => {
+        const name = institutionQuery.trim();
+        if (!name || creatingInstitution) return;
+        setCreatingInstitution(true);
+        try {
+            await createInstitutionAction({ name });
+            const insts = await getInstitutionsAction();
+            setInstitutions(insts);
+            setInstitutionName(name);
+            setInstitutionQuery("");
+            toast.success(`Institución "${name}" creada`);
+        } catch (e) {
+            toast.error("No se pudo crear la institución");
+        } finally {
+            setCreatingInstitution(false);
+        }
+    };
 
     // Category grid + search-or-create.
+    const orderedCategories = useMemo(
+        () => withSelectedFirst(categories, categoryName),
+        [categories, categoryName],
+    );
     const catQuery = categoryQuery.trim().toLowerCase();
     const matchedCategories = useMemo(
-        () => (catQuery ? categories.filter(c => c.name.toLowerCase().includes(catQuery)) : categories),
-        [categories, catQuery],
+        () => (catQuery ? orderedCategories.filter(c => c.name.toLowerCase().includes(catQuery)) : orderedCategories),
+        [orderedCategories, catQuery],
     );
-    const gridCategories = catQuery ? matchedCategories : (showAllCategories ? categories : categories.slice(0, CATEGORY_PREVIEW));
+    const gridCategories = catQuery ? matchedCategories : (showAllCategories ? orderedCategories : orderedCategories.slice(0, CATEGORY_PREVIEW));
     const categoryExactExists = categories.some(c => c.name.trim().toLowerCase() === catQuery);
 
     const handleCreateCategory = async () => {
@@ -540,8 +586,8 @@ export function TransactionForm() {
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
                         <Input
                             id="institutionName"
-                            value={institutionName}
-                            onChange={(e) => setInstitutionName(e.target.value)}
+                            value={institutionQuery}
+                            onChange={(e) => setInstitutionQuery(e.target.value)}
                             placeholder="Buscar institución"
                             className="pl-9"
                             autoComplete="off"
@@ -559,7 +605,7 @@ export function TransactionForm() {
                                         <button
                                             key={inst.id}
                                             type="button"
-                                            onClick={() => setInstitutionName(inst.name)}
+                                            onClick={() => { setInstitutionName(inst.name); setInstitutionQuery(""); }}
                                             className={cn(
                                                 "flex flex-col items-center gap-1.5 rounded-xl border p-2 transition-all",
                                                 selected ? "border-accent-primary bg-accent-primary/10" : "border-border/40 bg-bg-secondary/40 hover:border-border",
@@ -593,6 +639,18 @@ export function TransactionForm() {
                                 </div>
                             )}
                         </>
+                    )}
+
+                    {instQuery && !institutionExactExists && (
+                        <button
+                            type="button"
+                            onClick={handleCreateInstitution}
+                            disabled={creatingInstitution}
+                            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-accent-primary/40 bg-accent-primary/5 px-3 py-2.5 text-sm font-medium text-accent-primary transition-colors hover:bg-accent-primary/10 disabled:opacity-60"
+                        >
+                            {creatingInstitution ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                            Crear &quot;{institutionQuery.trim()}&quot;
+                        </button>
                     )}
                 </AccordionField>
 
