@@ -7,12 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { AuditTrail } from "./AuditTrail";
 import { DuplicateResolver } from "./DuplicateResolver";
 import { OriginStatsViewer } from "./OriginStatsViewer";
-import { History, CalendarDays, Wallet, Edit2, Undo2, Check, Sparkles, Building2, Tags, FileText, Pencil } from "lucide-react";
+import { History, CalendarDays, Wallet, Edit2, Undo2, Check, Sparkles, Building2, Tags, FileText, Pencil, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { updateTransactionAction, getUniqueTagsAction } from "@/app/actions/financial-transactions";
 import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction } from "@/app/actions/financial-settings";
@@ -173,6 +175,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
         date: isoToWallClockInput(transaction.date) ?? "",
         notes: extractContext(transaction),
         tags: transaction.tags || [],
+        paidWithCredit: transaction.paidWithCredit ?? false,
     });
 
     const handleDuplicateResolved = () => {
@@ -196,6 +199,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                 date: isoToWallClockInput(transaction.date) ?? "",
                 notes: extractContext(transaction),
                 tags: transaction.tags || [],
+                paidWithCredit: transaction.paidWithCredit ?? false,
             });
         }
         setIsEditing(!isEditing);
@@ -254,6 +258,7 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                 date: wallClockInputToISO(editState.date),
                 notes: editState.notes,
                 tags: editState.tags,
+                paidWithCredit: editState.type === "EXPENSE" ? editState.paidWithCredit : undefined,
             });
             if (res.success && res.data) {
                 toast.success("Transacción actualizada exitosamente");
@@ -429,11 +434,29 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                         </SelectContent>
                                     </Select>
                                 ) : (
-                                    <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <Badge variant={typeBadgeVariant} className="text-sm px-3">{typeLabel}</Badge>
+                                        {transaction.type === "EXPENSE" && transaction.paidWithCredit && (
+                                            <Badge variant="outline" className="text-sm px-3 gap-1.5">
+                                                <CreditCard className="h-3.5 w-3.5" /> Tarjeta de crédito
+                                            </Badge>
+                                        )}
                                     </div>
                                 )}
                             </div>
+
+                            {isEditing && editState.type === "EXPENSE" && (
+                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30 flex items-center gap-2 sm:col-span-2">
+                                    <Checkbox
+                                        id="paidWithCredit"
+                                        checked={editState.paidWithCredit}
+                                        onCheckedChange={(checked) => updateEditState("paidWithCredit", checked === true)}
+                                    />
+                                    <Label htmlFor="paidWithCredit" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground cursor-pointer">
+                                        <CreditCard className="h-4 w-4" /> Pagado con tarjeta de crédito
+                                    </Label>
+                                </div>
+                            )}
 
                             <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
                                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">

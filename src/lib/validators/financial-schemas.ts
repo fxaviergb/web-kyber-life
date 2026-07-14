@@ -39,6 +39,7 @@ export const createTransactionSchema = z.object({
     executionId: z.string().uuid("Invalid execution ID").optional().nullable(),
     originalAmount: z.number().positive().optional().nullable(),
     originStats: z.record(z.string(), z.unknown()).optional().nullable(),
+    paidWithCredit: z.boolean().optional().nullable(),
 });
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
@@ -134,6 +135,7 @@ export const mapInboxTransactionSchema = z.object({
     amount: z.number().positive().optional().nullable(),
     date: z.string().optional().nullable(),
     tags: z.array(z.string().max(50)).max(20).optional().nullable(),
+    paidWithCredit: z.boolean().optional().nullable(),
 });
 
 export type MapInboxTransactionInput = z.infer<typeof mapInboxTransactionSchema>;

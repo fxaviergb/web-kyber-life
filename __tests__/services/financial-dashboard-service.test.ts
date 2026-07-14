@@ -44,6 +44,7 @@ describe("FinancialDashboardService", () => {
         categoryRepo = {
             findAllBaseAndUser: jest.fn(),
         } as any;
+        categoryRepo.findAllBaseAndUser.mockResolvedValue([]);
 
         institutionRepo = {
             findByOwnerId: jest.fn(),
@@ -88,6 +89,38 @@ describe("FinancialDashboardService", () => {
             expect(kpis.totalIncome).toBe(1000);
             expect(kpis.totalExpenses).toBe(0); // April transaction filtered out
             expect(kpis.transactionCount).toBe(1);
+        });
+
+        it("should not subtract credit-card-paid expenses from the balance", async () => {
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "INCOME", amount: 1000, status: "CONFIRMED" },
+                { ...baseTransaction, id: "2", type: "EXPENSE", amount: 300, status: "CONFIRMED", paidWithCredit: true },
+                { ...baseTransaction, id: "3", type: "EXPENSE", amount: 100, status: "CONFIRMED", paidWithCredit: false },
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+
+            const kpis = await service.getKPIs(mockUserId);
+
+            expect(kpis.totalExpenses).toBe(400); // Gastos still include the credit-card purchase
+            expect(kpis.netBalance).toBe(900); // Balance only reflects the non-credit expense
+        });
+
+        it("should only subtract TRANSFER transactions categorized as savings", async () => {
+            categoryRepo.findAllBaseAndUser.mockResolvedValue([
+                { id: "cat-savings", name: "Ahorros e Inversiones", isDeleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as FinancialCategory,
+                { id: "cat-other", name: "Transferencias", isDeleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as FinancialCategory,
+            ]);
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "INCOME", amount: 1000, status: "CONFIRMED" },
+                { ...baseTransaction, id: "2", type: "TRANSFER", amount: 200, status: "CONFIRMED", categoryId: "cat-savings" },
+                { ...baseTransaction, id: "3", type: "TRANSFER", amount: 50, status: "CONFIRMED", categoryId: "cat-other" },
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+
+            const kpis = await service.getKPIs(mockUserId);
+
+            expect(kpis.totalTransfers).toBe(250); // Both transfers still reported in the KPI total
+            expect(kpis.netBalance).toBe(800); // Only the savings transfer reduces the balance (1000 - 200)
         });
     });
 
