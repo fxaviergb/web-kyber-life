@@ -7,34 +7,21 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { AccordionField } from "@/components/ui/accordion-field";
+import { Switch } from "@/components/ui/switch";
 import { createTransactionAction } from "@/app/actions/financial-transactions";
-import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction, createInstitutionAction, createCategoryAction } from "@/app/actions/financial-settings";
+import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction } from "@/app/actions/financial-settings";
 import { FinancialTransactionType, FinancialInstitution, FinancialInstitutionType, FinancialCategory } from "@/domain/entities/financial";
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
-import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
+import { InstitutionPicker, type PendingInstitutionEdit } from "./InstitutionPicker";
+import { CategoryPicker } from "./CategoryPicker";
+import { TransactionTypeChips } from "./TransactionTypeChips";
+import { AmountHeroInput } from "./AmountHeroInput";
 import { toDateTimeLocalValue, isoToWallClockInput, wallClockInputToISO, roundToNearestFiveMinutes } from "@/lib/date-range";
-import {
-    Building2, Landmark, FileText, Pencil, CreditCard, DollarSign, ShoppingCart, TrendingUp, TrendingDown,
-    ArrowRightLeft, Wallet, Search, Calendar, MessageSquare, Tag, MoreHorizontal, ChevronDown, Lock, Loader2, Plus,
-    PiggyBank, Utensils, Scissors, GraduationCap, Ticket, Dog, HelpCircle, Gift, Shirt, Banknote,
-    HeartPulse, ShieldCheck, Lightbulb, Repeat, Car, Plane, Home,
-    Pill, Fuel, Dumbbell, User, Wifi, UtensilsCrossed, Laptop, Store,
-} from "lucide-react";
+import { Building2, Landmark, FileText, CreditCard, Calendar, MessageSquare, Tag, ChevronDown } from "lucide-react";
 
 /** Types for which "paid with credit card" is a meaningful, editable flag. */
 const CREDIT_ELIGIBLE_TYPES: readonly FinancialTransactionType[] = ["EXPENSE"];
-
-/**
- * The four transaction types offered as quick-pick chips. Icons and colors mirror
- * the finance module's TransactionCard palette so a type reads the same everywhere.
- * Order: Ingreso · Gasto · Transferencia · Retiro.
- */
-const TYPE_OPTIONS: { value: FinancialTransactionType; label: string; Icon: React.ElementType; color: string }[] = [
-    { value: "INCOME", label: "Ingreso", Icon: TrendingUp, color: "text-emerald-500" },
-    { value: "EXPENSE", label: "Gasto", Icon: TrendingDown, color: "text-rose-500" },
-    { value: "TRANSFER", label: "Transferencia", Icon: ArrowRightLeft, color: "text-yellow-500" },
-    { value: "WITHDRAWAL", label: "Retiro", Icon: Wallet, color: "text-indigo-500" },
-];
 
 // Lowercase type labels for natural-reading auto notes.
 const NOTE_TYPE_LABELS: Record<string, string> = {
@@ -44,21 +31,8 @@ const NOTE_TYPE_LABELS: Record<string, string> = {
     WITHDRAWAL: "retiro",
 };
 
-/** Shared lucide icon resolver for category and institution-type icon names. */
-const ICONS: Record<string, React.ElementType> = {
-    // Category icons
-    PiggyBank, Utensils, Landmark, Scissors, GraduationCap, Ticket, FileText, Dog, HelpCircle,
-    CreditCard, Gift, Shirt, Banknote, HeartPulse, ShieldCheck, Lightbulb, ShoppingCart, Repeat,
-    ArrowRightLeft, Car, Plane, Home,
-    // Institution-type icons
-    Wallet, Pill, Fuel, Dumbbell, Building2, User, Wifi, UtensilsCrossed, Laptop, Store,
-};
-
-const CATEGORY_FALLBACK_COLOR = "#64748b";
 const MAX_DESCRIPTION = 120;
 const MAX_NOTES = 200;
-const INSTITUTION_SUGGESTIONS = 6;
-const CATEGORY_PREVIEW = 7;
 
 /** Accordion section ids. Only one may be expanded at a time (or none). */
 type SectionId = "description" | "institution" | "account" | "category" | "date" | "notes";
@@ -81,17 +55,6 @@ interface AutoNotesInput {
     accountName: string;
 }
 
-/** Move the currently-selected item (matched by name, case-insensitive) to the front of the list. */
-function withSelectedFirst<T extends { name: string }>(list: T[], selectedName: string): T[] {
-    if (!selectedName) return list;
-    const idx = list.findIndex((item) => item.name.trim().toLowerCase() === selectedName.trim().toLowerCase());
-    if (idx <= 0) return list;
-    const copy = list.slice();
-    const [selected] = copy.splice(idx, 1);
-    copy.unshift(selected);
-    return copy;
-}
-
 /** Build the auto-generated notes sentence from the current form fields. */
 function buildAutoNotes(p: AutoNotesInput): string {
     const typeLabel = NOTE_TYPE_LABELS[p.type] ?? p.type.toLowerCase();
@@ -103,62 +66,6 @@ function buildAutoNotes(p: AutoNotesInput): string {
     if (dateStr) s += ` el ${dateStr}`;
     if (p.accountName.trim()) s += ` desde la cuenta ${p.accountName.trim()}`;
     return s;
-}
-
-// ─── Small switch (no extra dependency) ──────────────────────────────────────
-function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            aria-label={label}
-            onClick={() => onChange(!checked)}
-            className={cn(
-                "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                checked ? "bg-accent-primary" : "bg-border",
-            )}
-        >
-            <span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform", checked && "translate-x-5")} />
-        </button>
-    );
-}
-
-// ─── Collapsible accordion field ─────────────────────────────────────────────
-function AccordionField({
-    icon,
-    iconClass,
-    label,
-    preview,
-    hasValue,
-    expanded,
-    onToggle,
-    children,
-}: {
-    icon: React.ReactNode;
-    iconClass: string;
-    label: string;
-    preview: string;
-    hasValue: boolean;
-    expanded: boolean;
-    onToggle: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className={cn("rounded-2xl border bg-bg-secondary/50 transition-colors", expanded ? "border-accent-primary/40" : "border-border/40")}>
-            <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 p-4 text-left">
-                <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", iconClass)}>{icon}</div>
-                <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-text-primary">{label}</p>
-                    {!expanded && (
-                        <p className={cn("truncate text-xs", hasValue ? "text-text-secondary" : "text-text-tertiary")}>{preview}</p>
-                    )}
-                </div>
-                <ChevronDown className={cn("h-4 w-4 shrink-0 text-text-tertiary transition-transform", expanded && "rotate-180")} />
-            </button>
-            {expanded && <div className="px-4 pb-4">{children}</div>}
-        </div>
-    );
 }
 
 export function TransactionForm() {
@@ -194,16 +101,11 @@ export function TransactionForm() {
     const [accountsList, setAccountsList] = useState<string[]>([]);
     const [categories, setCategories] = useState<FinancialCategory[]>([]);
 
-    const [showAllInstitutions, setShowAllInstitutions] = useState(false);
-    const [showAllCategories, setShowAllCategories] = useState(false);
     const [institutionQuery, setInstitutionQuery] = useState("");
     const [categoryQuery, setCategoryQuery] = useState("");
-    const [creatingInstitution, setCreatingInstitution] = useState(false);
-    const [creatingCategory, setCreatingCategory] = useState(false);
 
     // Institution inline-edit (staged; persisted on submit).
     const [pendingInstitutionEdit, setPendingInstitutionEdit] = useState<PendingInstitutionEdit | null>(null);
-    const [instDialogOpen, setInstDialogOpen] = useState(false);
 
     const creditEligible = CREDIT_ELIGIBLE_TYPES.includes(type);
 
@@ -302,96 +204,6 @@ export function TransactionForm() {
     useEffect(() => {
         if (!notesEdited) setNotes(autoNotes);
     }, [autoNotes, notesEdited]);
-
-    const matchedInstitution = useMemo(
-        () => institutions.find(i => !i.isDeleted && i.name.trim().toLowerCase() === institutionName.trim().toLowerCase()) ?? null,
-        [institutions, institutionName],
-    );
-
-    const institutionForDialog = useMemo(() => {
-        if (!matchedInstitution) return null;
-        if (pendingInstitutionEdit && pendingInstitutionEdit.id === matchedInstitution.id) {
-            return {
-                ...matchedInstitution,
-                name: pendingInstitutionEdit.name,
-                institutionTypeId: pendingInstitutionEdit.institutionTypeId,
-                description: pendingInstitutionEdit.description,
-            };
-        }
-        return matchedInstitution;
-    }, [matchedInstitution, pendingInstitutionEdit]);
-
-    const handleInstitutionEditApply = (edit: PendingInstitutionEdit) => {
-        setPendingInstitutionEdit(edit);
-        setInstitutionName(edit.name);
-        setInstitutions(prev => prev.map(i => i.id === edit.id
-            ? { ...i, name: edit.name, institutionTypeId: edit.institutionTypeId, description: edit.description }
-            : i));
-    };
-
-    const activeInstitutions = useMemo(() => institutions.filter(i => !i.isDeleted), [institutions]);
-    const orderedInstitutions = useMemo(
-        () => withSelectedFirst(activeInstitutions, institutionName),
-        [activeInstitutions, institutionName],
-    );
-
-    const instQuery = institutionQuery.trim().toLowerCase();
-    const matchedInstitutionList = useMemo(() => {
-        return instQuery ? orderedInstitutions.filter(i => i.name.toLowerCase().includes(instQuery)) : orderedInstitutions;
-    }, [orderedInstitutions, instQuery]);
-
-    const filteredInstitutions = showAllInstitutions ? matchedInstitutionList : matchedInstitutionList.slice(0, INSTITUTION_SUGGESTIONS);
-    const hiddenInstitutionCount = Math.max(0, matchedInstitutionList.length - INSTITUTION_SUGGESTIONS);
-    const institutionExactExists = activeInstitutions.some(i => i.name.trim().toLowerCase() === instQuery);
-
-    const handleCreateInstitution = async () => {
-        const name = institutionQuery.trim();
-        if (!name || creatingInstitution) return;
-        setCreatingInstitution(true);
-        try {
-            await createInstitutionAction({ name });
-            const insts = await getInstitutionsAction();
-            setInstitutions(insts);
-            setInstitutionName(name);
-            setInstitutionQuery("");
-            toast.success(`Institución "${name}" creada`);
-        } catch (e) {
-            toast.error("No se pudo crear la institución");
-        } finally {
-            setCreatingInstitution(false);
-        }
-    };
-
-    // Category grid + search-or-create.
-    const orderedCategories = useMemo(
-        () => withSelectedFirst(categories, categoryName),
-        [categories, categoryName],
-    );
-    const catQuery = categoryQuery.trim().toLowerCase();
-    const matchedCategories = useMemo(
-        () => (catQuery ? orderedCategories.filter(c => c.name.toLowerCase().includes(catQuery)) : orderedCategories),
-        [orderedCategories, catQuery],
-    );
-    const gridCategories = catQuery ? matchedCategories : (showAllCategories ? orderedCategories : orderedCategories.slice(0, CATEGORY_PREVIEW));
-    const categoryExactExists = categories.some(c => c.name.trim().toLowerCase() === catQuery);
-
-    const handleCreateCategory = async () => {
-        const name = categoryQuery.trim();
-        if (!name || creatingCategory) return;
-        setCreatingCategory(true);
-        try {
-            await createCategoryAction({ name });
-            const cats = await getCategoriesAction();
-            setCategories(cats.filter(c => !c.isDeleted));
-            setCategoryName(name);
-            setCategoryQuery("");
-            toast.success(`Categoría "${name}" creada`);
-        } catch (e) {
-            toast.error("No se pudo crear la categoría");
-        } finally {
-            setCreatingCategory(false);
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -493,60 +305,9 @@ export function TransactionForm() {
     return (
         <form onSubmit={handleSubmit} className="relative mx-auto w-full max-w-lg">
             <div className="space-y-3 pb-24">
-                {/* Type chips */}
-                <div className="grid grid-cols-4 gap-2">
-                    {TYPE_OPTIONS.map((opt) => {
-                        const active = type === opt.value;
-                        return (
-                            <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() => setType(opt.value)}
-                                aria-pressed={active}
-                                className={cn(
-                                    "flex flex-col items-center justify-center gap-1.5 rounded-xl border px-1 py-3 transition-all",
-                                    active
-                                        ? "border-transparent bg-accent-primary text-accent-primary-foreground shadow-lg shadow-accent-primary/20"
-                                        : "border-border/40 bg-bg-secondary/50 text-text-secondary hover:border-border",
-                                )}
-                            >
-                                <opt.Icon className={cn("h-5 w-5", active ? "" : opt.color)} />
-                                <span className="text-[11px] font-medium leading-none">{opt.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+                <TransactionTypeChips value={type} onChange={setType} />
 
-                {/* Amount hero (always visible) */}
-                <div className="rounded-2xl border border-border/40 bg-bg-secondary/50 p-4">
-                    <p className="text-xs font-medium text-text-tertiary">Monto ({currency})</p>
-                    <div className="mt-2 flex items-center gap-3">
-                        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-primary/15 text-accent-primary">
-                            <DollarSign className="h-5 w-5" />
-                        </div>
-                        <input
-                            id="amount"
-                            name="amount"
-                            type="number"
-                            inputMode="decimal"
-                            step="0.01"
-                            min="0.01"
-                            placeholder="0.00"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            required
-                            autoComplete="off"
-                            className="min-w-0 flex-1 bg-transparent text-3xl font-bold text-text-primary outline-none placeholder:text-text-tertiary/60"
-                        />
-                        <div
-                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border-base bg-bg-primary px-3 text-sm font-semibold text-text-primary"
-                            title="Por ahora solo se admite dólar estadounidense (USD)"
-                        >
-                            <Lock className="h-3.5 w-3.5 text-text-tertiary" />
-                            {currency}
-                        </div>
-                    </div>
-                </div>
+                <AmountHeroInput amount={amount} onChange={setAmount} currency={currency} />
 
                 {/* Description */}
                 <AccordionField
@@ -582,82 +343,17 @@ export function TransactionForm() {
                     expanded={expanded === "institution"}
                     onToggle={() => toggle("institution")}
                 >
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-                        <Input
-                            id="institutionName"
-                            value={institutionQuery}
-                            onChange={(e) => setInstitutionQuery(e.target.value)}
-                            placeholder="Buscar institución"
-                            className="pl-9"
-                            autoComplete="off"
-                        />
-                    </div>
-                    {filteredInstitutions.length > 0 && (
-                        <>
-                            <p className="mt-3 text-xs text-text-tertiary">Sugerencias</p>
-                            <div className="mt-2 grid grid-cols-3 gap-2">
-                                {filteredInstitutions.map((inst) => {
-                                    const iconName = inst.institutionTypeObj?.iconName;
-                                    const Icon = (iconName && ICONS[iconName]) || Building2;
-                                    const selected = inst.name.trim().toLowerCase() === institutionName.trim().toLowerCase();
-                                    return (
-                                        <button
-                                            key={inst.id}
-                                            type="button"
-                                            onClick={() => { setInstitutionName(inst.name); setInstitutionQuery(""); }}
-                                            className={cn(
-                                                "flex flex-col items-center gap-1.5 rounded-xl border p-2 transition-all",
-                                                selected ? "border-accent-primary bg-accent-primary/10" : "border-border/40 bg-bg-secondary/40 hover:border-border",
-                                            )}
-                                        >
-                                            <span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-500/10 text-blue-500">
-                                                <Icon className="h-4 w-4" />
-                                            </span>
-                                            <span className="line-clamp-2 text-center text-[11px] leading-tight text-text-secondary">{inst.name}</span>
-                                        </button>
-                                    );
-                                })}
-                                {hiddenInstitutionCount > 0 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAllInstitutions((v) => !v)}
-                                        className="flex flex-col items-center gap-1.5 rounded-xl border border-border/40 bg-bg-secondary/40 p-2 transition-all hover:border-border"
-                                    >
-                                        <span className="grid h-9 w-9 place-items-center rounded-lg bg-bg-primary text-text-tertiary">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </span>
-                                        <span className="text-center text-[11px] leading-tight text-text-secondary">{showAllInstitutions ? "Menos" : "Más"}</span>
-                                    </button>
-                                )}
-                            </div>
-                            {matchedInstitution && (
-                                <div className="mt-2">
-                                    <button type="button" onClick={() => setInstDialogOpen(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary">
-                                        <Pencil className="h-3.5 w-3.5" /> Editar
-                                    </button>
-                                </div>
-                            )}
-                        </>
-                    )}
-
-                    {filteredInstitutions.length === 0 && !instQuery && (
-                        <p className="mt-3 text-xs text-text-tertiary">
-                            Aún no tienes instituciones guardadas. Escribe un nombre arriba para crear la primera.
-                        </p>
-                    )}
-
-                    {instQuery && !institutionExactExists && (
-                        <button
-                            type="button"
-                            onClick={handleCreateInstitution}
-                            disabled={creatingInstitution}
-                            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-accent-primary/40 bg-accent-primary/5 px-3 py-2.5 text-sm font-medium text-accent-primary transition-colors hover:bg-accent-primary/10 disabled:opacity-60"
-                        >
-                            {creatingInstitution ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                            Crear &quot;{institutionQuery.trim()}&quot;
-                        </button>
-                    )}
+                    <InstitutionPicker
+                        institutions={institutions}
+                        institutionTypes={institutionTypes}
+                        value={institutionName}
+                        onSelect={setInstitutionName}
+                        onInstitutionsChange={setInstitutions}
+                        query={institutionQuery}
+                        onQueryChange={setInstitutionQuery}
+                        pendingEdit={pendingInstitutionEdit}
+                        onPendingEditChange={setPendingInstitutionEdit}
+                    />
                 </AccordionField>
 
                 {/* Account (with paid-with-credit inside) */}
@@ -711,72 +407,14 @@ export function TransactionForm() {
                     expanded={expanded === "category"}
                     onToggle={() => toggle("category")}
                 >
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-                        <Input
-                            value={categoryQuery}
-                            onChange={(e) => setCategoryQuery(e.target.value)}
-                            placeholder="Buscar o crear categoría"
-                            className="pl-9"
-                            autoComplete="off"
-                        />
-                    </div>
-
-                    {gridCategories.length > 0 && (
-                        <div className="mt-3 grid grid-cols-4 gap-2">
-                            {gridCategories.map((cat) => {
-                                const Icon = (cat.icon && ICONS[cat.icon]) || Tag;
-                                const color = cat.color || CATEGORY_FALLBACK_COLOR;
-                                const selected = cat.name.trim().toLowerCase() === categoryName.trim().toLowerCase();
-                                return (
-                                    <button
-                                        key={cat.id}
-                                        type="button"
-                                        onClick={() => { setCategoryName(selected ? "" : cat.name); setCategoryQuery(""); }}
-                                        className={cn(
-                                            "flex flex-col items-center gap-1.5 rounded-xl border p-2 transition-all",
-                                            selected ? "border-accent-primary bg-accent-primary/10" : "border-border/40 bg-bg-secondary/40 hover:border-border",
-                                        )}
-                                    >
-                                        <span className="grid h-9 w-9 place-items-center rounded-lg" style={{ color, backgroundColor: `${color}22` }}>
-                                            <Icon className="h-4 w-4" />
-                                        </span>
-                                        <span className="line-clamp-2 text-center text-[11px] leading-tight text-text-secondary">{cat.name}</span>
-                                    </button>
-                                );
-                            })}
-                            {!catQuery && categories.length > CATEGORY_PREVIEW && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAllCategories((v) => !v)}
-                                    className="flex flex-col items-center gap-1.5 rounded-xl border border-border/40 bg-bg-secondary/40 p-2 transition-all hover:border-border"
-                                >
-                                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-bg-primary text-text-tertiary">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </span>
-                                    <span className="text-center text-[11px] leading-tight text-text-secondary">{showAllCategories ? "Menos" : "Más"}</span>
-                                </button>
-                            )}
-                        </div>
-                    )}
-
-                    {gridCategories.length === 0 && !catQuery && (
-                        <p className="mt-3 text-xs text-text-tertiary">
-                            Aún no tienes categorías guardadas. Escribe un nombre arriba para crear la primera.
-                        </p>
-                    )}
-
-                    {catQuery && !categoryExactExists && (
-                        <button
-                            type="button"
-                            onClick={handleCreateCategory}
-                            disabled={creatingCategory}
-                            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-accent-primary/40 bg-accent-primary/5 px-3 py-2.5 text-sm font-medium text-accent-primary transition-colors hover:bg-accent-primary/10 disabled:opacity-60"
-                        >
-                            {creatingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                            Crear &quot;{categoryQuery.trim()}&quot;
-                        </button>
-                    )}
+                    <CategoryPicker
+                        categories={categories}
+                        value={categoryName}
+                        onSelect={setCategoryName}
+                        onCategoriesChange={setCategories}
+                        query={categoryQuery}
+                        onQueryChange={setCategoryQuery}
+                    />
                 </AccordionField>
 
                 {/* Date & time (single field) */}
@@ -839,14 +477,6 @@ export function TransactionForm() {
                     {isSubmitting ? "Guardando..." : "Guardar transacción"}
                 </Button>
             </div>
-
-            <InstitutionEditDialog
-                open={instDialogOpen}
-                onOpenChange={setInstDialogOpen}
-                institution={institutionForDialog}
-                types={institutionTypes}
-                onApply={handleInstitutionEditApply}
-            />
         </form>
     );
 }
