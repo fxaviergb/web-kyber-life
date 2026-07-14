@@ -572,19 +572,26 @@ export function TransactionForm() {
                                         </button>
                                     );
                                 })}
-                            </div>
-                            <div className="mt-2 flex items-center gap-4">
-                                {!showAllInstitutions && hiddenInstitutionCount > 0 && (
-                                    <button type="button" onClick={() => setShowAllInstitutions(true)} className="text-sm font-medium text-accent-primary hover:underline">
-                                        Ver todas
+                                {hiddenInstitutionCount > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAllInstitutions((v) => !v)}
+                                        className="flex flex-col items-center gap-1.5 rounded-xl border border-border/40 bg-bg-secondary/40 p-2 transition-all hover:border-border"
+                                    >
+                                        <span className="grid h-9 w-9 place-items-center rounded-lg bg-bg-primary text-text-tertiary">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </span>
+                                        <span className="text-center text-[11px] leading-tight text-text-secondary">{showAllInstitutions ? "Menos" : "Más"}</span>
                                     </button>
                                 )}
-                                {matchedInstitution && (
+                            </div>
+                            {matchedInstitution && (
+                                <div className="mt-2">
                                     <button type="button" onClick={() => setInstDialogOpen(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary">
                                         <Pencil className="h-3.5 w-3.5" /> Editar
                                     </button>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </AccordionField>
