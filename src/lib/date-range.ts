@@ -28,6 +28,20 @@ export function toDateTimeLocalValue(d: Date): string {
 }
 
 /**
+ * Round a Date's minutes to the nearest 5-minute mark. Used to default a
+ * datetime-local field with `step={300}` to an already-valid value, so the
+ * field isn't born in a step-mismatch state.
+ */
+export function roundToNearestFiveMinutes(d: Date): Date {
+    const rounded = new Date(d);
+    const minutes = rounded.getMinutes();
+    const remainder = minutes % 5;
+    rounded.setMinutes(remainder < 3 ? minutes - remainder : minutes + (5 - remainder));
+    rounded.setSeconds(0, 0);
+    return rounded;
+}
+
+/**
  * A stored transaction `date` is a literal wall-clock value (the DB column holds
  * the time exactly as it should be shown, with no timezone math). Read its UTC
  * components verbatim into a `YYYY-MM-DDTHH:mm` value for <input datetime-local>,

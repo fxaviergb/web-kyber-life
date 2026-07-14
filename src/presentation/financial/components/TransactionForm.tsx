@@ -12,7 +12,7 @@ import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInsti
 import { FinancialTransactionType, FinancialInstitution, FinancialInstitutionType, FinancialCategory } from "@/domain/entities/financial";
 import { financialOfflineStore } from "@/infrastructure/offline/financial-offline-store";
 import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
-import { toDateTimeLocalValue, isoToWallClockInput, wallClockInputToISO } from "@/lib/date-range";
+import { toDateTimeLocalValue, isoToWallClockInput, wallClockInputToISO, roundToNearestFiveMinutes } from "@/lib/date-range";
 import {
     Building2, Landmark, FileText, Pencil, CreditCard, DollarSign, ShoppingCart, TrendingUp, TrendingDown,
     ArrowRightLeft, Wallet, Search, Calendar, MessageSquare, Tag, MoreHorizontal, ChevronDown, Lock, Loader2, Plus,
@@ -181,7 +181,7 @@ export function TransactionForm() {
     // Only USD is supported for now; the currency is locked.
     const currency = "USD";
     const [description, setDescription] = useState("");
-    const [date, setDate] = useState(toDateTimeLocalValue(new Date()));
+    const [date, setDate] = useState(toDateTimeLocalValue(roundToNearestFiveMinutes(new Date())));
     const [notes, setNotes] = useState("");
     const [notesEdited, setNotesEdited] = useState(false);
     const [institutionName, setInstitutionName] = useState("");
@@ -793,6 +793,7 @@ export function TransactionForm() {
                         id="date"
                         name="date"
                         type="datetime-local"
+                        step={300}
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
                         required
