@@ -48,7 +48,7 @@ const makeCategory = (name: string, i: number): FinancialCategory => ({
     isDeleted: false,
 });
 
-// 8 institutions: INSTITUTION_SUGGESTIONS = 6, so the 7th/8th only show after "Más".
+// 8 institutions: preview shows the first 7, the 8th only shows after "Más" (matches Categoría).
 const INSTITUTIONS = [
     "Banco Austro", "Banco Bolivariano", "Banco Continental", "Banco Diners",
     "Banco Europa", "Banco Fenix", "Banco Guayaquil", "Banco Hipotecario",
@@ -99,14 +99,15 @@ describe("TransactionForm — Institución / Categoría suggestions", () => {
         await waitFor(() => expect(screen.getByText("Banco Austro")).toBeInTheDocument());
         expect(screen.getByPlaceholderText("Buscar institución")).toHaveValue("");
         let tiles = getGridTileNames("Institución");
-        expect(tiles.slice(0, 6)).toEqual([
-            "Banco Austro", "Banco Bolivariano", "Banco Continental", "Banco Diners", "Banco Europa", "Banco Fenix",
+        expect(tiles.slice(0, 7)).toEqual([
+            "Banco Austro", "Banco Bolivariano", "Banco Continental", "Banco Diners",
+            "Banco Europa", "Banco Fenix", "Banco Guayaquil",
         ]);
 
-        // Reveal and select an institution outside the initial 6-item preview.
+        // Reveal and select the institution outside the initial 7-item preview.
         fireEvent.click(screen.getByText("Más"));
-        await waitFor(() => expect(screen.getByText("Banco Guayaquil")).toBeInTheDocument());
-        fireEvent.click(screen.getByText("Banco Guayaquil").closest("button")!);
+        await waitFor(() => expect(screen.getByText("Banco Hipotecario")).toBeInTheDocument());
+        fireEvent.click(screen.getByText("Banco Hipotecario").closest("button")!);
 
         // Leave the section, then come back.
         expandSection("Institución"); // collapse
@@ -116,7 +117,7 @@ describe("TransactionForm — Institución / Categoría suggestions", () => {
         expect(screen.getByPlaceholderText("Buscar institución")).toHaveValue("");
         tiles = getGridTileNames("Institución");
         expect(tiles.length).toBeGreaterThan(0);
-        expect(tiles[0]).toBe("Banco Guayaquil");
+        expect(tiles[0]).toBe("Banco Hipotecario");
     });
 
     it("shows recommended categories by default and keeps the selection first after re-opening", async () => {

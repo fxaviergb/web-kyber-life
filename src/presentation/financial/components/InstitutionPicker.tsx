@@ -11,7 +11,7 @@ import type { FinancialInstitution, FinancialInstitutionType } from "@/domain/en
 import { InstitutionEditDialog, type PendingInstitutionEdit } from "./InstitutionEditDialog";
 import { PickerGridTile, PickerMoreTile, PickerCreateButton, PickerEmptyHint } from "./picker-tiles";
 
-const PREVIEW_COUNT = 6;
+const PREVIEW_COUNT = 7;
 
 export interface InstitutionPickerProps {
     /** All of the owner's institutions (not yet filtered by deleted/query). */
@@ -123,7 +123,7 @@ export function InstitutionPicker({
             {visible.length > 0 && (
                 <>
                     <p className="mt-3 text-xs text-text-tertiary">Sugerencias</p>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
+                    <div className="mt-2 grid grid-cols-4 gap-2">
                         {visible.map((inst) => (
                             <PickerGridTile
                                 key={inst.id}

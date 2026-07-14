@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AccordionField } from "@/components/ui/accordion-field";
 import { Switch } from "@/components/ui/switch";
+import { DateTimeStepInput } from "@/components/ui/datetime-step-input";
 import { createTransactionAction } from "@/app/actions/financial-transactions";
 import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction } from "@/app/actions/financial-settings";
 import { FinancialTransactionType, FinancialInstitution, FinancialInstitutionType, FinancialCategory } from "@/domain/entities/financial";
@@ -427,16 +428,7 @@ export function TransactionForm() {
                     expanded={expanded === "date"}
                     onToggle={() => toggle("date")}
                 >
-                    <Input
-                        id="date"
-                        name="date"
-                        type="datetime-local"
-                        step={300}
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        required
-                        autoComplete="off"
-                    />
+                    <DateTimeStepInput id="date" value={date} onChange={setDate} minuteStep={5} required />
                 </AccordionField>
 
                 {/* Notes */}

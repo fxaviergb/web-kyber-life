@@ -13,21 +13,26 @@ interface PickerGridTileProps {
     onClick: () => void;
 }
 
-/** One selectable tile in a picker grid (institution, category, etc.). */
+/**
+ * One selectable tile in a picker grid (institution, category, etc.). The
+ * label wraps onto up to 3 lines instead of overflowing its tile — grid rows
+ * stretch every tile to match, so a row stays visually aligned regardless of
+ * how long an individual label is.
+ */
 export function PickerGridTile({ label, Icon, iconClassName, iconStyle, selected, onClick }: PickerGridTileProps) {
     return (
         <button
             type="button"
             onClick={onClick}
             className={cn(
-                "flex flex-col items-center gap-1.5 rounded-xl border p-2 transition-all",
+                "flex h-full w-full flex-col items-center gap-1.5 rounded-xl border p-2 transition-all",
                 selected ? "border-accent-primary bg-accent-primary/10" : "border-border/40 bg-bg-secondary/40 hover:border-border",
             )}
         >
-            <span className={cn("grid h-9 w-9 place-items-center rounded-lg", iconClassName)} style={iconStyle}>
+            <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", iconClassName)} style={iconStyle}>
                 <Icon className="h-4 w-4" />
             </span>
-            <span className="line-clamp-2 text-center text-[11px] leading-tight text-text-secondary">{label}</span>
+            <span className="line-clamp-3 w-full break-words text-center text-[11px] leading-tight text-text-secondary">{label}</span>
         </button>
     );
 }
@@ -43,9 +48,9 @@ export function PickerMoreTile({ expanded, onClick }: PickerMoreTileProps) {
         <button
             type="button"
             onClick={onClick}
-            className="flex flex-col items-center gap-1.5 rounded-xl border border-border/40 bg-bg-secondary/40 p-2 transition-all hover:border-border"
+            className="flex h-full w-full flex-col items-center gap-1.5 rounded-xl border border-border/40 bg-bg-secondary/40 p-2 transition-all hover:border-border"
         >
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-bg-primary text-text-tertiary">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-bg-primary text-text-tertiary">
                 <MoreHorizontal className="h-4 w-4" />
             </span>
             <span className="text-center text-[11px] leading-tight text-text-secondary">{expanded ? "Menos" : "Más"}</span>
