@@ -29,8 +29,7 @@ import { Landmark, FolderGit2 } from "lucide-react";
 const TYPE_LABELS: Record<string, string> = {
     EXPENSE: "Gasto",
     INCOME: "Ingreso",
-    TRANSFER: "Transferencias propias",
-    SUBSCRIPTION: "Suscripción",
+    TRANSFER: "Transferencias",
     PAYMENT: "Pago",
     REFUND: "Reembolso",
     WITHDRAWAL: "Retiro",
@@ -42,7 +41,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 function getTypeBadgeVariant(type: string): "danger" | "success" | "warning" | "outline" {
     const INCOME_TYPES = ["INCOME", "DEPOSIT", "REFUND"];
-    const EXPENSE_TYPES = ["EXPENSE", "PAYMENT", "WITHDRAWAL", "FEE", "TAX", "SUBSCRIPTION"];
+    const EXPENSE_TYPES = ["EXPENSE", "PAYMENT", "WITHDRAWAL", "FEE", "TAX"];
     if (EXPENSE_TYPES.includes(type)) return "danger";
     if (INCOME_TYPES.includes(type)) return "success";
     if (type === "TRANSFER") return "warning";

@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 const TYPE_OPTIONS = [
     { value: "EXPENSE", label: "Gasto" },
     { value: "INCOME", label: "Ingreso" },
-    { value: "TRANSFER", label: "Transferencias propias" },
+    { value: "TRANSFER", label: "Transferencias" },
     { value: "WITHDRAWAL", label: "Retiro" },
 ] as const;
 

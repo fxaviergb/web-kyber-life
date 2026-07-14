@@ -1,6 +1,6 @@
 import { BaseEntity, UUID, ISODate } from "../core";
 
-export type FinancialTransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER' | 'SUBSCRIPTION' | 'PAYMENT' | 'REFUND' | 'WITHDRAWAL' | 'DEPOSIT' | 'FEE' | 'TAX' | 'OTHER';
+export type FinancialTransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER' | 'PAYMENT' | 'REFUND' | 'WITHDRAWAL' | 'DEPOSIT' | 'FEE' | 'TAX' | 'OTHER';
 export type FinancialTransactionStatus = 'DETECTED' | 'REVIEWED' | 'CONFIRMED' | 'REJECTED' | 'DUPLICATE' | 'ARCHIVED' | 'MANUAL' | 'DELETED';
 export type FinancialScanStatus = 'PROCESSING' | 'FAILED' | 'COMPLETED';
 

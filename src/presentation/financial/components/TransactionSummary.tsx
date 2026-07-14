@@ -27,7 +27,6 @@ const TYPE_META: Record<FinancialTransactionType, TypeMeta> = {
     DEPOSIT: { sign: "positive" },
     REFUND: { sign: "positive" },
     EXPENSE: { sign: "negative" },
-    SUBSCRIPTION: { sign: "negative" },
     PAYMENT: { sign: "negative" },
     WITHDRAWAL: { sign: "withdrawal" },
     FEE: { sign: "negative" },

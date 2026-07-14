@@ -4,7 +4,6 @@ const TYPE_LABELS: Record<string, string> = {
     EXPENSE: "Gasto",
     INCOME: "Ingreso",
     TRANSFER: "Transferencia",
-    SUBSCRIPTION: "Suscripción",
     PAYMENT: "Pago",
     REFUND: "Reembolso",
     WITHDRAWAL: "Retiro",

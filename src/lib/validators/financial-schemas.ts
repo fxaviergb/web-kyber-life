@@ -3,7 +3,7 @@ import { z } from "zod";
 // ─── Enums as Zod types ──────────────────────────────────────
 
 const TRANSACTION_TYPES = [
-    'EXPENSE', 'INCOME', 'TRANSFER', 'SUBSCRIPTION', 'PAYMENT',
+    'EXPENSE', 'INCOME', 'TRANSFER', 'PAYMENT',
     'REFUND', 'WITHDRAWAL', 'DEPOSIT', 'FEE', 'TAX', 'OTHER',
 ] as const;
 
