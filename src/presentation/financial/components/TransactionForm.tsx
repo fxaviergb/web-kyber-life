@@ -641,6 +641,12 @@ export function TransactionForm() {
                         </>
                     )}
 
+                    {filteredInstitutions.length === 0 && !instQuery && (
+                        <p className="mt-3 text-xs text-text-tertiary">
+                            Aún no tienes instituciones guardadas. Escribe un nombre arriba para crear la primera.
+                        </p>
+                    )}
+
                     {instQuery && !institutionExactExists && (
                         <button
                             type="button"
@@ -726,7 +732,7 @@ export function TransactionForm() {
                                     <button
                                         key={cat.id}
                                         type="button"
-                                        onClick={() => setCategoryName(selected ? "" : cat.name)}
+                                        onClick={() => { setCategoryName(selected ? "" : cat.name); setCategoryQuery(""); }}
                                         className={cn(
                                             "flex flex-col items-center gap-1.5 rounded-xl border p-2 transition-all",
                                             selected ? "border-accent-primary bg-accent-primary/10" : "border-border/40 bg-bg-secondary/40 hover:border-border",
@@ -752,6 +758,12 @@ export function TransactionForm() {
                                 </button>
                             )}
                         </div>
+                    )}
+
+                    {gridCategories.length === 0 && !catQuery && (
+                        <p className="mt-3 text-xs text-text-tertiary">
+                            Aún no tienes categorías guardadas. Escribe un nombre arriba para crear la primera.
+                        </p>
                     )}
 
                     {catQuery && !categoryExactExists && (
