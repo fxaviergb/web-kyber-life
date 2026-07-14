@@ -95,8 +95,11 @@ describe("TransactionDetailClient", () => {
         expect(screen.getByRole("button", { name: /Guardar Cambios/i })).toBeInTheDocument();
         // The amount field becomes an editable hero input.
         expect(screen.getByPlaceholderText("0.00")).toHaveValue(42.5);
-        // Institution/category pickers render their search boxes.
+        // Institution/category sections are collapsible accordions (same as the create form);
+        // expand them to reach their search boxes.
+        fireEvent.click(screen.getByRole("button", { name: /Institución/i }));
         expect(screen.getByPlaceholderText("Buscar institución")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /Categoría/i }));
         expect(screen.getByPlaceholderText("Buscar o crear categoría")).toBeInTheDocument();
     });
 

@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { FieldCard } from "@/components/ui/field-card";
+import { AccordionField } from "@/components/ui/accordion-field";
 import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import { DateTimeStepInput } from "@/components/ui/datetime-step-input";
 import { useScrollFieldIntoView } from "@/hooks/use-scroll-field-into-view";
@@ -33,6 +34,9 @@ import { TagInput } from "@/components/ui/tag-input";
 
 /** Types for which "paid with credit card" is a meaningful, editable flag. */
 const CREDIT_ELIGIBLE_TYPES: readonly FinancialTransactionType[] = ["EXPENSE"];
+
+/** Accordion section ids used while editing. Only one may be expanded at a time (or none). */
+type SectionId = "description" | "institution" | "account" | "category" | "date" | "notes" | "tags";
 
 const TYPE_LABELS: Record<string, string> = {
     EXPENSE: "Gasto",
@@ -89,6 +93,15 @@ function formatDate(dateStr: string): string {
     }).format(new Date(dateStr));
 }
 
+/** Format a datetime-local ("YYYY-MM-DDTHH:mm") string as "DD/MM/YYYY HH:mm", for the collapsed accordion preview. */
+function formatDateTimeLocalPreview(dtLocal: string): string {
+    if (!dtLocal) return "";
+    const d = new Date(dtLocal);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function extractContext(tx: FinancialTransaction): string {
     return tx.notes || "";
 }
@@ -107,6 +120,17 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
 
     const formRef = useRef<HTMLDivElement>(null);
     useScrollFieldIntoView(formRef);
+
+    // Which accordion section is open while editing (only one or none) — same
+    // pattern as the create-transaction form.
+    const [expandedSection, setExpandedSection] = useState<SectionId | null>(null);
+    const toggleSection = (id: SectionId) => {
+        // Re-entering a search section always starts with a blank query; the
+        // already-selected value is preserved and shown first in the grid.
+        if (id === "institution" && expandedSection !== "institution") setInstitutionQuery("");
+        if (id === "category" && expandedSection !== "category") setCategoryQuery("");
+        setExpandedSection((cur) => (cur === id ? null : id));
+    };
 
     const [institutions, setInstitutions] = useState<FinancialInstitution[]>([]);
     const [institutionTypes, setInstitutionTypes] = useState<FinancialInstitutionType[]>([]);
@@ -208,7 +232,9 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                 tags: transaction.tags || [],
                 paidWithCredit: transaction.paidWithCredit ?? false,
             });
-            // Entering edit mode always starts with a blank search in the pickers.
+            // Entering edit mode always starts with every section collapsed and a
+            // blank search in the pickers — same as opening the create form.
+            setExpandedSection(null);
             setInstitutionQuery("");
             setCategoryQuery("");
         }
@@ -271,6 +297,14 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
     const creditEligible = CREDIT_ELIGIBLE_TYPES.includes(editState.type as FinancialTransactionType);
     const canEdit = transaction.status !== "ARCHIVED";
 
+    // Collapsed accordion previews (edit mode only)
+    const paidWithCreditActive = editState.paidWithCredit && creditEligible;
+    const accountPreview = editState.accountName
+        ? (paidWithCreditActive ? `${editState.accountName} · Tarjeta de crédito` : editState.accountName)
+        : (paidWithCreditActive ? "Tarjeta de crédito" : "Ej. Ahorros Múltiple, Tarjeta Visa");
+    const accountHasValue = !!editState.accountName || paidWithCreditActive;
+    const datePreview = formatDateTimeLocalPreview(editState.date) || "Selecciona fecha y hora";
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
@@ -302,6 +336,11 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                         )}
                     </div>
 
+                    {/* Tipo de operación — quick-pick chips, only while editing (same as the create form's top). */}
+                    {isEditing && (
+                        <TransactionTypeChips value={editState.type as FinancialTransactionType} onChange={(v) => updateEditState("type", v)} />
+                    )}
+
                     {/* Monto */}
                     {isEditing ? (
                         <AmountHeroInput
@@ -318,9 +357,41 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                         </div>
                     )}
 
+                    {/* Descripción */}
+                    {isEditing ? (
+                        <AccordionField
+                            icon={<FileText className="h-4 w-4" />}
+                            iconClass="bg-accent-primary/15 text-accent-primary"
+                            label="Descripción"
+                            preview={editState.description || "Ej. Compra en supermercado"}
+                            hasValue={!!editState.description}
+                            expanded={expandedSection === "description"}
+                            onToggle={() => toggleSection("description")}
+                        >
+                            <Input
+                                value={editState.description}
+                                onChange={(e) => updateEditState("description", e.target.value)}
+                                placeholder="Descripción de la transacción"
+                                autoFocus
+                            />
+                        </AccordionField>
+                    ) : (
+                        <FieldCard icon={<FileText className="h-4 w-4" />} iconClass="bg-accent-primary/15 text-accent-primary" label="Descripción">
+                            <p className="text-base font-bold text-text-primary">{getTransactionDisplayTitle(transaction)}</p>
+                        </FieldCard>
+                    )}
+
                     {/* Institución */}
-                    <FieldCard icon={<Building2 className="h-4 w-4" />} iconClass="bg-blue-500/15 text-blue-500" label="Institución">
-                        {isEditing ? (
+                    {isEditing ? (
+                        <AccordionField
+                            icon={<Building2 className="h-4 w-4" />}
+                            iconClass="bg-blue-500/15 text-blue-500"
+                            label="Institución"
+                            preview={editState.institutionName || "Ej. Banco de Chile, Sodexo, Amazon"}
+                            hasValue={!!editState.institutionName}
+                            expanded={expandedSection === "institution"}
+                            onToggle={() => toggleSection("institution")}
+                        >
                             <InstitutionPicker
                                 institutions={institutions}
                                 institutionTypes={institutionTypes}
@@ -332,79 +403,57 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                 pendingEdit={pendingInstitutionEdit}
                                 onPendingEditChange={setPendingInstitutionEdit}
                             />
-                        ) : (
-                            <p className="text-sm font-medium text-text-primary">{displayNames.institution || transaction.merchant || "Sin institución"}</p>
-                        )}
-                    </FieldCard>
-
-                    {/* Descripción */}
-                    <FieldCard icon={<FileText className="h-4 w-4" />} iconClass="bg-accent-primary/15 text-accent-primary" label="Descripción">
-                        {isEditing ? (
-                            <Input
-                                value={editState.description}
-                                onChange={(e) => updateEditState("description", e.target.value)}
-                                placeholder="Descripción de la transacción"
-                            />
-                        ) : (
-                            <p className="text-sm font-medium text-text-primary">{getTransactionDisplayTitle(transaction)}</p>
-                        )}
-                    </FieldCard>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {/* Fecha y hora */}
-                        <FieldCard icon={<Calendar className="h-4 w-4" />} iconClass="bg-accent-primary/15 text-accent-primary" label="Fecha y hora">
-                            {isEditing ? (
-                                <DateTimeStepInput value={editState.date} onChange={(v) => updateEditState("date", v)} minuteStep={5} />
-                            ) : (
-                                <p className="text-sm font-medium text-text-primary">{formatDate(transaction.date)}</p>
-                            )}
+                        </AccordionField>
+                    ) : (
+                        <FieldCard icon={<Building2 className="h-4 w-4" />} iconClass="bg-blue-500/15 text-blue-500" label="Institución">
+                            <p className="text-base font-bold text-text-primary">{displayNames.institution || transaction.merchant || "Sin institución"}</p>
                         </FieldCard>
-
-                        {/* Tipo de operación */}
-                        <FieldCard icon={<Wallet className="h-4 w-4" />} iconClass="bg-indigo-500/15 text-indigo-500" label="Tipo de operación">
-                            {isEditing ? (
-                                <TransactionTypeChips value={editState.type as FinancialTransactionType} onChange={(v) => updateEditState("type", v)} />
-                            ) : (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Badge variant={typeBadgeVariant} className="text-sm px-3">{typeLabel}</Badge>
-                                    {transaction.type === "EXPENSE" && transaction.paidWithCredit && (
-                                        <Badge variant="outline" className="text-sm px-3 gap-1.5">
-                                            <CreditCard className="h-3.5 w-3.5" /> Tarjeta de crédito
-                                        </Badge>
-                                    )}
-                                </div>
-                            )}
-                        </FieldCard>
-                    </div>
+                    )}
 
                     {/* Cuenta (con pagado-con-tarjeta dentro) */}
-                    <FieldCard icon={<Landmark className="h-4 w-4" />} iconClass="bg-emerald-500/15 text-emerald-500" label="Cuenta">
-                        {isEditing ? (
-                            <>
-                                <AccountSelect accounts={accountsList} value={editState.accountName} onChange={(v) => updateEditState("accountName", v)} />
-                                {creditEligible && (
-                                    <div className={cn(
-                                        "mt-3 flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors",
-                                        editState.paidWithCredit ? "border-accent-primary/50 bg-accent-primary/5" : "border-border/40 bg-bg-secondary/40",
-                                    )}>
-                                        <div className="flex min-w-0 items-center gap-2.5">
-                                            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent-primary/15 text-accent-primary">
-                                                <CreditCard className="h-4 w-4" />
-                                            </div>
-                                            <span className="text-sm leading-tight text-text-primary">Pagado con<br />tarjeta de crédito</span>
+                    {isEditing ? (
+                        <AccordionField
+                            icon={<Landmark className="h-4 w-4" />}
+                            iconClass="bg-emerald-500/15 text-emerald-500"
+                            label="Cuenta"
+                            preview={accountPreview}
+                            hasValue={accountHasValue}
+                            expanded={expandedSection === "account"}
+                            onToggle={() => toggleSection("account")}
+                        >
+                            <AccountSelect accounts={accountsList} value={editState.accountName} onChange={(v) => updateEditState("accountName", v)} />
+                            {creditEligible && (
+                                <div className={cn(
+                                    "mt-3 flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors",
+                                    editState.paidWithCredit ? "border-accent-primary/50 bg-accent-primary/5" : "border-border/40 bg-bg-secondary/40",
+                                )}>
+                                    <div className="flex min-w-0 items-center gap-2.5">
+                                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent-primary/15 text-accent-primary">
+                                            <CreditCard className="h-4 w-4" />
                                         </div>
-                                        <Switch checked={editState.paidWithCredit} onChange={(v) => updateEditState("paidWithCredit", v)} label="Pagado con tarjeta de crédito" />
+                                        <span className="text-sm leading-tight text-text-primary">Pagado con<br />tarjeta de crédito</span>
                                     </div>
-                                )}
-                            </>
-                        ) : (
-                            <p className="text-sm font-medium text-text-primary">{displayNames.account || "Sin cuenta"}</p>
-                        )}
-                    </FieldCard>
+                                    <Switch checked={editState.paidWithCredit} onChange={(v) => updateEditState("paidWithCredit", v)} label="Pagado con tarjeta de crédito" />
+                                </div>
+                            )}
+                        </AccordionField>
+                    ) : (
+                        <FieldCard icon={<Landmark className="h-4 w-4" />} iconClass="bg-emerald-500/15 text-emerald-500" label="Cuenta">
+                            <p className="text-base font-bold text-text-primary">{displayNames.account || "Sin cuenta"}</p>
+                        </FieldCard>
+                    )}
 
                     {/* Categoría */}
-                    <FieldCard icon={<Tag className="h-4 w-4" />} iconClass="bg-amber-500/15 text-amber-500" label="Categoría">
-                        {isEditing ? (
+                    {isEditing ? (
+                        <AccordionField
+                            icon={<Tag className="h-4 w-4" />}
+                            iconClass="bg-amber-500/15 text-amber-500"
+                            label="Categoría"
+                            preview={editState.categoryName || "Ej. Alimentación, Transporte, Servicios"}
+                            hasValue={!!editState.categoryName}
+                            expanded={expandedSection === "category"}
+                            onToggle={() => toggleSection("category")}
+                        >
                             <CategoryPicker
                                 categories={categories}
                                 value={editState.categoryName}
@@ -413,44 +462,97 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                                 query={categoryQuery}
                                 onQueryChange={setCategoryQuery}
                             />
-                        ) : (
-                            <p className="text-sm font-medium text-text-primary">{displayNames.category || "Sin categoría"}</p>
-                        )}
-                    </FieldCard>
+                        </AccordionField>
+                    ) : (
+                        <FieldCard icon={<Tag className="h-4 w-4" />} iconClass="bg-amber-500/15 text-amber-500" label="Categoría">
+                            <p className="text-base font-bold text-text-primary">{displayNames.category || "Sin categoría"}</p>
+                        </FieldCard>
+                    )}
+
+                    {/* Fecha y hora */}
+                    {isEditing ? (
+                        <AccordionField
+                            icon={<Calendar className="h-4 w-4" />}
+                            iconClass="bg-accent-primary/15 text-accent-primary"
+                            label="Fecha y hora"
+                            preview={datePreview}
+                            hasValue={!!editState.date}
+                            expanded={expandedSection === "date"}
+                            onToggle={() => toggleSection("date")}
+                        >
+                            <DateTimeStepInput value={editState.date} onChange={(v) => updateEditState("date", v)} minuteStep={5} required />
+                        </AccordionField>
+                    ) : (
+                        <FieldCard icon={<Calendar className="h-4 w-4" />} iconClass="bg-accent-primary/15 text-accent-primary" label="Fecha y hora">
+                            <p className="text-base font-bold text-text-primary">{formatDate(transaction.date)}</p>
+                        </FieldCard>
+                    )}
+
+                    {/* Tipo de operación — view-only summary (edit mode shows the chips up top instead). */}
+                    {!isEditing && (
+                        <FieldCard icon={<Wallet className="h-4 w-4" />} iconClass="bg-indigo-500/15 text-indigo-500" label="Tipo de operación">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant={typeBadgeVariant} className="text-sm px-3">{typeLabel}</Badge>
+                                {transaction.type === "EXPENSE" && transaction.paidWithCredit && (
+                                    <Badge variant="outline" className="text-sm px-3 gap-1.5">
+                                        <CreditCard className="h-3.5 w-3.5" /> Tarjeta de crédito
+                                    </Badge>
+                                )}
+                            </div>
+                        </FieldCard>
+                    )}
 
                     {/* Contexto */}
-                    <FieldCard icon={<Sparkles className="h-4 w-4" />} iconClass="bg-accent-primary/15 text-accent-primary" label="Contexto">
-                        {isEditing ? (
+                    {isEditing ? (
+                        <AccordionField
+                            icon={<Sparkles className="h-4 w-4" />}
+                            iconClass="bg-accent-primary/15 text-accent-primary"
+                            label="Contexto"
+                            preview={editState.notes || "Agrega notas o contexto"}
+                            hasValue={!!editState.notes}
+                            expanded={expandedSection === "notes"}
+                            onToggle={() => toggleSection("notes")}
+                        >
                             <Textarea
                                 rows={3}
                                 value={editState.notes}
                                 onChange={(e) => updateEditState("notes", e.target.value)}
                                 placeholder="Agrega notas o contexto..."
                             />
-                        ) : (
+                        </AccordionField>
+                    ) : (
+                        <FieldCard icon={<Sparkles className="h-4 w-4" />} iconClass="bg-accent-primary/15 text-accent-primary" label="Contexto">
                             <p className="w-full max-w-full overflow-hidden text-sm leading-relaxed text-text-secondary whitespace-pre-wrap break-words [word-break:break-word]">
                                 {displayContext || "No hay notas o contexto disponible para esta transacción."}
                             </p>
-                        )}
-                    </FieldCard>
+                        </FieldCard>
+                    )}
 
                     {/* Etiquetas */}
-                    {(transaction.tags?.length || 0) > 0 || isEditing ? (
+                    {isEditing ? (
+                        <AccordionField
+                            icon={<Tags className="h-4 w-4" />}
+                            iconClass="bg-pink-500/15 text-pink-500"
+                            label="Etiquetas"
+                            preview={editState.tags.length ? editState.tags.join(", ") : "Sin etiquetas"}
+                            hasValue={editState.tags.length > 0}
+                            expanded={expandedSection === "tags"}
+                            onToggle={() => toggleSection("tags")}
+                        >
+                            <TagInput
+                                value={editState.tags}
+                                onChange={(tags) => updateEditState("tags", tags)}
+                                suggestions={suggestions}
+                                placeholder="Escribe y presiona Enter..."
+                            />
+                        </AccordionField>
+                    ) : (transaction.tags?.length || 0) > 0 ? (
                         <FieldCard icon={<Tags className="h-4 w-4" />} iconClass="bg-pink-500/15 text-pink-500" label="Etiquetas">
-                            {isEditing ? (
-                                <TagInput
-                                    value={editState.tags}
-                                    onChange={(tags) => updateEditState("tags", tags)}
-                                    suggestions={suggestions}
-                                    placeholder="Escribe y presiona Enter..."
-                                />
-                            ) : (
-                                <div className="flex flex-wrap gap-2">
-                                    {transaction.tags?.map((tag) => (
-                                        <Badge key={tag} variant="outline" className="rounded-full px-3 bg-bg-secondary/50 border-border/50">{tag}</Badge>
-                                    ))}
-                                </div>
-                            )}
+                            <div className="flex flex-wrap gap-2">
+                                {transaction.tags?.map((tag) => (
+                                    <Badge key={tag} variant="outline" className="rounded-full px-3 bg-bg-secondary/50 border-border/50">{tag}</Badge>
+                                ))}
+                            </div>
                         </FieldCard>
                     ) : null}
                 </div>
