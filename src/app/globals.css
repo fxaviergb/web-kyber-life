@@ -205,6 +205,20 @@
   html {
     transition: background-color 0.3s ease, color 0.3s ease;
   }
+
+  /* Mobile browsers should use their native overlay indicator, not a
+     space-reserving scrollbar, so the page scrollbar never shows on the
+     right edge of narrow viewports. Desktop keeps the normal scrollbar. */
+  @media (max-width: 767px) {
+    html {
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
+    }
+
+    html::-webkit-scrollbar {
+      display: none; /* Chrome/Safari/Opera */
+    }
+  }
 }
 
 /* ===== UTILITY CLASSES ===== */
