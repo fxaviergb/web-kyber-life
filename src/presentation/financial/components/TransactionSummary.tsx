@@ -326,40 +326,37 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                 "sm:hidden relative overflow-hidden rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-5 flex-col transition-all duration-300",
                 isExpanded ? "flex animate-in fade-in slide-in-from-top-4" : "hidden"
             )}>
-                {/* Credit toggle — shared by both carousel slides, so it stays visible
-                    regardless of which chart (balance or trend) is currently shown */}
-                <div className="flex items-center justify-end w-full mb-3">
-                    <CreditToggle checked={showCredit} onChange={setShowCredit} />
-                </div>
-
                 {/* Charts row */}
                 <MobileCarousel className="order-2 w-full">
 
                     {/* ── LEFT SIDE: BALANCE NETO (DONUT CHART OR BAR CHART) ── */}
                     <div className="relative z-10 flex flex-col items-center justify-center lg:w-auto lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8 w-full sm:w-auto">
 
-                        {/* Chart type */}
-                        <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full mb-4 self-end">
-                            <button
-                                onClick={() => setUserChartPreference('donut')}
-                                className={cn(
-                                    "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
-                                    activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
-                                )}
-                                aria-label="Ver gráfico de dona"
-                            >
-                                <PieChartIcon className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                                onClick={() => setUserChartPreference('bar')}
-                                className={cn(
-                                    "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
-                                    activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
-                                )}
-                                aria-label="Ver gráfico de barras"
-                            >
-                                <BarChartIcon className="w-3.5 h-3.5" />
-                            </button>
+                        {/* Credit toggle + chart type */}
+                        <div className="flex items-center justify-between gap-2 w-full mb-4">
+                            <CreditToggle checked={showCredit} onChange={setShowCredit} />
+                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full shrink-0">
+                                <button
+                                    onClick={() => setUserChartPreference('donut')}
+                                    className={cn(
+                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                        activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
+                                    )}
+                                    aria-label="Ver gráfico de dona"
+                                >
+                                    <PieChartIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => setUserChartPreference('bar')}
+                                    className={cn(
+                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                        activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
+                                    )}
+                                    aria-label="Ver gráfico de barras"
+                                >
+                                    <BarChartIcon className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
                         </div>
 
                         <div className={cn("relative flex-shrink-0 mx-auto", activeChartType === 'donut' ? "w-44 h-44" : "w-full h-44 sm:w-56")}>
@@ -455,8 +452,9 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
                     {/* ── RIGHT SIDE: BREAKDOWN CHART ── */}
                     <div className="relative z-10 flex flex-col w-full flex-1 sm:h-44 lg:h-44 justify-between">
-                        {/* Header (Select only) */}
-                        <div className="flex justify-end items-start sm:items-center mb-4 sm:mb-2 gap-2">
+                        {/* Header (Credit toggle + view Select) */}
+                        <div className="flex justify-between items-start sm:items-center mb-4 sm:mb-2 gap-2">
+                            <CreditToggle checked={showCredit} onChange={setShowCredit} />
                             <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
                                 <SelectTrigger className="h-7 w-[110px] text-xs bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
                                     <SelectValue placeholder="Vista" />
@@ -592,36 +590,35 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                     : "max-h-0 opacity-0 pointer-events-none"
             )}>
                 <div className="rounded-2xl border border-white/5 bg-background/40 backdrop-blur-xl shadow-sm p-6">
-                    {/* Credit toggle — shared by both columns (balance and trend charts) */}
-                    <div className="flex items-center justify-end w-full mb-4">
-                        <CreditToggle checked={showCredit} onChange={setShowCredit} />
-                    </div>
                     <div className="flex w-full flex-row gap-6 items-stretch">
 
                         {/* ── LEFT: BALANCE NETO (DONUT OR BAR CHART) ── */}
                         <div className="relative z-10 flex flex-col items-center justify-center w-1/2 border-r border-white/5 pr-6">
-                            {/* Chart type */}
-                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full mb-4 self-end">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setUserChartPreference('donut'); }}
-                                    className={cn(
-                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
-                                        activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
-                                    )}
-                                    aria-label="Ver gráfico de dona"
-                                >
-                                    <PieChartIcon className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setUserChartPreference('bar'); }}
-                                    className={cn(
-                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
-                                        activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
-                                    )}
-                                    aria-label="Ver gráfico de barras"
-                                >
-                                    <BarChartIcon className="w-3.5 h-3.5" />
-                                </button>
+                            {/* Credit toggle + chart type */}
+                            <div className="flex items-center justify-between gap-2 w-full mb-4">
+                                <CreditToggle checked={showCredit} onChange={setShowCredit} />
+                                <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full shrink-0">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setUserChartPreference('donut'); }}
+                                        className={cn(
+                                            "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                            activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
+                                        )}
+                                        aria-label="Ver gráfico de dona"
+                                    >
+                                        <PieChartIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setUserChartPreference('bar'); }}
+                                        className={cn(
+                                            "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                            activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
+                                        )}
+                                        aria-label="Ver gráfico de barras"
+                                    >
+                                        <BarChartIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className={cn("relative flex-shrink-0 mx-auto", activeChartType === 'donut' ? "w-52 h-52" : "w-full h-52")}>
@@ -717,7 +714,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
                         {/* ── RIGHT: BREAKDOWN CHART ── */}
                         <div className="relative z-10 flex flex-col w-1/2 justify-between">
-                            <div className="flex justify-end items-center mb-2 gap-2">
+                            <div className="flex justify-between items-center mb-2 gap-2">
+                                <CreditToggle checked={showCredit} onChange={setShowCredit} />
                                 <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
                                     <SelectTrigger className="h-7 w-[110px] text-xs bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
                                         <SelectValue placeholder="Vista" />
