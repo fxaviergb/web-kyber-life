@@ -1,6 +1,7 @@
 "use client";
 
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import { useState } from "react";
+import { ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { CreditCard } from "lucide-react";
 import { CategoryBreakdown } from "@/application/services/financial-dashboard-service";
 
@@ -39,6 +40,13 @@ function formatCurrency(value: number): string {
 }
 
 export function CategoryPieChart({ data, grandTotal }: CategoryPieChartProps) {
+    // Tapped/hovered slice, shown in the donut's own hole instead of a
+    // cursor-following tooltip — a floating card can land anywhere the user
+    // taps and end up overlapping the ring itself, especially on mobile.
+    // The hole is empty space by design, so info shown there can never
+    // overlap the chart, and it doubles as a home for the grand total.
+    const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
     if (data.length === 0) {
         return (
             <div className="flex items-center justify-center h-[320px] text-muted-foreground">
@@ -69,9 +77,11 @@ export function CategoryPieChart({ data, grandTotal }: CategoryPieChartProps) {
         color: DISTINCT_COLORS[index % DISTINCT_COLORS.length],
     }));
 
+    const activeSlice = activeIndex !== null && activeIndex < slices.length ? slices[activeIndex] : null;
+
     return (
         <div className="flex h-full w-full min-h-[350px] flex-1 flex-col">
-            <div className="min-h-0 flex-1">
+            <div className="relative min-h-0 flex-1">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <defs>
@@ -109,35 +119,17 @@ export function CategoryPieChart({ data, grandTotal }: CategoryPieChartProps) {
                             }}
                             labelLine={false}
                         >
-                            {slices.map((entry) => (
+                            {slices.map((entry, i) => (
                                 <Cell
                                     key={entry.key}
                                     fill={entry.kind === "credit" ? `url(#credit-hatch-${entry.colorIndex % DISTINCT_COLORS.length})` : DISTINCT_COLORS[entry.colorIndex % DISTINCT_COLORS.length]}
+                                    onMouseEnter={() => setActiveIndex(i)}
+                                    onMouseLeave={() => setActiveIndex(null)}
+                                    onClick={() => setActiveIndex((cur) => (cur === i ? null : i))}
+                                    style={{ cursor: "pointer" }}
                                 />
                             ))}
                         </Pie>
-                        <Tooltip
-                            content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                    const slice = payload[0].payload as SliceDatum;
-                                    return (
-                                        <div className="bg-bg-secondary/95 border border-border-base shadow-xl rounded-xl p-4 backdrop-blur-md min-w-[150px]">
-                                            <p className="text-sm font-medium text-text-secondary mb-1">
-                                                {slice.categoryName}
-                                                {slice.kind === "credit" && <span className="ml-1.5 text-[10px] font-normal text-amber-500">tarjeta · pendiente</span>}
-                                            </p>
-                                            <p
-                                                className="text-2xl font-bold tracking-tight"
-                                                style={{ color: DISTINCT_COLORS[slice.colorIndex % DISTINCT_COLORS.length] }}
-                                            >
-                                                {formatCurrency(payload[0].value as number)}
-                                            </p>
-                                        </div>
-                                    );
-                                }
-                                return null;
-                            }}
-                        />
                         <Legend
                             verticalAlign="bottom"
                             content={() => (
@@ -153,6 +145,31 @@ export function CategoryPieChart({ data, grandTotal }: CategoryPieChartProps) {
                         />
                     </PieChart>
                 </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <div className="max-w-[8.5rem] text-center">
+                        {activeSlice ? (
+                            <>
+                                <p className="truncate text-xs font-medium text-text-secondary" title={activeSlice.categoryName}>
+                                    {activeSlice.categoryName}
+                                </p>
+                                {activeSlice.kind === "credit" && (
+                                    <p className="text-[10px] font-medium text-amber-500">tarjeta · pendiente</p>
+                                )}
+                                <p
+                                    className="mt-0.5 text-lg font-bold tracking-tight"
+                                    style={{ color: DISTINCT_COLORS[activeSlice.colorIndex % DISTINCT_COLORS.length] }}
+                                >
+                                    {formatCurrency(activeSlice.value)}
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">Total</p>
+                                <p className="mt-0.5 text-lg font-bold tracking-tight text-text-primary">{formatCurrency(grandTotal)}</p>
+                            </>
+                        )}
+                    </div>
+                </div>
             </div>
             {hasAnyCredit && (
                 <p className="mt-1 shrink-0 px-2 pb-0.5 text-center text-[11px] leading-relaxed text-muted-foreground">
