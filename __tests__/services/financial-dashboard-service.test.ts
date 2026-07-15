@@ -121,6 +121,39 @@ describe("FinancialDashboardService", () => {
 
             expect(kpis.totalTransfers).toBe(250); // Both transfers still reported in the KPI total
             expect(kpis.netBalance).toBe(800); // Only the savings transfer reduces the balance (1000 - 200)
+            expect(kpis.totalTransfersSavings).toBe(200);
+            expect(kpis.totalTransfersFunding).toBe(0);
+        });
+
+        it("should add TRANSFER transactions categorized as funding back to the balance", async () => {
+            categoryRepo.findAllBaseAndUser.mockResolvedValue([
+                { id: "cat-savings", name: "Ahorros e Inversiones", isDeleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as FinancialCategory,
+                { id: "cat-funding", name: "Fondeo ingresos", isDeleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as FinancialCategory,
+            ]);
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "TRANSFER", amount: 200, status: "CONFIRMED", categoryId: "cat-savings" },
+                { ...baseTransaction, id: "2", type: "TRANSFER", amount: 80, status: "CONFIRMED", categoryId: "cat-funding" },
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+
+            const kpis = await service.getKPIs(mockUserId);
+
+            expect(kpis.totalTransfersSavings).toBe(200);
+            expect(kpis.totalTransfersFunding).toBe(80);
+            expect(kpis.netBalance).toBe(-120); // -200 (savings) + 80 (funding)
+        });
+
+        it("should report the credit-card portion of total expenses", async () => {
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "EXPENSE", amount: 300, status: "CONFIRMED", paidWithCredit: true },
+                { ...baseTransaction, id: "2", type: "EXPENSE", amount: 100, status: "CONFIRMED", paidWithCredit: false },
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+
+            const kpis = await service.getKPIs(mockUserId);
+
+            expect(kpis.totalExpenses).toBe(400);
+            expect(kpis.totalExpensesCredit).toBe(300);
         });
     });
 
@@ -230,6 +263,23 @@ describe("FinancialDashboardService", () => {
             expect(uncat!.total).toBe(100);
             expect(uncat!.categoryName).toBe("Sin categoría");
         });
+
+        it("should report the credit-card portion of each category's total", async () => {
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "EXPENSE", amount: 300, categoryId: "cat-1", paidWithCredit: true },
+                { ...baseTransaction, id: "2", type: "EXPENSE", amount: 200, categoryId: "cat-1", paidWithCredit: false },
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+            categoryRepo.findAllBaseAndUser.mockResolvedValue([
+                { id: "cat-1", name: "Food", color: "#FF0000", type: "EXPENSE", isBase: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), isDeleted: false } as FinancialCategory
+            ]);
+
+            const breakdown = await service.getCategoryBreakdown(mockUserId);
+
+            const cat1 = breakdown.find(b => b.categoryId === "cat-1");
+            expect(cat1!.total).toBe(500);
+            expect(cat1!.creditTotal).toBe(300);
+        });
     });
 
     describe("getInstitutionBreakdown", () => {
@@ -289,6 +339,20 @@ describe("FinancialDashboardService", () => {
 
             const day18 = breakdown.find(b => b.date === "2026-05-18");
             expect(day18!.other).toBe(100); // 50 TRANSFER + 50 OTHER
+        });
+
+        it("should report the credit-card portion of each day's expenses", async () => {
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "EXPENSE", amount: 300, date: "2026-05-15T10:00:00Z", paidWithCredit: true },
+                { ...baseTransaction, id: "2", type: "EXPENSE", amount: 100, date: "2026-05-15T15:00:00Z", paidWithCredit: false },
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+
+            const breakdown = await service.getDailyBreakdown(mockUserId);
+
+            const day15 = breakdown.find(b => b.date === "2026-05-15");
+            expect(day15!.expenses).toBe(400);
+            expect(day15!.expensesCredit).toBe(300);
         });
     });
 

@@ -241,6 +241,14 @@ export function TransactionCard({
                                     {transaction.categoryName}
                                 </span>
                             )}
+                            {transaction.paidWithCredit && (
+                                <span
+                                    className="flex items-center gap-1 shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500"
+                                    title="Pagado con tarjeta de crédito — pendiente de reflejarse en el balance"
+                                >
+                                    <CreditCard className="h-2.5 w-2.5" /> Tarjeta
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>

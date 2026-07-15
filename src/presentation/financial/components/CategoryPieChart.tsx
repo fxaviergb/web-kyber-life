@@ -1,11 +1,21 @@
 "use client";
 
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import { CreditCard } from "lucide-react";
 import { CategoryBreakdown } from "@/application/services/financial-dashboard-service";
 
 interface CategoryPieChartProps {
     data: CategoryBreakdown[];
     grandTotal: number;
+}
+
+/** One donut slice — a category's real (cash) portion or its credit-card (pending) portion. */
+interface SliceDatum {
+    key: string;
+    categoryName: string;
+    value: number;
+    colorIndex: number;
+    kind: "real" | "credit";
 }
 
 const DISTINCT_COLORS = [
@@ -37,17 +47,47 @@ export function CategoryPieChart({ data, grandTotal }: CategoryPieChartProps) {
         );
     }
 
+    // Split each category into up to two adjacent slices — a solid "real"
+    // (cash) portion and a hachured "con tarjeta" (pending) portion — so a
+    // glance at the donut shows how much of each category is actually spent
+    // vs. still pending on a credit card. Categories with no credit spending
+    // render as a single solid slice, exactly as before.
+    const hasAnyCredit = data.some((c) => c.creditTotal > 0);
+    const slices: SliceDatum[] = data.flatMap((c, index) => {
+        const real = Math.max(0, c.total - c.creditTotal);
+        const entries: SliceDatum[] = [];
+        if (real > 0) entries.push({ key: `${c.categoryId ?? c.categoryName}-real`, categoryName: c.categoryName, value: real, colorIndex: index, kind: "real" });
+        if (c.creditTotal > 0) entries.push({ key: `${c.categoryId ?? c.categoryName}-credit`, categoryName: c.categoryName, value: c.creditTotal, colorIndex: index, kind: "credit" });
+        return entries;
+    });
+
+    // One legend row per category (not per slice), so splitting a slice in two
+    // never duplicates or clutters the legend.
+    const legendPayload = data.map((c, index) => ({
+        value: c.categoryName,
+        type: "circle" as const,
+        color: DISTINCT_COLORS[index % DISTINCT_COLORS.length],
+    }));
+
     return (
         <div className="w-full h-full min-h-[350px] flex-1">
             <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
+                    <defs>
+                        {DISTINCT_COLORS.map((color, index) => (
+                            <pattern key={index} id={`credit-hatch-${index}`} patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                                <rect width="6" height="6" fill={color} fillOpacity={0.35} />
+                                <line x1="0" y1="0" x2="0" y2="6" stroke={color} strokeWidth="2" />
+                            </pattern>
+                        ))}
+                    </defs>
                     <Pie
-                        data={data}
+                        data={slices}
                         cx="50%"
                         cy="50%"
                         innerRadius={100}
                         outerRadius={140}
-                        dataKey="total"
+                        dataKey="value"
                         nameKey="categoryName"
                         paddingAngle={5}
                         stroke="none"
@@ -68,24 +108,26 @@ export function CategoryPieChart({ data, grandTotal }: CategoryPieChartProps) {
                         }}
                         labelLine={false}
                     >
-                        {data.map((entry, index) => (
+                        {slices.map((entry) => (
                             <Cell
-                                key={`cell-${index}`}
-                                fill={DISTINCT_COLORS[index % DISTINCT_COLORS.length]}
+                                key={entry.key}
+                                fill={entry.kind === "credit" ? `url(#credit-hatch-${entry.colorIndex % DISTINCT_COLORS.length})` : DISTINCT_COLORS[entry.colorIndex % DISTINCT_COLORS.length]}
                             />
                         ))}
                     </Pie>
                     <Tooltip
                         content={({ active, payload }) => {
                             if (active && payload && payload.length) {
+                                const slice = payload[0].payload as SliceDatum;
                                 return (
                                     <div className="bg-bg-secondary/95 border border-border-base shadow-xl rounded-xl p-4 backdrop-blur-md min-w-[150px]">
                                         <p className="text-sm font-medium text-text-secondary mb-1">
-                                            {payload[0].name}
+                                            {slice.categoryName}
+                                            {slice.kind === "credit" && <span className="ml-1.5 text-[10px] font-normal text-amber-500">tarjeta · pendiente</span>}
                                         </p>
-                                        <p 
-                                            className="text-2xl font-bold tracking-tight" 
-                                            style={{ color: payload[0].payload.fill }}
+                                        <p
+                                            className="text-2xl font-bold tracking-tight"
+                                            style={{ color: DISTINCT_COLORS[slice.colorIndex % DISTINCT_COLORS.length] }}
                                         >
                                             {formatCurrency(payload[0].value as number)}
                                         </p>
@@ -97,15 +139,25 @@ export function CategoryPieChart({ data, grandTotal }: CategoryPieChartProps) {
                     />
                     <Legend
                         verticalAlign="bottom"
-                        iconType="circle"
-                        formatter={(value: string) => (
-                            <span className="text-sm text-foreground">
-                                {value}
-                            </span>
+                        content={() => (
+                            <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 pt-2">
+                                {legendPayload.map((item) => (
+                                    <li key={item.value} className="flex items-center gap-1.5 text-sm text-foreground">
+                                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                                        {item.value}
+                                    </li>
+                                ))}
+                            </ul>
                         )}
                     />
                 </PieChart>
             </ResponsiveContainer>
+            {hasAnyCredit && (
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground">
+                    <CreditCard className="h-3 w-3 text-amber-500" />
+                    Rayado = pagado con tarjeta de crédito, pendiente de reflejarse en el balance
+                </p>
+            )}
         </div>
     );
 }

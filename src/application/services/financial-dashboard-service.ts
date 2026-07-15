@@ -1,11 +1,17 @@
 import { UUID } from "../../domain/core";
 import { FinancialTransaction } from "../../domain/entities/financial";
 import { IFinancialTransactionRepository, IFinancialCategoryRepository, IFinancialInstitutionRepository, IFinancialScannerTransactionRepository } from "../../domain/repositories/financial";
-import { computeNetBalance, isIncomeType, isWithdrawalType, isOtherType } from "../../domain/services/financial-balance";
+import { computeNetBalance, isIncomeType, isWithdrawalType, isOtherType, isSavingsTransfer, isFundingTransfer } from "../../domain/services/financial-balance";
 export interface FinancialKPIs {
     totalIncome: number;
     totalExpenses: number;
+    /** Portion of `totalExpenses` paid with a credit card — deferred, not yet reflected in `netBalance`. */
+    totalExpensesCredit: number;
     totalTransfers: number;
+    /** Portion of `totalTransfers` earmarked as savings — reduces `netBalance`. */
+    totalTransfersSavings: number;
+    /** Portion of `totalTransfers` funding the balance back (e.g. from savings) — increases `netBalance`. */
+    totalTransfersFunding: number;
     totalWithdrawals: number;
     netBalance: number;
     transactionCount: number;
@@ -18,6 +24,8 @@ export interface CategoryBreakdown {
     categoryId: string | null;
     categoryName: string;
     total: number;
+    /** Portion of `total` paid with a credit card — deferred, not yet reflected in the balance. */
+    creditTotal: number;
     count: number;
     percentage: number;
     color?: string;
@@ -35,6 +43,8 @@ export interface DailyBreakdown {
     date: string; // YYYY-MM-DD
     income: number;
     expenses: number;
+    /** Portion of `expenses` paid with a credit card — deferred, not yet reflected in the balance. */
+    expensesCredit: number;
     withdrawals: number;
     other: number;
     net: number;
@@ -108,9 +118,22 @@ export class FinancialDashboardService {
             .filter(t => !isIncomeType(t.type) && !isWithdrawalType(t.type) && t.type !== "TRANSFER")
             .reduce((sum, t) => sum + Number(t.amount), 0);
 
+        const totalExpensesCredit = confirmed
+            .filter(t => !isIncomeType(t.type) && !isWithdrawalType(t.type) && t.type !== "TRANSFER" && t.paidWithCredit)
+            .reduce((sum, t) => sum + Number(t.amount), 0);
+
         const categories = await this.categoryRepo.findAllBaseAndUser(userId);
         const categoryNameById = new Map(categories.map(c => [c.id!, c.name]));
         const netBalance = computeNetBalance(confirmed, categoryNameById);
+
+        const totalTransfersSavings = confirmed
+            .filter(t => isSavingsTransfer(t, categoryNameById))
+            .reduce((sum, t) => sum + Number(t.amount), 0);
+
+        const totalTransfersFunding = confirmed
+            .filter(t => isFundingTransfer(t, categoryNameById))
+            .reduce((sum, t) => sum + Number(t.amount), 0);
+
         const transactionCount = confirmed.length;
         const avgTransactionAmount = transactionCount > 0
             ? (totalIncome + totalExpenses + totalWithdrawals + totalTransfers) / transactionCount
@@ -119,7 +142,10 @@ export class FinancialDashboardService {
         return {
             totalIncome: Math.round(totalIncome * 100) / 100,
             totalExpenses: Math.round(totalExpenses * 100) / 100,
+            totalExpensesCredit: Math.round(totalExpensesCredit * 100) / 100,
             totalTransfers: Math.round(totalTransfers * 100) / 100,
+            totalTransfersSavings: Math.round(totalTransfersSavings * 100) / 100,
+            totalTransfersFunding: Math.round(totalTransfersFunding * 100) / 100,
             totalWithdrawals: Math.round(totalWithdrawals * 100) / 100,
             netBalance: Math.round(netBalance * 100) / 100,
             transactionCount,
@@ -259,17 +285,19 @@ export class FinancialDashboardService {
         const categories = await this.categoryRepo.findAllBaseAndUser(userId);
         const catMap = new Map(categories.map(c => [c.id, c]));
 
-        const groups: Record<string, { total: number; count: number }> = {};
+        const groups: Record<string, { total: number; creditTotal: number; count: number }> = {};
         let grandTotal = 0;
 
         for (const t of confirmed) {
             const catId = t.categoryId || "UNCATEGORIZED";
             if (!groups[catId]) {
-                groups[catId] = { total: 0, count: 0 };
+                groups[catId] = { total: 0, creditTotal: 0, count: 0 };
             }
-            groups[catId].total += Number(t.amount);
+            const amount = Number(t.amount);
+            groups[catId].total += amount;
+            if (t.paidWithCredit) groups[catId].creditTotal += amount;
             groups[catId].count += 1;
-            grandTotal += Number(t.amount);
+            grandTotal += amount;
         }
 
         return Object.entries(groups)
@@ -279,6 +307,7 @@ export class FinancialDashboardService {
                     categoryId: catId === "UNCATEGORIZED" ? null : catId,
                     categoryName: category?.name || "Sin categoría",
                     total: Math.round(data.total * 100) / 100,
+                    creditTotal: Math.round(data.creditTotal * 100) / 100,
                     count: data.count,
                     percentage: grandTotal > 0
                         ? Math.round((data.total / grandTotal) * 10000) / 100
@@ -338,7 +367,7 @@ export class FinancialDashboardService {
             // Take just YYYY-MM-DD
             const dateStr = t.date.split("T")[0];
             if (!groups[dateStr]) {
-                groups[dateStr] = { date: dateStr, income: 0, expenses: 0, withdrawals: 0, other: 0, net: 0 };
+                groups[dateStr] = { date: dateStr, income: 0, expenses: 0, expensesCredit: 0, withdrawals: 0, other: 0, net: 0 };
             }
             const amount = Number(t.amount);
             if (isIncomeType(t.type)) {
@@ -350,6 +379,7 @@ export class FinancialDashboardService {
                 groups[dateStr].other += amount;
             } else {
                 groups[dateStr].expenses += amount;
+                if (t.paidWithCredit) groups[dateStr].expensesCredit += amount;
                 groups[dateStr].net -= amount;
             }
         }
@@ -359,6 +389,7 @@ export class FinancialDashboardService {
                 date: d.date,
                 income: Math.round(d.income * 100) / 100,
                 expenses: Math.round(d.expenses * 100) / 100,
+                expensesCredit: Math.round(d.expensesCredit * 100) / 100,
                 withdrawals: Math.round(d.withdrawals * 100) / 100,
                 other: Math.round(d.other * 100) / 100,
                 net: Math.round(d.net * 100) / 100,
