@@ -11,15 +11,27 @@ interface StatTileProps {
     trend?: { value: number; positive: boolean };
     /** Renders the value in the danger color (e.g. a negative balance). */
     negative?: boolean;
+    /** When set, the tile becomes tappable (e.g. to open a breakdown modal). */
+    onClick?: () => void;
 }
 
 /**
  * Compact summary tile used in the dashboard "RESUMEN" rows. Mobile-first:
  * shrinks its type and padding on small screens so three fit in a row.
  */
-export function StatTile({ label, value, icon: Icon, accentClassName, trend, negative }: StatTileProps) {
+export function StatTile({ label, value, icon: Icon, accentClassName, trend, negative, onClick }: StatTileProps) {
     return (
-        <div className={cn("relative flex flex-col justify-between gap-1.5 sm:gap-2 overflow-hidden rounded-2xl border border-border-base bg-bg-primary p-2.5 sm:p-3 shadow-[0_2px_10px_-6px_rgba(0,0,0,0.15)] transition-colors hover:border-accent-primary/20 h-full min-h-[76px] sm:min-h-[82px]", accentClassName)}>
+        <div
+            role={onClick ? "button" : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            onClick={onClick}
+            onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+            className={cn(
+                "relative flex flex-col justify-between gap-1.5 sm:gap-2 overflow-hidden rounded-2xl border border-border-base bg-bg-primary p-2.5 sm:p-3 shadow-[0_2px_10px_-6px_rgba(0,0,0,0.15)] transition-colors hover:border-accent-primary/20 h-full min-h-[76px] sm:min-h-[82px]",
+                onClick && "cursor-pointer text-left transition-transform active:scale-[0.98]",
+                accentClassName,
+            )}
+        >
             {/* Subtle full-card gradient overlay */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-current/5 to-transparent dark:from-current/10" />
             
