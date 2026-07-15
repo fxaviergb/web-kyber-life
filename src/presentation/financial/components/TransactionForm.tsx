@@ -458,7 +458,7 @@ export function TransactionForm() {
                 <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="h-12 w-full rounded-xl bg-accent-primary text-base font-semibold text-accent-primary-foreground shadow-lg shadow-accent-primary/25 hover:bg-accent-primary/90"
+                    className="h-12 w-full rounded-2xl bg-accent-primary text-base font-semibold text-accent-primary-foreground shadow-lg shadow-accent-primary/25 hover:bg-accent-primary/90"
                 >
                     {isSubmitting ? "Guardando..." : "Guardar transacción"}
                 </Button>

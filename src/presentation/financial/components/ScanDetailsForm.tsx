@@ -1,32 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FinancialScannerTransaction } from "@/domain/entities/financial";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { FinancialScannerTransaction, FinancialInstitution, FinancialInstitutionType, FinancialCategory } from "@/domain/entities/financial";
 import { mapInboxTransactionAction, dismissInboxTransactionAction } from "@/app/actions/financial-inbox";
-import { getInstitutionsAction, getAccountsAction, getCategoriesAction } from "@/app/actions/financial-settings";
-import { AutocompleteInput } from "@/components/ui/autocomplete-input";
-import { TagInput } from "@/components/ui/tag-input";
+import { getInstitutionsAction, getAccountsAction, getCategoriesAction, getInstitutionTypesAction, updateInstitutionAction } from "@/app/actions/financial-settings";
 import { getUniqueTagsAction } from "@/app/actions/financial-transactions";
+import { useScrollFieldIntoView } from "@/hooks/use-scroll-field-into-view";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { AccordionField } from "@/components/ui/accordion-field";
+import { FieldCard } from "@/components/ui/field-card";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
+import { DateTimeStepInput } from "@/components/ui/datetime-step-input";
+import { TagInput } from "@/components/ui/tag-input";
+import { Switch } from "@/components/ui/switch";
+import { TransactionTypeChips } from "./TransactionTypeChips";
+import { AmountHeroInput } from "./AmountHeroInput";
+import { AccountSelect } from "./AccountSelect";
+import { InstitutionPicker, type PendingInstitutionEdit } from "./InstitutionPicker";
+import { CategoryPicker } from "./CategoryPicker";
 import { InstitutionMatchBadge } from "./InstitutionMatchBadge";
 import type { InstitutionMatchInfo } from "@/lib/institution-match";
 import { isoToWallClockInput, wallClockInputToISO } from "@/lib/date-range";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
-import { CalendarDays, Check, CircleAlert, DollarSign, Store, Tag, Tags, X, FileJson, Info, Pencil, Building2, Landmark, FolderGit2, FileText, CreditCard } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
+import type { FinancialTransactionType } from "@/domain/entities/financial";
+import {
+    FileText, Building2, Tag, CreditCard, DollarSign, Landmark, Calendar, Sparkles, Tags,
+    FileJson, Hash, Mail, Check, X,
+} from "lucide-react";
 
-const TYPE_OPTIONS = [
-    { value: "EXPENSE", label: "Gasto" },
-    { value: "INCOME", label: "Ingreso" },
-    { value: "TRANSFER", label: "Transferencias" },
-    { value: "WITHDRAWAL", label: "Retiro" },
-] as const;
+const CREDIT_ELIGIBLE_TYPES: readonly FinancialTransactionType[] = ["EXPENSE"];
+
+const TYPE_OPTIONS = ["EXPENSE", "INCOME", "TRANSFER", "WITHDRAWAL"] as const;
+
+/** Accordion section ids. Only one may be expanded at a time (or none). */
+type SectionId = "description" | "institution" | "account" | "category" | "date" | "notes" | "tags" | "original";
 
 interface ScanDetailsFormProps {
     initialData: FinancialScannerTransaction;
@@ -36,34 +46,16 @@ interface ScanDetailsFormProps {
     institutionMatch?: InstitutionMatchInfo;
 }
 
-function getBadgeVariant(type?: string | null) {
-    switch (type?.toUpperCase()) {
-        case "INCOME":
-            return "success";
-        case "EXPENSE":
-        case "WITHDRAWAL":
-            return "danger";
-        case "TRANSFER":
-            return "warning";
-        default:
-            return "outline";
-    }
-}
-
-function normalizeType(type?: string | null) {
-    if (!type) return "EXPENSE";
-    const normalized = type.toUpperCase();
-    return TYPE_OPTIONS.find(o => o.value === normalized)?.value || "EXPENSE";
+function normalizeType(type?: string | null): FinancialTransactionType {
+    const normalized = type?.toUpperCase();
+    return (TYPE_OPTIONS as readonly string[]).includes(normalized || "") ? (normalized as FinancialTransactionType) : "EXPENSE";
 }
 
 function extractSummary(tx: FinancialScannerTransaction): string {
     const s = tx.summary?.trim();
-    if (s && s !== "null" && s !== "undefined") {
-        return s;
-    }
+    if (s && s !== "null" && s !== "undefined") return s;
 
     const stats = tx.originStats as Record<string, unknown> | null | undefined;
-
     const emailBody = typeof stats?.emailBody === "string" ? stats.emailBody.trim() : "";
     if (emailBody) return `[MAIL] ${emailBody}`;
 
@@ -73,46 +65,74 @@ function extractSummary(tx: FinancialScannerTransaction): string {
     return "";
 }
 
+/** Format a datetime-local string as "DD/MM/YYYY HH:mm". */
+function formatDateTimePreview(dtLocal: string): string {
+    if (!dtLocal) return "";
+    const d = new Date(dtLocal);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function ScanDetailsForm({ initialData, resolvedInstitutionName, institutionMatch }: ScanDetailsFormProps) {
     const router = useRouter();
     const [isProcessing, setIsProcessing] = useState(false);
+    const formRef = useRef<HTMLDivElement>(null);
+    useScrollFieldIntoView(formRef);
 
-    const [formData, setFormData] = useState(() => {
-        const defaultNotes = extractSummary(initialData) || "";
+    // Which accordion section is open (only one or none).
+    const [expanded, setExpanded] = useState<SectionId | null>(null);
+    const toggle = (id: SectionId) => {
+        // Re-entering a search section always starts with a blank query; the
+        // already-selected value is preserved and shown first in the grid.
+        if (id === "institution" && expanded !== "institution") setInstitutionQuery("");
+        if (id === "category" && expanded !== "category") setCategoryQuery("");
+        setExpanded((cur) => (cur === id ? null : id));
+    };
 
-        return {
-            description: initialData.description || "",
-            type: normalizeType(initialData.type),
-            amount: initialData.amount !== null ? String(initialData.amount) : "",
-            date: isoToWallClockInput(initialData.date) ?? "",
-            notes: defaultNotes,
-            institutionName: resolvedInstitutionName || initialData.merchant || "",
-            accountName: "",
-            categoryName: initialData.category || "",
-            tags: [] as string[],
-            paidWithCredit: false,
-        };
-    });
+    const [formData, setFormData] = useState(() => ({
+        description: initialData.description || "",
+        type: normalizeType(initialData.type),
+        amount: initialData.amount !== null && initialData.amount !== undefined ? String(initialData.amount) : "",
+        date: isoToWallClockInput(initialData.date) ?? "",
+        notes: extractSummary(initialData) || "",
+        institutionName: resolvedInstitutionName || initialData.merchant || "",
+        accountName: "",
+        categoryName: initialData.category || "",
+        tags: [] as string[],
+        paidWithCredit: false,
+    }));
 
-    const [institutions, setInstitutions] = useState<string[]>([]);
-    const [accounts, setAccounts] = useState<string[]>([]);
-    const [categories, setCategories] = useState<string[]>([]);
+    const [institutions, setInstitutions] = useState<FinancialInstitution[]>([]);
+    const [institutionTypes, setInstitutionTypes] = useState<FinancialInstitutionType[]>([]);
+    const [accountsList, setAccountsList] = useState<string[]>([]);
+    const [categories, setCategories] = useState<FinancialCategory[]>([]);
     const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+
+    const [institutionQuery, setInstitutionQuery] = useState("");
+    const [categoryQuery, setCategoryQuery] = useState("");
+
+    // Institution inline-edit (staged; persisted on confirm).
+    const [pendingInstitutionEdit, setPendingInstitutionEdit] = useState<PendingInstitutionEdit | null>(null);
+
+    const creditEligible = CREDIT_ELIGIBLE_TYPES.includes(formData.type);
 
     useEffect(() => {
         let mounted = true;
         async function loadOptions() {
             try {
-                const [insts, accs, cats, tagsRes] = await Promise.all([
+                const [insts, accs, cats, typesRes, tagsRes] = await Promise.all([
                     getInstitutionsAction(),
                     getAccountsAction(),
                     getCategoriesAction(),
-                    getUniqueTagsAction()
+                    getInstitutionTypesAction(),
+                    getUniqueTagsAction(),
                 ]);
                 if (mounted) {
-                    setInstitutions(insts.map(i => i.name));
-                    setAccounts(accs.map(a => a.name));
-                    setCategories(cats.map(c => c.name));
+                    setInstitutions(insts);
+                    setAccountsList(accs.map((a) => a.name));
+                    setCategories(cats.filter((c) => !c.isDeleted));
+                    setInstitutionTypes(typesRes);
                     if (tagsRes.success && Array.isArray(tagsRes.data)) {
                         setTagSuggestions(tagsRes.data as string[]);
                     }
@@ -125,15 +145,22 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
         return () => { mounted = false; };
     }, []);
 
-    const handleChange = (field: keyof typeof formData, value: string) => {
+    const handleChange = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
     const handleConfirm = async (e: React.MouseEvent) => {
         e.preventDefault();
 
-        if (!formData.type) {
-            toast.error("El tipo de transacción es requerido");
+        if (!formData.description || formData.description.trim() === "") {
+            toast.error("La descripción es requerida para confirmar");
+            setExpanded("description");
+            return;
+        }
+
+        if (!formData.institutionName || formData.institutionName.trim() === "") {
+            toast.error("La institución es requerida");
+            setExpanded("institution");
             return;
         }
 
@@ -143,18 +170,22 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
             return;
         }
 
-        if (!formData.description || formData.description.trim() === "") {
-            toast.error("La descripción es requerida para confirmar");
-            return;
-        }
-
-        if (!formData.institutionName || formData.institutionName.trim() === "") {
-            toast.error("La institución es requerida");
-            return;
-        }
-
         try {
             setIsProcessing(true);
+
+            if (pendingInstitutionEdit && formData.institutionName.trim().toLowerCase() === pendingInstitutionEdit.name.trim().toLowerCase()) {
+                try {
+                    await updateInstitutionAction(pendingInstitutionEdit.id, {
+                        name: pendingInstitutionEdit.name,
+                        institutionTypeId: pendingInstitutionEdit.institutionTypeId,
+                        description: pendingInstitutionEdit.description,
+                    });
+                } catch {
+                    toast.error("No se pudo actualizar la institución", { id: "inst-update-error" });
+                    setIsProcessing(false);
+                    return;
+                }
+            }
 
             const result = await mapInboxTransactionAction({
                 scannerTransactionId: initialData.id,
@@ -180,7 +211,7 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
 
             toast.success("Transacción guardada exitosamente", { id: `scan-confirm-success-${initialData.id}` });
             router.replace("/financial/scans");
-        } catch (error) {
+        } catch {
             toast.error("Ocurrió un error inesperado", { id: `scan-confirm-unexpected-${initialData.id}` });
         } finally {
             setIsProcessing(false);
@@ -201,286 +232,232 @@ export function ScanDetailsForm({ initialData, resolvedInstitutionName, institut
 
             toast.success("Transacción descartada", { id: `scan-dismiss-success-${initialData.id}` });
             router.replace("/financial/scans");
-        } catch (error) {
+        } catch {
             toast.error("Ocurrió un error inesperado", { id: `scan-dismiss-unexpected-${initialData.id}` });
         } finally {
             setIsProcessing(false);
         }
     };
 
+    // Collapsed accordion previews
+    const paidWithCreditActive = formData.paidWithCredit && creditEligible;
+    const accountPreview = formData.accountName
+        ? (paidWithCreditActive ? `${formData.accountName} · Tarjeta de crédito` : formData.accountName)
+        : (paidWithCreditActive ? "Tarjeta de crédito" : "Ej. Ahorros Múltiple, Tarjeta Visa");
+    const accountHasValue = !!formData.accountName || paidWithCreditActive;
+    const datePreview = formatDateTimePreview(formData.date) || "Selecciona fecha y hora";
+
+    const originStats = initialData.originStats as Record<string, unknown> | null | undefined;
+    const isEmailOrigin = originStats?.origin === "email";
+
     return (
-        <Card className="w-full border-border/50 shadow-sm transition-all duration-200 bg-card">
+        <div ref={formRef} className="relative mx-auto w-full max-w-lg">
+            <div className="space-y-3 pb-24">
+                <TransactionTypeChips value={formData.type} onChange={(v) => handleChange("type", v)} />
 
+                <AmountHeroInput amount={formData.amount} onChange={(v) => handleChange("amount", v)} currency={initialData.currency || "USD"} />
 
-            <CardContent className="p-4 sm:p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                    {/* Columna Izquierda: Datos Editables */}
-                    <div className="space-y-4 sm:space-y-6">
-                        <div>
-                            <h3 className="text-lg font-medium border-b border-border pb-2 mb-3 sm:mb-4 flex items-center gap-2 text-foreground/90">
-                                <Pencil className="h-4 w-4 text-primary" />
-                                Datos a Confirmar
-                            </h3>
-
-                            <div className="space-y-4">
-                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label htmlFor="description" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <FileText className="h-4 w-4 text-slate-500" />
-                                        Descripción
-                                    </Label>
-                                    <Input
-                                        id="description"
-                                        value={formData.description}
-                                        onChange={(e) => handleChange("description", e.target.value)}
-                                        className="h-9 bg-background border-border/50"
-                                        placeholder="Ej. Compra en Supermercado"
-                                    />
-                                </div>
-
-                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label htmlFor="institutionName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <Building2 className="h-4 w-4 text-blue-500" />
-                                        Institución <span className="text-destructive">*</span>
-                                        {institutionMatch && (
-                                            <InstitutionMatchBadge info={institutionMatch} size={16} className="ml-0.5" />
-                                        )}
-                                    </Label>
-                                    <AutocompleteInput
-                                        id="institutionName"
-                                        value={formData.institutionName}
-                                        onChange={(val) => handleChange("institutionName", val)}
-                                        options={institutions}
-                                        className="h-9 text-sm bg-background border-border/50"
-                                        placeholder="Ej. Banco de Chile, Sodexo..."
-                                    />
-                                </div>
-
-                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label htmlFor="type" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <Tag className="h-4 w-4 text-purple-500" />
-                                        Tipo de Transacción <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Select
-                                        value={formData.type}
-                                        onValueChange={(val) => handleChange("type", val)}
-                                    >
-                                        <SelectTrigger className="h-9 bg-background border-border/50">
-                                            <SelectValue placeholder="Seleccione un tipo" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {TYPE_OPTIONS.map((opt) => (
-                                                <SelectItem key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {formData.type === "EXPENSE" && (
-                                    <div className="flex items-center gap-2 p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                        <Checkbox
-                                            id="paidWithCredit"
-                                            checked={formData.paidWithCredit}
-                                            onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, paidWithCredit: checked === true }))}
-                                        />
-                                        <Label htmlFor="paidWithCredit" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground cursor-pointer">
-                                            <CreditCard className="h-4 w-4 text-orange-500" />
-                                            Pagado con tarjeta de crédito
-                                        </Label>
-                                    </div>
-                                )}
-
-                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label htmlFor="amount" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <DollarSign className="h-4 w-4 text-green-500" />
-                                        Monto <span className="text-destructive">*</span>
-                                    </Label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50">$</span>
-                                        <Input
-                                            id="amount"
-                                            type="number"
-                                            value={formData.amount}
-                                            onChange={(e) => handleChange("amount", e.target.value)}
-                                            className="h-9 bg-background border-border/50 pl-7"
-                                            placeholder="0.00"
-                                            step="0.01"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label htmlFor="categoryName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <FolderGit2 className="h-4 w-4 text-amber-500" />
-                                        Categoría
-                                    </Label>
-                                    <AutocompleteInput
-                                        id="categoryName"
-                                        value={formData.categoryName}
-                                        onChange={(val) => handleChange("categoryName", val)}
-                                        options={categories}
-                                        className="h-9 text-sm bg-background border-border/50"
-                                        placeholder="Ej. Supermercado, Transporte..."
-                                    />
-                                </div>
-
-                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label htmlFor="accountName" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <Landmark className="h-4 w-4 text-emerald-500" />
-                                        Cuenta
-                                    </Label>
-                                    <AutocompleteInput
-                                        id="accountName"
-                                        value={formData.accountName}
-                                        onChange={(val) => handleChange("accountName", val)}
-                                        options={accounts}
-                                        className="h-9 text-sm bg-background border-border/50"
-                                        placeholder="Ej. Cuenta Corriente, Tarjeta de Crédito..."
-                                    />
-                                </div>
-
-                                <div className="p-4 rounded-2xl bg-bg-primary/50 border border-border/30">
-                                    <Label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                                        <Tags className="h-4 w-4 text-pink-500" />
-                                        Etiquetas
-                                    </Label>
-                                    <TagInput
-                                        value={formData.tags}
-                                        onChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
-                                        suggestions={tagSuggestions}
-                                        placeholder="Escribe y presiona Enter, o elige una existente..."
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="date" className="flex items-center gap-1.5 text-muted-foreground">
-                                        <CalendarDays className="h-3.5 w-3.5" />
-                                        Fecha y Hora
-                                    </Label>
-                                    <Input
-                                        id="date"
-                                        type="datetime-local"
-                                        value={formData.date}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("date", e.target.value)}
-                                        className="bg-background border-border/50"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="notes" className="flex items-center gap-1.5 text-muted-foreground">
-                                        <Info className="h-3.5 w-3.5" />
-                                        Contexto Extraído
-                                    </Label>
-                                    <textarea
-                                        id="notes"
-                                        value={formData.notes}
-                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange("notes", e.target.value)}
-                                        className="flex min-h-[120px] w-full rounded-md border border-border/50 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                                        placeholder="Descripción o contexto de la transacción..."
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Columna Derecha: Datos Originales (Solo Lectura) */}
-                    <div className="space-y-4 sm:space-y-6">
-                        <div>
-                            <h3 className="text-lg font-medium border-b border-border pb-2 mb-3 sm:mb-4 flex items-center gap-2 text-foreground/90">
-                                <FileJson className="h-4 w-4 text-primary" />
-                                Datos Originales Extraídos
-                            </h3>
-
-                            <div className="rounded-xl bg-bg-primary/30 border border-border/50 p-4 space-y-4">
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Monto Original</span>
-                                        <span className="font-mono">{initialData.amount !== null ? `${initialData.amount} ${initialData.currency || 'USD'}` : 'N/A'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Categoría</span>
-                                        <span>{initialData.category || 'N/A'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Hash / Ref</span>
-                                        <span className="font-mono text-xs break-all text-muted-foreground">{initialData.hash || 'N/A'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">ID Ejecución</span>
-                                        <span className="font-mono text-xs break-all text-muted-foreground">{initialData.executionId || 'N/A'}</span>
-                                    </div>
-                                </div>
-
-                                {initialData.originStats?.origin === "email" && (
-                                    <div className="pt-2 border-t border-border/50 space-y-3">
-                                        <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Detalles del Correo</span>
-                                        <div className="grid grid-cols-1 gap-3 text-sm">
-                                            {initialData.originStats?.from && (
-                                                <div>
-                                                    <span className="block text-xs font-medium text-muted-foreground tracking-wider mb-1">De:</span>
-                                                    <span className="font-mono text-xs break-all">{initialData.originStats.from}</span>
-                                                </div>
-                                            )}
-                                            {initialData.originStats?.to && (
-                                                <div>
-                                                    <span className="block text-xs font-medium text-muted-foreground tracking-wider mb-1">Para:</span>
-                                                    <span className="font-mono text-xs break-all">{initialData.originStats.to}</span>
-                                                </div>
-                                            )}
-                                            {initialData.originStats?.subject && (
-                                                <div>
-                                                    <span className="block text-xs font-medium text-muted-foreground tracking-wider mb-1">Asunto:</span>
-                                                    <span className="text-xs">{initialData.originStats.subject}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="pt-2 border-t border-border/50">
-                                    <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Payload (Origin Stats)</span>
-                                    <pre className="bg-background/50 p-3 rounded-lg text-[11px] font-mono overflow-x-auto text-foreground/80 whitespace-pre-wrap max-h-[300px] overflow-y-auto border border-border/30">
-                                        {initialData.originStats ? JSON.stringify(initialData.originStats, null, 2) : "Sin datos adicionales"}
-                                    </pre>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col gap-3 border-t border-border/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between bg-bg-primary/10">
-                <Button
-                    variant="ghost"
-                    onClick={() => router.push("/financial/scans")}
-                    disabled={isProcessing}
-                    className="w-full sm:w-auto text-muted-foreground"
+                {/* Description */}
+                <AccordionField
+                    icon={<FileText className="h-4 w-4" />}
+                    iconClass="bg-accent-primary/15 text-accent-primary"
+                    label="Descripción"
+                    preview={formData.description || "Ej. Compra en supermercado"}
+                    hasValue={!!formData.description}
+                    expanded={expanded === "description"}
+                    onToggle={() => toggle("description")}
                 >
-                    Volver
-                </Button>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full rounded-lg sm:w-auto hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
-                        onClick={handleDismiss}
-                        disabled={isProcessing}
-                    >
-                        <X className="mr-1.5 h-4 w-4" />
-                        Descartar
+                    <Input
+                        value={formData.description}
+                        onChange={(e) => handleChange("description", e.target.value)}
+                        placeholder="Ej. Compra en supermercado"
+                        autoComplete="off"
+                        autoFocus
+                    />
+                </AccordionField>
+
+                {/* Institution */}
+                <AccordionField
+                    icon={<Building2 className="h-4 w-4" />}
+                    iconClass="bg-blue-500/15 text-blue-500"
+                    label="Institución"
+                    badge={institutionMatch && <InstitutionMatchBadge info={institutionMatch} size={14} />}
+                    preview={formData.institutionName || "Ej. Banco de Chile, Sodexo, Amazon"}
+                    hasValue={!!formData.institutionName}
+                    expanded={expanded === "institution"}
+                    onToggle={() => toggle("institution")}
+                >
+                    <InstitutionPicker
+                        institutions={institutions}
+                        institutionTypes={institutionTypes}
+                        value={formData.institutionName}
+                        onSelect={(v) => handleChange("institutionName", v)}
+                        onInstitutionsChange={setInstitutions}
+                        query={institutionQuery}
+                        onQueryChange={setInstitutionQuery}
+                        pendingEdit={pendingInstitutionEdit}
+                        onPendingEditChange={setPendingInstitutionEdit}
+                    />
+                </AccordionField>
+
+                {/* Account (with paid-with-credit inside) */}
+                <AccordionField
+                    icon={<Landmark className="h-4 w-4" />}
+                    iconClass="bg-emerald-500/15 text-emerald-500"
+                    label="Cuenta"
+                    preview={accountPreview}
+                    hasValue={accountHasValue}
+                    expanded={expanded === "account"}
+                    onToggle={() => toggle("account")}
+                >
+                    <AccountSelect accounts={accountsList} value={formData.accountName} onChange={(v) => handleChange("accountName", v)} />
+
+                    {creditEligible && (
+                        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-bg-secondary/40 p-3">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent-primary/15 text-accent-primary">
+                                    <CreditCard className="h-4 w-4" />
+                                </div>
+                                <span className="text-sm leading-tight text-text-primary">Pagado con<br />tarjeta de crédito</span>
+                            </div>
+                            <Switch checked={formData.paidWithCredit} onChange={(v) => handleChange("paidWithCredit", v)} label="Pagado con tarjeta de crédito" />
+                        </div>
+                    )}
+                </AccordionField>
+
+                {/* Category */}
+                <AccordionField
+                    icon={<Tag className="h-4 w-4" />}
+                    iconClass="bg-amber-500/15 text-amber-500"
+                    label="Categoría"
+                    preview={formData.categoryName || "Ej. Alimentación, Transporte, Servicios"}
+                    hasValue={!!formData.categoryName}
+                    expanded={expanded === "category"}
+                    onToggle={() => toggle("category")}
+                >
+                    <CategoryPicker
+                        categories={categories}
+                        value={formData.categoryName}
+                        onSelect={(v) => handleChange("categoryName", v)}
+                        onCategoriesChange={setCategories}
+                        query={categoryQuery}
+                        onQueryChange={setCategoryQuery}
+                    />
+                </AccordionField>
+
+                {/* Date & time */}
+                <AccordionField
+                    icon={<Calendar className="h-4 w-4" />}
+                    iconClass="bg-accent-primary/15 text-accent-primary"
+                    label="Fecha y hora"
+                    preview={datePreview}
+                    hasValue={!!formData.date}
+                    expanded={expanded === "date"}
+                    onToggle={() => toggle("date")}
+                >
+                    <DateTimeStepInput value={formData.date} onChange={(v) => handleChange("date", v)} minuteStep={5} required />
+                </AccordionField>
+
+                {/* Extracted context */}
+                <AccordionField
+                    icon={<Sparkles className="h-4 w-4" />}
+                    iconClass="bg-accent-primary/15 text-accent-primary"
+                    label="Contexto extraído"
+                    preview={formData.notes || "Sin contexto extraído"}
+                    hasValue={!!formData.notes}
+                    expanded={expanded === "notes"}
+                    onToggle={() => toggle("notes")}
+                >
+                    <Textarea
+                        rows={3}
+                        value={formData.notes}
+                        onChange={(e) => handleChange("notes", e.target.value)}
+                        placeholder="Descripción o contexto de la transacción..."
+                    />
+                </AccordionField>
+
+                {/* Tags */}
+                <AccordionField
+                    icon={<Tags className="h-4 w-4" />}
+                    iconClass="bg-pink-500/15 text-pink-500"
+                    label="Etiquetas"
+                    preview={formData.tags.length ? formData.tags.join(", ") : "Sin etiquetas"}
+                    hasValue={formData.tags.length > 0}
+                    expanded={expanded === "tags"}
+                    onToggle={() => toggle("tags")}
+                >
+                    <TagInput
+                        value={formData.tags}
+                        onChange={(tags) => handleChange("tags", tags)}
+                        suggestions={tagSuggestions}
+                        placeholder="Escribe y presiona Enter, o elige una existente..."
+                    />
+                </AccordionField>
+
+                {/* Original scanned data — read-only, collapsed by default */}
+                <AccordionField
+                    icon={<FileJson className="h-4 w-4" />}
+                    iconClass="bg-slate-500/15 text-slate-400"
+                    label="Datos originales extraídos"
+                    preview="Monto, categoría, correo y payload del escaneo"
+                    hasValue={false}
+                    expanded={expanded === "original"}
+                    onToggle={() => toggle("original")}
+                >
+                    <div className="grid grid-cols-2 gap-2">
+                        <FieldCard icon={<DollarSign className="h-3.5 w-3.5" />} iconClass="bg-emerald-500/15 text-emerald-500" label="Monto original">
+                            <p className="text-sm font-bold text-text-primary">
+                                {initialData.amount !== null && initialData.amount !== undefined ? `${initialData.amount} ${initialData.currency || "USD"}` : "N/A"}
+                            </p>
+                        </FieldCard>
+                        <FieldCard icon={<Tag className="h-3.5 w-3.5" />} iconClass="bg-amber-500/15 text-amber-500" label="Categoría original">
+                            <p className="text-sm font-bold text-text-primary">{initialData.category || "N/A"}</p>
+                        </FieldCard>
+                        <FieldCard icon={<Hash className="h-3.5 w-3.5" />} iconClass="bg-slate-500/15 text-slate-400" label="Hash / Ref">
+                            <p className="break-all font-mono text-xs text-text-secondary">{initialData.hash || "N/A"}</p>
+                        </FieldCard>
+                        <FieldCard icon={<FileJson className="h-3.5 w-3.5" />} iconClass="bg-slate-500/15 text-slate-400" label="ID Ejecución">
+                            <p className="break-all font-mono text-xs text-text-secondary">{initialData.executionId || "N/A"}</p>
+                        </FieldCard>
+                    </div>
+
+                    {isEmailOrigin && (
+                        <div className="mt-3 space-y-2 rounded-xl border border-border/40 bg-bg-primary/40 p-3">
+                            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                                <Mail className="h-3.5 w-3.5" /> Detalles del correo
+                            </p>
+                            {typeof originStats?.from === "string" && (
+                                <p className="break-all font-mono text-xs text-text-secondary"><span className="text-text-tertiary">De: </span>{originStats.from}</p>
+                            )}
+                            {typeof originStats?.to === "string" && (
+                                <p className="break-all font-mono text-xs text-text-secondary"><span className="text-text-tertiary">Para: </span>{originStats.to}</p>
+                            )}
+                            {typeof originStats?.subject === "string" && (
+                                <p className="text-xs text-text-secondary"><span className="text-text-tertiary">Asunto: </span>{originStats.subject}</p>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="mt-3">
+                        <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-text-tertiary">Payload (origin stats)</p>
+                        <pre className="max-h-[240px] overflow-y-auto overflow-x-auto whitespace-pre-wrap break-all rounded-xl border border-border/40 bg-bg-primary/40 p-3 font-mono text-[11px] text-text-secondary">
+                            {originStats ? JSON.stringify(originStats, null, 2) : "Sin datos adicionales"}
+                        </pre>
+                    </div>
+                </AccordionField>
+            </div>
+
+            {/* Floating actions — always reachable, no scrolling required */}
+            <StickyActionBar>
+                <div className="flex gap-3">
+                    <Button variant="ghost" onClick={handleDismiss} disabled={isProcessing} className="h-12 flex-1 rounded-2xl border border-border/50">
+                        <X className="h-4 w-4 mr-2" /> Descartar
                     </Button>
-                    <Button
-                        type="button"
-                        className="w-full rounded-lg sm:w-auto"
-                        onClick={handleConfirm}
-                        disabled={isProcessing}
-                    >
-                        <Check className="mr-1.5 h-4 w-4" />
-                        {isProcessing ? "Procesando..." : "Confirmar"}
+                    <Button onClick={handleConfirm} disabled={isProcessing} className="h-12 flex-1 rounded-2xl bg-accent-primary text-accent-primary-foreground shadow-lg shadow-accent-primary/25 hover:bg-accent-primary/90">
+                        <Check className="h-4 w-4 mr-2" /> {isProcessing ? "Procesando..." : "Confirmar"}
                     </Button>
                 </div>
-            </CardFooter>
-        </Card>
+            </StickyActionBar>
+        </div>
     );
 }

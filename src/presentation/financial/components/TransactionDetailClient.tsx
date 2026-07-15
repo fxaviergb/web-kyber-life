@@ -562,17 +562,17 @@ export function TransactionDetailClient({ initialTransaction }: TransactionDetai
                     <StickyActionBar>
                         {isEditing ? (
                             <div className="flex gap-3">
-                                <Button variant="ghost" onClick={toggleEdit} disabled={isLoading} className="h-12 flex-1 rounded-xl">
+                                <Button variant="ghost" onClick={toggleEdit} disabled={isLoading} className="h-12 flex-1 rounded-2xl border border-border/50">
                                     <Undo2 className="h-4 w-4 mr-2" /> Cancelar
                                 </Button>
-                                <Button onClick={handleSaveEdit} disabled={isLoading} className="h-12 flex-1 rounded-xl bg-accent-primary text-accent-primary-foreground shadow-lg shadow-accent-primary/25 hover:bg-accent-primary/90">
+                                <Button onClick={handleSaveEdit} disabled={isLoading} className="h-12 flex-1 rounded-2xl bg-accent-primary text-accent-primary-foreground shadow-lg shadow-accent-primary/25 hover:bg-accent-primary/90">
                                     <Check className="h-4 w-4 mr-2" /> {isLoading ? "Guardando..." : "Guardar Cambios"}
                                 </Button>
                             </div>
                         ) : (
                             <Button
                                 onClick={toggleEdit}
-                                className="h-12 w-full rounded-xl bg-accent-primary text-base font-semibold text-accent-primary-foreground shadow-lg shadow-accent-primary/25 hover:bg-accent-primary/90"
+                                className="h-12 w-full rounded-2xl bg-accent-primary text-base font-semibold text-accent-primary-foreground shadow-lg shadow-accent-primary/25 hover:bg-accent-primary/90"
                             >
                                 <Edit2 className="h-4 w-4 mr-2" /> Editar transacción
                             </Button>
