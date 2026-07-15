@@ -10,7 +10,7 @@ import { getCategoriesAction, createCategoryAction } from "@/app/actions/financi
 import type { FinancialCategory } from "@/domain/entities/financial";
 import { PickerGridTile, PickerMoreTile, PickerCreateButton, PickerEmptyHint } from "./picker-tiles";
 
-const PREVIEW_COUNT = 7;
+const PREVIEW_COUNT = 5;
 const FALLBACK_COLOR = "#64748b";
 
 export interface CategoryPickerProps {
@@ -83,7 +83,7 @@ export function CategoryPicker({ categories, value, onSelect, onCategoriesChange
             </div>
 
             {visible.length > 0 && (
-                <div className="mt-3 grid grid-cols-4 gap-2">
+                <div className="mt-3 grid grid-cols-3 gap-2">
                     {visible.map((cat) => {
                         const selected = cat.name.trim().toLowerCase() === value.trim().toLowerCase();
                         const color = cat.color || FALLBACK_COLOR;

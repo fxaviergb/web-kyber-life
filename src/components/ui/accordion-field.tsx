@@ -8,6 +8,8 @@ interface AccordionFieldProps {
     icon: ReactNode;
     iconClass: string;
     label: string;
+    /** Optional inline indicator next to the label (e.g. a match-confidence badge). */
+    badge?: ReactNode;
     preview: string;
     hasValue: boolean;
     expanded: boolean;
@@ -20,13 +22,16 @@ interface AccordionFieldProps {
  * arbitrary editor content when expanded. Used to build long forms as a stack
  * of accordion rows instead of always-visible fields.
  */
-export function AccordionField({ icon, iconClass, label, preview, hasValue, expanded, onToggle, children }: AccordionFieldProps) {
+export function AccordionField({ icon, iconClass, label, badge, preview, hasValue, expanded, onToggle, children }: AccordionFieldProps) {
     return (
         <div className={cn("rounded-2xl border bg-bg-secondary/50 transition-colors", expanded ? "border-accent-primary/40" : "border-border/40")}>
             <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 p-4 text-left">
                 <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", iconClass)}>{icon}</div>
                 <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-text-primary">{label}</p>
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                        {label}
+                        {badge}
+                    </p>
                     {!expanded && (
                         <p className={cn("truncate text-xs", hasValue ? "text-text-secondary" : "text-text-tertiary")}>{preview}</p>
                     )}
