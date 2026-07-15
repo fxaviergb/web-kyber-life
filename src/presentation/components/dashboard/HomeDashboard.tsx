@@ -34,6 +34,7 @@ import { FrequentProductsCard } from "./frequent-products-card";
 import { DashboardLoading } from "./DashboardLoading";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 import { MobileCarousel } from "./MobileCarousel";
+import { KpiBreakdownModal, type BreakdownRow, type BreakdownTone } from "@/presentation/financial/components/KpiBreakdownModal";
 
 /**
  * Shared vertical size for every dashboard chart. Kept identical across both
@@ -192,6 +193,69 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
 
     const kpis = fin.kpis;
     const greeting = userFirstName ? `Hola, ${userFirstName}` : "Panel general";
+
+    // Tapping a "Resumen financiero" tile opens a modal breaking down the
+    // values behind that number (e.g. real vs. credit-card expenses).
+    const [openKpiModal, setOpenKpiModal] = useState<"balance" | "ingresos" | "gastos" | null>(null);
+
+    const kpiModalConfig = useMemo(() => {
+        if (!openKpiModal || !kpis) return null;
+
+        const realExpenses = Math.max(0, kpis.totalExpenses - kpis.totalExpensesCredit);
+
+        if (openKpiModal === "balance") {
+            const rows: BreakdownRow[] = [{ label: "Ingresos", amount: kpis.totalIncome, tone: "positive" as BreakdownTone }];
+            if (kpis.totalTransfersFunding > 0) {
+                rows.push({ label: "Fondeo desde ahorros", amount: kpis.totalTransfersFunding, tone: "positive", hint: "Transferencias que regresan dinero a tu balance disponible" });
+            }
+            rows.push({ label: "Gastos reales", amount: realExpenses, tone: "negative" });
+            if (kpis.totalTransfersSavings > 0) {
+                rows.push({ label: "Ahorro apartado", amount: kpis.totalTransfersSavings, tone: "negative", hint: "Transferencias a ahorros e inversiones" });
+            }
+            return {
+                title: "Detalle del balance",
+                description: "Cómo se calculó tu saldo disponible",
+                icon: Wallet,
+                iconClassName: kpis.netBalance < 0 ? "bg-accent-danger/10 text-accent-danger" : "bg-emerald-500/10 text-emerald-500",
+                rows,
+                total: { label: "Balance", amount: kpis.netBalance, tone: (kpis.netBalance < 0 ? "negative" : "positive") as BreakdownTone, showSign: true },
+                note: kpis.totalExpensesCredit > 0
+                    ? `No incluye ${currency(kpis.totalExpensesCredit)} en gastos pagados con tarjeta de crédito — se reflejarán cuando registres el pago de la tarjeta.`
+                    : undefined,
+            };
+        }
+
+        if (openKpiModal === "ingresos") {
+            const rows: BreakdownRow[] = [{ label: "Ingresos", amount: kpis.totalIncome, tone: "positive" as BreakdownTone }];
+            if (kpis.totalTransfersFunding > 0) {
+                rows.push({ label: "Fondeo desde ahorros", amount: kpis.totalTransfersFunding, tone: "positive", hint: "Transferencias que regresan dinero a tu balance disponible" });
+            }
+            return {
+                title: "Detalle de ingresos",
+                description: "Todo el dinero que entró a tu balance disponible",
+                icon: ArrowDownCircle,
+                iconClassName: "bg-accent-success/10 text-accent-success",
+                rows,
+                total: { label: "Total ingresado", amount: kpis.totalIncome + kpis.totalTransfersFunding, tone: "positive" as BreakdownTone, showSign: false },
+                note: undefined as string | undefined,
+            };
+        }
+
+        // gastos
+        const rows: BreakdownRow[] = [{ label: "Gastos reales", amount: realExpenses, tone: "negative" as BreakdownTone, hint: "Ya afectan tu balance disponible" }];
+        if (kpis.totalExpensesCredit > 0) {
+            rows.push({ label: "Gastos con tarjeta", amount: kpis.totalExpensesCredit, tone: "pending", hint: "Pendientes de reflejarse cuando pagues la tarjeta" });
+        }
+        return {
+            title: "Detalle de gastos",
+            description: "Gastos reales vs. pagados con tarjeta de crédito",
+            icon: ArrowUpCircle,
+            iconClassName: "bg-accent-danger/10 text-accent-danger",
+            rows,
+            total: { label: "Total gastado", amount: kpis.totalExpenses, tone: "negative" as BreakdownTone, showSign: false },
+            note: undefined as string | undefined,
+        };
+    }, [openKpiModal, kpis]);
 
     const isInitialLoading =
         finLoading &&
@@ -388,18 +452,21 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                                 icon={Wallet}
                                                 accentClassName={(kpis?.netBalance ?? 0) < 0 ? "text-accent-danger" : "text-emerald-500"}
                                                 negative={(kpis?.netBalance ?? 0) < 0}
+                                                onClick={kpis ? () => setOpenKpiModal("balance") : undefined}
                                             />
                                             <StatTile
                                                 label="Ingresos"
                                                 value={currency(kpis?.totalIncome ?? 0)}
                                                 icon={ArrowDownCircle}
                                                 accentClassName="text-accent-success"
+                                                onClick={kpis ? () => setOpenKpiModal("ingresos") : undefined}
                                             />
                                             <StatTile
                                                 label="Gastos"
                                                 value={currency(kpis?.totalExpenses ?? 0)}
                                                 icon={ArrowUpCircle}
                                                 accentClassName="text-accent-danger"
+                                                onClick={kpis ? () => setOpenKpiModal("gastos") : undefined}
                                             />
                                         </div>
                                     )}
@@ -542,6 +609,19 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                         </div>
                     </div>
                 </>
+            )}
+            {kpiModalConfig && (
+                <KpiBreakdownModal
+                    open={!!openKpiModal}
+                    onOpenChange={(o) => !o && setOpenKpiModal(null)}
+                    title={kpiModalConfig.title}
+                    description={kpiModalConfig.description}
+                    icon={kpiModalConfig.icon}
+                    iconClassName={kpiModalConfig.iconClassName}
+                    rows={kpiModalConfig.rows}
+                    total={kpiModalConfig.total}
+                    note={kpiModalConfig.note}
+                />
             )}
         </div>
     );
