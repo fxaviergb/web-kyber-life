@@ -48,13 +48,13 @@ const makeCategory = (name: string, i: number): FinancialCategory => ({
     isDeleted: false,
 });
 
-// 8 institutions: preview shows the first 7, the 8th only shows after "Más" (matches Categoría).
+// 8 institutions: preview shows the first 5 (3 + 2 grid), the rest only show after "Más".
 const INSTITUTIONS = [
     "Banco Austro", "Banco Bolivariano", "Banco Continental", "Banco Diners",
     "Banco Europa", "Banco Fenix", "Banco Guayaquil", "Banco Hipotecario",
 ].map(makeInstitution);
 
-// 9 categories: CATEGORY_PREVIEW = 7, so the 8th/9th only show after "Más".
+// 9 categories: CATEGORY_PREVIEW = 5, so the rest only show after "Más".
 const CATEGORIES = [
     "Alimentación", "Bienestar", "Cajero", "Deudas", "Educación",
     "Finanzas", "Gastos varios", "Hogar", "Impuestos",
@@ -99,12 +99,11 @@ describe("TransactionForm — Institución / Categoría suggestions", () => {
         await waitFor(() => expect(screen.getByText("Banco Austro")).toBeInTheDocument());
         expect(screen.getByPlaceholderText("Buscar institución")).toHaveValue("");
         let tiles = getGridTileNames("Institución");
-        expect(tiles.slice(0, 7)).toEqual([
-            "Banco Austro", "Banco Bolivariano", "Banco Continental", "Banco Diners",
-            "Banco Europa", "Banco Fenix", "Banco Guayaquil",
+        expect(tiles.slice(0, 5)).toEqual([
+            "Banco Austro", "Banco Bolivariano", "Banco Continental", "Banco Diners", "Banco Europa",
         ]);
 
-        // Reveal and select the institution outside the initial 7-item preview.
+        // Reveal and select the institution outside the initial 5-item preview.
         fireEvent.click(screen.getByText("Más"));
         await waitFor(() => expect(screen.getByText("Banco Hipotecario")).toBeInTheDocument());
         fireEvent.click(screen.getByText("Banco Hipotecario").closest("button")!);
@@ -128,11 +127,11 @@ describe("TransactionForm — Institución / Categoría suggestions", () => {
         await waitFor(() => expect(screen.getByText("Alimentación")).toBeInTheDocument());
         expect(screen.getByPlaceholderText("Buscar o crear categoría")).toHaveValue("");
         let tiles = getGridTileNames("Categoría");
-        expect(tiles.slice(0, 7)).toEqual([
-            "Alimentación", "Bienestar", "Cajero", "Deudas", "Educación", "Finanzas", "Gastos varios",
+        expect(tiles.slice(0, 5)).toEqual([
+            "Alimentación", "Bienestar", "Cajero", "Deudas", "Educación",
         ]);
 
-        // Reveal and select a category outside the initial 7-item preview.
+        // Reveal and select a category outside the initial 5-item preview.
         fireEvent.click(screen.getByText("Más"));
         await waitFor(() => expect(screen.getByText("Impuestos")).toBeInTheDocument());
         fireEvent.click(screen.getByText("Impuestos").closest("button")!);
