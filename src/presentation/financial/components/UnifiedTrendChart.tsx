@@ -95,12 +95,13 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
         if (viewMode === "day") {
             return data.map(d => ({
                 ...d,
+                expensesReal: Math.max(0, d.expenses - (d.expensesCredit || 0)),
                 label: formatDay(d.date),
                 fullLabel: d.date,
             }));
         }
 
-        const groups: Record<string, { income: number; expenses: number; withdrawals: number; other: number; net: number }> = {};
+        const groups: Record<string, { income: number; expenses: number; expensesCredit: number; withdrawals: number; other: number; net: number }> = {};
 
         for (const d of data) {
             let key = d.date;
@@ -108,10 +109,11 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
             if (viewMode === "month") key = getMonthKey(d.date);
 
             if (!groups[key]) {
-                groups[key] = { income: 0, expenses: 0, withdrawals: 0, other: 0, net: 0 };
+                groups[key] = { income: 0, expenses: 0, expensesCredit: 0, withdrawals: 0, other: 0, net: 0 };
             }
             groups[key].income += d.income;
             groups[key].expenses += d.expenses;
+            groups[key].expensesCredit += d.expensesCredit || 0;
             groups[key].withdrawals += d.withdrawals || 0;
             groups[key].other += d.other || 0;
             groups[key].net += d.net;
@@ -124,6 +126,8 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
                 fullLabel: key,
                 income: Math.round(vals.income * 100) / 100,
                 expenses: Math.round(vals.expenses * 100) / 100,
+                expensesCredit: Math.round(vals.expensesCredit * 100) / 100,
+                expensesReal: Math.max(0, Math.round((vals.expenses - vals.expensesCredit) * 100) / 100),
                 withdrawals: Math.round(vals.withdrawals * 100) / 100,
                 other: Math.round(vals.other * 100) / 100,
                 net: Math.round(vals.net * 100) / 100,
@@ -196,6 +200,12 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
                             <ResponsiveContainer width="100%" height="100%">
                                 {chartType === "bar" ? (
                                     <BarChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <pattern id="hatch-expenses-credit" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                                                <rect width="6" height="6" fill="hsl(0, 84%, 60%)" fillOpacity={0.35} />
+                                                <line x1="0" y1="0" x2="0" y2="6" stroke="hsl(0, 84%, 60%)" strokeWidth="2" />
+                                            </pattern>
+                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
                                         <XAxis
                                             dataKey="label"
@@ -232,7 +242,8 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
                                         />
 
                                         <Bar dataKey="income" name="Ingresos" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                        <Bar dataKey="expenses" name="Gastos" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                        <Bar dataKey="expensesReal" name="Gastos" stackId="expenses" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                        <Bar dataKey="expensesCredit" name="Gastos (tarjeta, pendiente)" stackId="expenses" fill="url(#hatch-expenses-credit)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                         <Bar dataKey="withdrawals" name="Retiros" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                         <Bar dataKey="other" name="Transferencias" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                     </BarChart>

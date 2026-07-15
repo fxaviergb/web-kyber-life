@@ -7,6 +7,13 @@ import { FinancialTransaction, FinancialTransactionType } from "../entities/fina
  */
 export const SAVINGS_CATEGORY_NAME = "Ahorros e Inversiones";
 
+/**
+ * Category name that marks a TRANSFER as money re-entering the user's
+ * available balance — e.g. pulling cash back out of savings/investments to
+ * fund spending. The symmetric counterpart of {@link SAVINGS_CATEGORY_NAME}.
+ */
+export const FUNDING_CATEGORY_NAME = "Fondeo ingresos";
+
 export function isIncomeType(type: FinancialTransactionType): boolean {
     return type === "INCOME" || type === "DEPOSIT" || type === "REFUND";
 }
@@ -31,10 +38,15 @@ export function isSavingsTransfer(t: BalanceTransaction, categoryNameById?: Read
     return t.type === "TRANSFER" && resolveCategoryName(t, categoryNameById) === SAVINGS_CATEGORY_NAME;
 }
 
+export function isFundingTransfer(t: BalanceTransaction, categoryNameById?: ReadonlyMap<string, string>): boolean {
+    return t.type === "TRANSFER" && resolveCategoryName(t, categoryNameById) === FUNDING_CATEGORY_NAME;
+}
+
 /**
  * Single source of truth for "available balance" across the financial module:
  * income in, minus real cash-out expenses, minus transfers earmarked as
- * savings. Expenses marked `paidWithCredit` are deferred — they don't reduce
+ * savings, plus transfers that fund the balance back (e.g. from savings).
+ * Expenses marked `paidWithCredit` are deferred — they don't reduce
  * available cash until their card-bill payment is logged as its own expense.
  * Withdrawals are cash-neutral (money changes form, still spendable).
  *
@@ -57,6 +69,8 @@ export function computeNetBalance(
         } else if (t.type === "TRANSFER") {
             if (isSavingsTransfer(t, categoryNameById)) {
                 balance -= amount;
+            } else if (isFundingTransfer(t, categoryNameById)) {
+                balance += amount;
             }
         } else if (!t.paidWithCredit) {
             balance -= amount;

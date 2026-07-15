@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { MobileCarousel } from "@/presentation/components/dashboard/MobileCarousel";
 import { formatAxisCurrency } from "@/lib/date-bucketing";
+import { CreditToggle } from "./CreditToggle";
 
 // ─── Type visual metadata ────────────────────────────────────
 
@@ -62,6 +63,14 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
     // Default null avoids hydration mismatch; we determine it on mount
     const [userChartPreference, setUserChartPreference] = useState<"donut" | "bar" | null>(null);
     const [isMobile, setIsMobile] = useState(false);
+    // Off by default: amounts and charts show only real (cash) spending until
+    // the user opts into seeing credit-card-paid transactions too.
+    const [showCredit, setShowCredit] = useState(false);
+
+    const effectiveTransactions = useMemo(
+        () => (showCredit ? transactions : transactions.filter((t) => !t.paidWithCredit)),
+        [transactions, showCredit],
+    );
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -81,7 +90,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         totalOther,
         totalWithdrawal
     } = useMemo(() => {
-        if (transactions.length === 0) {
+        if (effectiveTransactions.length === 0) {
             return {
                 balance: 0,
                 primaryCurrency: "USD",
@@ -95,7 +104,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
         // Dominant currency
         const currencyCounts: Record<string, number> = {};
-        transactions.forEach((t) => {
+        effectiveTransactions.forEach((t) => {
             currencyCounts[t.currency] = (currencyCounts[t.currency] ?? 0) + 1;
         });
         const dominant = Object.entries(currencyCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "USD";
@@ -107,7 +116,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
         const chartDataMap: Record<string, { date: string, income: number, expense: number, other: number, withdrawal: number, timestamp: number }> = {};
 
-        transactions.forEach((t) => {
+        effectiveTransactions.forEach((t) => {
             const d = new Date(t.date);
             let dateStr = "";
             let timestamp = d.getTime();
@@ -152,7 +161,9 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
         const chartData = Object.values(chartDataMap).sort((a, b) => a.timestamp - b.timestamp);
 
         // Single source of truth for "Balance", shared with the rest of the module.
-        const finalBalance = computeNetBalance(transactions);
+        // Credit-card-paid expenses never affect it either way, so this is
+        // identical whether computed from the full or the filtered list.
+        const finalBalance = computeNetBalance(effectiveTransactions);
 
         return {
             balance: finalBalance,
@@ -163,7 +174,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
             totalOther: otherSum,
             totalWithdrawal: withdrawalSum
         };
-    }, [transactions, viewMode]);
+    }, [effectiveTransactions, viewMode]);
 
     if (transactions.length === 0) return null;
 
@@ -321,28 +332,31 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                     {/* ── LEFT SIDE: BALANCE NETO (DONUT CHART OR BAR CHART) ── */}
                     <div className="relative z-10 flex flex-col items-center justify-center lg:w-auto lg:shrink-0 lg:border-r lg:border-white/5 lg:pr-8 w-full sm:w-auto">
 
-                        {/* Subtle Toggle for Chart Type */}
-                        <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full mb-4 self-end">
-                            <button 
-                                onClick={() => setUserChartPreference('donut')}
-                                className={cn(
-                                    "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground", 
-                                    activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
-                                )}
-                                aria-label="Ver gráfico de dona"
-                            >
-                                <PieChartIcon className="w-3.5 h-3.5" />
-                            </button>
-                            <button 
-                                onClick={() => setUserChartPreference('bar')}
-                                className={cn(
-                                    "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground", 
-                                    activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
-                                )}
-                                aria-label="Ver gráfico de barras"
-                            >
-                                <BarChartIcon className="w-3.5 h-3.5" />
-                            </button>
+                        {/* Credit toggle + chart type */}
+                        <div className="flex items-center justify-between gap-2 w-full mb-4">
+                            <CreditToggle checked={showCredit} onChange={setShowCredit} />
+                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full shrink-0">
+                                <button
+                                    onClick={() => setUserChartPreference('donut')}
+                                    className={cn(
+                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                        activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
+                                    )}
+                                    aria-label="Ver gráfico de dona"
+                                >
+                                    <PieChartIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => setUserChartPreference('bar')}
+                                    className={cn(
+                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                        activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
+                                    )}
+                                    aria-label="Ver gráfico de barras"
+                                >
+                                    <BarChartIcon className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
                         </div>
 
                         <div className={cn("relative flex-shrink-0 mx-auto", activeChartType === 'donut' ? "w-44 h-44" : "w-full h-44 sm:w-56")}>
@@ -429,7 +443,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                         {balanceStr}
                                     </span>
                                     <span className="text-[10px] font-medium text-muted-foreground/80">
-                                        {transactions.length} trx
+                                        {effectiveTransactions.length} trx
                                     </span>
                                 </div>
                             )}
@@ -438,8 +452,9 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
                     {/* ── RIGHT SIDE: BREAKDOWN CHART ── */}
                     <div className="relative z-10 flex flex-col w-full flex-1 sm:h-44 lg:h-44 justify-between">
-                        {/* Header (Select only) */}
-                        <div className="flex justify-end items-start sm:items-center mb-4 sm:mb-2 gap-2">
+                        {/* Header (Credit toggle + view Select) */}
+                        <div className="flex justify-between items-start sm:items-center mb-4 sm:mb-2 gap-2">
+                            <CreditToggle checked={showCredit} onChange={setShowCredit} />
                             <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
                                 <SelectTrigger className="h-7 w-[110px] text-xs bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
                                     <SelectValue placeholder="Vista" />
@@ -579,28 +594,31 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
                         {/* ── LEFT: BALANCE NETO (DONUT OR BAR CHART) ── */}
                         <div className="relative z-10 flex flex-col items-center justify-center w-1/2 border-r border-white/5 pr-6">
-                            {/* Chart type toggle */}
-                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full mb-4 self-end">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setUserChartPreference('donut'); }}
-                                    className={cn(
-                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
-                                        activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
-                                    )}
-                                    aria-label="Ver gráfico de dona"
-                                >
-                                    <PieChartIcon className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setUserChartPreference('bar'); }}
-                                    className={cn(
-                                        "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
-                                        activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
-                                    )}
-                                    aria-label="Ver gráfico de barras"
-                                >
-                                    <BarChartIcon className="w-3.5 h-3.5" />
-                                </button>
+                            {/* Credit toggle + chart type */}
+                            <div className="flex items-center justify-between gap-2 w-full mb-4">
+                                <CreditToggle checked={showCredit} onChange={setShowCredit} />
+                                <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-full shrink-0">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setUserChartPreference('donut'); }}
+                                        className={cn(
+                                            "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                            activeChartType === 'donut' && "bg-foreground text-background shadow-sm hover:text-background"
+                                        )}
+                                        aria-label="Ver gráfico de dona"
+                                    >
+                                        <PieChartIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setUserChartPreference('bar'); }}
+                                        className={cn(
+                                            "p-1.5 rounded-full transition-all text-muted-foreground hover:text-foreground",
+                                            activeChartType === 'bar' && "bg-foreground text-background shadow-sm hover:text-background"
+                                        )}
+                                        aria-label="Ver gráfico de barras"
+                                    >
+                                        <BarChartIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className={cn("relative flex-shrink-0 mx-auto", activeChartType === 'donut' ? "w-52 h-52" : "w-full h-52")}>
@@ -687,7 +705,7 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
                                             {balanceStr}
                                         </span>
                                         <span className="text-[10px] font-medium text-muted-foreground/80">
-                                            {transactions.length} trx
+                                            {effectiveTransactions.length} trx
                                         </span>
                                     </div>
                                 )}
@@ -696,7 +714,8 @@ export function TransactionSummary({ transactions }: TransactionSummaryProps) {
 
                         {/* ── RIGHT: BREAKDOWN CHART ── */}
                         <div className="relative z-10 flex flex-col w-1/2 justify-between">
-                            <div className="flex justify-end items-center mb-2 gap-2">
+                            <div className="flex justify-between items-center mb-2 gap-2">
+                                <CreditToggle checked={showCredit} onChange={setShowCredit} />
                                 <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
                                     <SelectTrigger className="h-7 w-[110px] text-xs bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
                                         <SelectValue placeholder="Vista" />

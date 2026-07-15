@@ -9,7 +9,7 @@ import { CategoryPieChart } from "./CategoryPieChart";
 import { InstitutionBarChart } from "./InstitutionBarChart";
 import { useFinancialDashboardOffline } from "../hooks/useFinancialDashboardOffline";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
-import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Clock, ArrowRightLeft, Wallet } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Clock, ArrowRightLeft, Wallet, CreditCard } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Link from "next/link";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 import { defaultHubCustomRange } from "@/lib/date-range";
+import { CreditToggle } from "./CreditToggle";
+import {
+    excludeCreditFromKpis,
+    excludeCreditFromCategoryBreakdown,
+    excludeCreditFromInstitutionBreakdown,
+    excludeCreditFromDailyBreakdown,
+} from "../lib/credit-toggle";
 function formatCurrency(value: number): string {
     return `$${Math.abs(value).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -28,6 +35,9 @@ export function FinancialDashboard() {
     const [customEndDate, setCustomEndDate] = useState<string>(() => defaultHubCustomRange().end);
     const [categoryLimit, setCategoryLimit] = useState<number>(5);
     const [institutionLimit, setInstitutionLimit] = useState<number>(5);
+    // Off by default: amounts and charts show only real (cash) spending until
+    // the user opts into seeing credit-card-paid transactions too.
+    const [showCredit, setShowCredit] = useState(false);
 
     const { startDate, endDate } = useMemo(() => {
         const now = new Date();
@@ -67,8 +77,22 @@ export function FinancialDashboard() {
         return {};
     }, [filterType, customStartDate, customEndDate]);
 
-    const { kpis, monthly, typeBreakdown, categoryBreakdown, institutionBreakdown, dailyBreakdown, recent, loading, isStale, error, refresh } =
+    const { kpis: rawKpis, monthly, typeBreakdown, categoryBreakdown: rawCategoryBreakdown, institutionBreakdown: rawInstitutionBreakdown, dailyBreakdown: rawDailyBreakdown, recent, loading, isStale, error, refresh } =
         useFinancialDashboardOffline(startDate, endDate);
+
+    const kpis = useMemo(() => (rawKpis && !showCredit ? excludeCreditFromKpis(rawKpis) : rawKpis), [rawKpis, showCredit]);
+    const categoryBreakdown = useMemo(
+        () => (showCredit ? rawCategoryBreakdown : excludeCreditFromCategoryBreakdown(rawCategoryBreakdown)),
+        [rawCategoryBreakdown, showCredit],
+    );
+    const institutionBreakdown = useMemo(
+        () => (showCredit ? rawInstitutionBreakdown : excludeCreditFromInstitutionBreakdown(rawInstitutionBreakdown)),
+        [rawInstitutionBreakdown, showCredit],
+    );
+    const dailyBreakdown = useMemo(
+        () => (showCredit ? rawDailyBreakdown : excludeCreditFromDailyBreakdown(rawDailyBreakdown)),
+        [rawDailyBreakdown, showCredit],
+    );
 
     const totalCategoryExpenses = useMemo(() => {
         if (!categoryBreakdown) return 0;
@@ -189,6 +213,8 @@ export function FinancialDashboard() {
                     )}
                 </div>
 
+                <CreditToggle checked={showCredit} onChange={setShowCredit} />
+
                 {/* Stale/offline indicator as Tooltip */}
                 {isStale && (
                     <TooltipProvider>
@@ -253,8 +279,12 @@ export function FinancialDashboard() {
                         icon={TrendingDown}
                         iconClassName="text-red-500"
                         valueClassName="text-red-500"
-                        description="Gastos confirmados"
-                        tooltipText="Suma de todas las transacciones negativas (pagos, compras y comisiones) dentro del rango de fechas seleccionado."
+                        description={
+                            kpis && kpis.totalExpensesCredit > 0
+                                ? `${formatCurrency(kpis.totalExpensesCredit)} con tarjeta (pendiente)`
+                                : "Gastos confirmados"
+                        }
+                        tooltipText="Suma de todas las transacciones negativas (pagos, compras y comisiones) dentro del rango de fechas seleccionado. La parte pagada con tarjeta de crédito todavía no afecta tu balance — se reflejará cuando registres el pago de la tarjeta."
                         className="flex-1"
                     />
                 </div>
@@ -265,8 +295,12 @@ export function FinancialDashboard() {
                         icon={ArrowRightLeft}
                         iconClassName="text-orange-500"
                         valueClassName="text-orange-500"
-                        description="Entre cuentas propias"
-                        tooltipText="Suma de todas las transferencias realizadas entre cuentas propias dentro del rango de fechas seleccionado."
+                        description={
+                            kpis && (kpis.totalTransfersSavings > 0 || kpis.totalTransfersFunding > 0)
+                                ? `${formatCurrency(kpis.totalTransfersSavings)} a ahorros · ${formatCurrency(kpis.totalTransfersFunding)} de vuelta`
+                                : "Entre cuentas propias"
+                        }
+                        tooltipText="Suma de todas las transferencias realizadas entre cuentas propias. El dinero movido a ahorros resta del balance disponible; el fondeo que regresa desde ahorros lo suma de vuelta."
                         className="flex-1"
                     />
                 </div>
@@ -289,8 +323,8 @@ export function FinancialDashboard() {
                         icon={DollarSign}
                         iconClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
                         valueClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
-                        description="Ingresos menos gastos"
-                        tooltipText="Diferencia exacta entre tus ingresos totales y gastos totales. Un balance positivo indica superávit."
+                        description="Saldo disponible real"
+                        tooltipText="Ingresos, más fondeo desde ahorros, menos tus gastos reales (excluye lo pagado con tarjeta de crédito) y menos lo que apartaste a ahorros. Un balance positivo indica superávit."
                         trend={kpis ? {
                             value: `${kpis.transactionCount} transacciones`,
                             positive: kpis.netBalance >= 0,
@@ -417,6 +451,11 @@ export function FinancialDashboard() {
                                                         <span className="flex items-center gap-1 px-2 py-0.5 rounded-md font-medium border" style={{ borderColor: tx.categoryColor ? `${tx.categoryColor}40` : '', color: tx.categoryColor || '' }}>
                                                             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tx.categoryColor || 'currentColor' }} />
                                                             {tx.categoryName}
+                                                        </span>
+                                                    )}
+                                                    {tx.paidWithCredit && (
+                                                        <span className="flex items-center gap-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-md font-medium" title="Pagado con tarjeta de crédito — pendiente de reflejarse en el balance">
+                                                            <CreditCard className="w-3 h-3" /> Tarjeta
                                                         </span>
                                                     )}
                                                     <span className="flex items-center gap-1 whitespace-nowrap">

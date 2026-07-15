@@ -34,6 +34,9 @@ import { FrequentProductsCard } from "./frequent-products-card";
 import { DashboardLoading } from "./DashboardLoading";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 import { MobileCarousel } from "./MobileCarousel";
+import { KpiBreakdownModal, type BreakdownRow, type BreakdownTone } from "@/presentation/financial/components/KpiBreakdownModal";
+import { CreditToggle } from "@/presentation/financial/components/CreditToggle";
+import { excludeCreditFromKpis, excludeCreditFromCategoryBreakdown, excludeCreditFromDailyBreakdown } from "@/presentation/financial/lib/credit-toggle";
 
 /**
  * Shared vertical size for every dashboard chart. Kept identical across both
@@ -124,6 +127,9 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
 
     const [categoryLimit, setCategoryLimit] = useState(5);
     const [productLimit, setProductLimit] = useState(5);
+    // Off by default: amounts and charts show only real (cash) spending until
+    // the user opts into seeing credit-card-paid transactions too.
+    const [showCredit, setShowCredit] = useState(false);
 
     const finRange = useMemo(
         () => computeDateRange(finFilterType, finStart, finEnd),
@@ -137,13 +143,26 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
     const { data: fin, loading: finLoading } = useFinancialOverview(finRange.startDate, finRange.endDate);
     const { data: mkt, loading: mktLoading } = useMarketOverview(mktRange.startDate, mktRange.endDate);
 
+    const effectiveKpis = useMemo(
+        () => (fin.kpis && !showCredit ? excludeCreditFromKpis(fin.kpis) : fin.kpis),
+        [fin.kpis, showCredit],
+    );
+    const effectiveCategories = useMemo(
+        () => (showCredit ? fin.categories : excludeCreditFromCategoryBreakdown(fin.categories)),
+        [fin.categories, showCredit],
+    );
+    const effectiveDaily = useMemo(
+        () => (showCredit ? fin.daily : excludeCreditFromDailyBreakdown(fin.daily)),
+        [fin.daily, showCredit],
+    );
+
     const financialCategoryData = useMemo(
         () =>
-            fin.categories
+            effectiveCategories
                 .filter((c) => c.categoryName && c.categoryName.toLowerCase() !== "sin categoría")
                 .slice(0, categoryLimit)
                 .map((c) => ({ name: c.categoryName, value: c.total, color: c.color, percentage: c.percentage })),
-        [fin.categories, categoryLimit],
+        [effectiveCategories, categoryLimit],
     );
 
     // Market summary metrics derived from the fetched datasets.
@@ -190,8 +209,76 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
         [mkt.topProducts, productLimit],
     );
 
-    const kpis = fin.kpis;
+    // Tiles show the toggled (real-only by default) totals; the breakdown
+    // modal always shows the full detail — including the credit-card portion
+    // — regardless of the toggle, since that's the "show me everything" view.
+    const kpis = effectiveKpis;
     const greeting = userFirstName ? `Hola, ${userFirstName}` : "Panel general";
+
+    // Tapping a "Resumen financiero" tile opens a modal breaking down the
+    // values behind that number (e.g. real vs. credit-card expenses).
+    const [openKpiModal, setOpenKpiModal] = useState<"balance" | "ingresos" | "gastos" | null>(null);
+
+    const kpiModalConfig = useMemo(() => {
+        const rawKpis = fin.kpis;
+        if (!openKpiModal || !rawKpis) return null;
+        const kpis = rawKpis;
+
+        const realExpenses = Math.max(0, kpis.totalExpenses - kpis.totalExpensesCredit);
+
+        if (openKpiModal === "balance") {
+            const rows: BreakdownRow[] = [{ label: "Ingresos", amount: kpis.totalIncome, tone: "positive" as BreakdownTone }];
+            if (kpis.totalTransfersFunding > 0) {
+                rows.push({ label: "Fondeo desde ahorros", amount: kpis.totalTransfersFunding, tone: "positive", hint: "Transferencias que regresan dinero a tu balance disponible" });
+            }
+            rows.push({ label: "Gastos reales", amount: realExpenses, tone: "negative" });
+            if (kpis.totalTransfersSavings > 0) {
+                rows.push({ label: "Ahorro apartado", amount: kpis.totalTransfersSavings, tone: "negative", hint: "Transferencias a ahorros e inversiones" });
+            }
+            return {
+                title: "Detalle del balance",
+                description: "Cómo se calculó tu saldo disponible",
+                icon: Wallet,
+                iconClassName: kpis.netBalance < 0 ? "bg-accent-danger/10 text-accent-danger" : "bg-emerald-500/10 text-emerald-500",
+                rows,
+                total: { label: "Balance", amount: kpis.netBalance, tone: (kpis.netBalance < 0 ? "negative" : "positive") as BreakdownTone, showSign: true },
+                note: kpis.totalExpensesCredit > 0
+                    ? `No incluye ${currency(kpis.totalExpensesCredit)} en gastos pagados con tarjeta de crédito — se reflejarán cuando registres el pago de la tarjeta.`
+                    : undefined,
+            };
+        }
+
+        if (openKpiModal === "ingresos") {
+            const rows: BreakdownRow[] = [{ label: "Ingresos", amount: kpis.totalIncome, tone: "positive" as BreakdownTone }];
+            if (kpis.totalTransfersFunding > 0) {
+                rows.push({ label: "Fondeo desde ahorros", amount: kpis.totalTransfersFunding, tone: "positive", hint: "Transferencias que regresan dinero a tu balance disponible" });
+            }
+            return {
+                title: "Detalle de ingresos",
+                description: "Todo el dinero que entró a tu balance disponible",
+                icon: ArrowDownCircle,
+                iconClassName: "bg-accent-success/10 text-accent-success",
+                rows,
+                total: { label: "Total ingresado", amount: kpis.totalIncome + kpis.totalTransfersFunding, tone: "positive" as BreakdownTone, showSign: false },
+                note: undefined as string | undefined,
+            };
+        }
+
+        // gastos
+        const rows: BreakdownRow[] = [{ label: "Gastos reales", amount: realExpenses, tone: "negative" as BreakdownTone, hint: "Ya afectan tu balance disponible" }];
+        if (kpis.totalExpensesCredit > 0) {
+            rows.push({ label: "Gastos con tarjeta", amount: kpis.totalExpensesCredit, tone: "pending", hint: "Pendientes de reflejarse cuando pagues la tarjeta" });
+        }
+        return {
+            title: "Detalle de gastos",
+            description: "Gastos reales vs. pagados con tarjeta de crédito",
+            icon: ArrowUpCircle,
+            iconClassName: "bg-accent-danger/10 text-accent-danger",
+            rows,
+            total: { label: "Total gastado", amount: kpis.totalExpenses, tone: "negative" as BreakdownTone, showSign: false },
+            note: undefined as string | undefined,
+        };
+    }, [openKpiModal, fin.kpis]);
 
     const isInitialLoading =
         finLoading &&
@@ -377,7 +464,10 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                             >
                                 {/* Resumen financiero */}
                                 <div className="space-y-2">
-                                    <BlockTitle>Resumen financiero</BlockTitle>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <BlockTitle>Resumen financiero</BlockTitle>
+                                        <CreditToggle checked={showCredit} onChange={setShowCredit} />
+                                    </div>
                                     {finLoading && !kpis ? (
                                         <TilesSkeleton />
                                     ) : (
@@ -388,18 +478,21 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                                 icon={Wallet}
                                                 accentClassName={(kpis?.netBalance ?? 0) < 0 ? "text-accent-danger" : "text-emerald-500"}
                                                 negative={(kpis?.netBalance ?? 0) < 0}
+                                                onClick={kpis ? () => setOpenKpiModal("balance") : undefined}
                                             />
                                             <StatTile
                                                 label="Ingresos"
                                                 value={currency(kpis?.totalIncome ?? 0)}
                                                 icon={ArrowDownCircle}
                                                 accentClassName="text-accent-success"
+                                                onClick={kpis ? () => setOpenKpiModal("ingresos") : undefined}
                                             />
                                             <StatTile
                                                 label="Gastos"
                                                 value={currency(kpis?.totalExpenses ?? 0)}
                                                 icon={ArrowUpCircle}
                                                 accentClassName="text-accent-danger"
+                                                onClick={kpis ? () => setOpenKpiModal("gastos") : undefined}
                                             />
                                         </div>
                                     )}
@@ -409,7 +502,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                     {/* Evolución financiera */}
                                     <div className="space-y-2">
                                         <BlockTitle className="hidden sm:block">Evolución financiera</BlockTitle>
-                                        {finLoading ? <ChartSkeleton /> : <UnifiedTrendChart data={fin.daily} iconLegend className={CHART_HEIGHT} />}
+                                        {finLoading ? <ChartSkeleton /> : <UnifiedTrendChart data={effectiveDaily} iconLegend className={CHART_HEIGHT} />}
                                     </div>
 
                                     {/* Top categorías de gasto */}
@@ -542,6 +635,19 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                         </div>
                     </div>
                 </>
+            )}
+            {kpiModalConfig && (
+                <KpiBreakdownModal
+                    open={!!openKpiModal}
+                    onOpenChange={(o) => !o && setOpenKpiModal(null)}
+                    title={kpiModalConfig.title}
+                    description={kpiModalConfig.description}
+                    icon={kpiModalConfig.icon}
+                    iconClassName={kpiModalConfig.iconClassName}
+                    rows={kpiModalConfig.rows}
+                    total={kpiModalConfig.total}
+                    note={kpiModalConfig.note}
+                />
             )}
         </div>
     );

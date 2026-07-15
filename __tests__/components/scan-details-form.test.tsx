@@ -35,6 +35,7 @@ const now = new Date().toISOString();
 const SCAN: FinancialScannerTransaction = {
     id: "scan-1",
     ownerUserId: "user-1",
+    isDeleted: false,
     executionId: "LOCAL_abc123",
     hash: "19f3a91683224e55",
     amount: 224.19,

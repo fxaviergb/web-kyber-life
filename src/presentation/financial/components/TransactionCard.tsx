@@ -198,17 +198,27 @@ export function TransactionCard({
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                     {/* Badge and Time */}
                     <div className="shrink-0 flex flex-col items-center justify-center gap-1.5">
-                        <div
-                            className={cn(
-                                "flex items-center justify-center rounded-2xl w-11 h-11 border",
-                                style.badge
+                        <div className="relative">
+                            <div
+                                className={cn(
+                                    "flex items-center justify-center rounded-2xl w-11 h-11 border",
+                                    style.badge
+                                )}
+                                title={typeLabel}
+                            >
+                                {(() => {
+                                    const Icon = style.icon;
+                                    return <Icon className="w-5 h-5" strokeWidth={2.5} />;
+                                })()}
+                            </div>
+                            {transaction.paidWithCredit && (
+                                <span
+                                    className="absolute -top-1.5 -right-1.5 z-10 flex items-center gap-0.5 rounded-full border border-bg-secondary bg-amber-500/60 px-1 py-0.5 text-[8px] font-bold leading-none text-white shadow-sm backdrop-blur-sm"
+                                    title="Pagado con tarjeta de crédito — pendiente de reflejarse en el balance"
+                                >
+                                    <CreditCard className="h-2 w-2" /> TC
+                                </span>
                             )}
-                            title={typeLabel}
-                        >
-                            {(() => {
-                                const Icon = style.icon;
-                                return <Icon className="w-5 h-5" strokeWidth={2.5} />;
-                            })()}
                         </div>
                         <span className="text-[10px] font-medium text-muted-foreground leading-none">
                             {formatTime(transaction.date)}
