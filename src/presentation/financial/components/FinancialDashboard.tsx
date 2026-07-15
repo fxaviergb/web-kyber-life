@@ -18,6 +18,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Link from "next/link";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 import { defaultHubCustomRange } from "@/lib/date-range";
+import { CreditToggle } from "./CreditToggle";
+import {
+    excludeCreditFromKpis,
+    excludeCreditFromCategoryBreakdown,
+    excludeCreditFromInstitutionBreakdown,
+    excludeCreditFromDailyBreakdown,
+} from "../lib/credit-toggle";
 function formatCurrency(value: number): string {
     return `$${Math.abs(value).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -28,6 +35,9 @@ export function FinancialDashboard() {
     const [customEndDate, setCustomEndDate] = useState<string>(() => defaultHubCustomRange().end);
     const [categoryLimit, setCategoryLimit] = useState<number>(5);
     const [institutionLimit, setInstitutionLimit] = useState<number>(5);
+    // Off by default: amounts and charts show only real (cash) spending until
+    // the user opts into seeing credit-card-paid transactions too.
+    const [showCredit, setShowCredit] = useState(false);
 
     const { startDate, endDate } = useMemo(() => {
         const now = new Date();
@@ -67,8 +77,22 @@ export function FinancialDashboard() {
         return {};
     }, [filterType, customStartDate, customEndDate]);
 
-    const { kpis, monthly, typeBreakdown, categoryBreakdown, institutionBreakdown, dailyBreakdown, recent, loading, isStale, error, refresh } =
+    const { kpis: rawKpis, monthly, typeBreakdown, categoryBreakdown: rawCategoryBreakdown, institutionBreakdown: rawInstitutionBreakdown, dailyBreakdown: rawDailyBreakdown, recent, loading, isStale, error, refresh } =
         useFinancialDashboardOffline(startDate, endDate);
+
+    const kpis = useMemo(() => (rawKpis && !showCredit ? excludeCreditFromKpis(rawKpis) : rawKpis), [rawKpis, showCredit]);
+    const categoryBreakdown = useMemo(
+        () => (showCredit ? rawCategoryBreakdown : excludeCreditFromCategoryBreakdown(rawCategoryBreakdown)),
+        [rawCategoryBreakdown, showCredit],
+    );
+    const institutionBreakdown = useMemo(
+        () => (showCredit ? rawInstitutionBreakdown : excludeCreditFromInstitutionBreakdown(rawInstitutionBreakdown)),
+        [rawInstitutionBreakdown, showCredit],
+    );
+    const dailyBreakdown = useMemo(
+        () => (showCredit ? rawDailyBreakdown : excludeCreditFromDailyBreakdown(rawDailyBreakdown)),
+        [rawDailyBreakdown, showCredit],
+    );
 
     const totalCategoryExpenses = useMemo(() => {
         if (!categoryBreakdown) return 0;
@@ -188,6 +212,8 @@ export function FinancialDashboard() {
                         </div>
                     )}
                 </div>
+
+                <CreditToggle checked={showCredit} onChange={setShowCredit} />
 
                 {/* Stale/offline indicator as Tooltip */}
                 {isStale && (

@@ -35,6 +35,8 @@ import { DashboardLoading } from "./DashboardLoading";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 import { MobileCarousel } from "./MobileCarousel";
 import { KpiBreakdownModal, type BreakdownRow, type BreakdownTone } from "@/presentation/financial/components/KpiBreakdownModal";
+import { CreditToggle } from "@/presentation/financial/components/CreditToggle";
+import { excludeCreditFromKpis, excludeCreditFromCategoryBreakdown, excludeCreditFromDailyBreakdown } from "@/presentation/financial/lib/credit-toggle";
 
 /**
  * Shared vertical size for every dashboard chart. Kept identical across both
@@ -125,6 +127,9 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
 
     const [categoryLimit, setCategoryLimit] = useState(5);
     const [productLimit, setProductLimit] = useState(5);
+    // Off by default: amounts and charts show only real (cash) spending until
+    // the user opts into seeing credit-card-paid transactions too.
+    const [showCredit, setShowCredit] = useState(false);
 
     const finRange = useMemo(
         () => computeDateRange(finFilterType, finStart, finEnd),
@@ -138,13 +143,26 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
     const { data: fin, loading: finLoading } = useFinancialOverview(finRange.startDate, finRange.endDate);
     const { data: mkt, loading: mktLoading } = useMarketOverview(mktRange.startDate, mktRange.endDate);
 
+    const effectiveKpis = useMemo(
+        () => (fin.kpis && !showCredit ? excludeCreditFromKpis(fin.kpis) : fin.kpis),
+        [fin.kpis, showCredit],
+    );
+    const effectiveCategories = useMemo(
+        () => (showCredit ? fin.categories : excludeCreditFromCategoryBreakdown(fin.categories)),
+        [fin.categories, showCredit],
+    );
+    const effectiveDaily = useMemo(
+        () => (showCredit ? fin.daily : excludeCreditFromDailyBreakdown(fin.daily)),
+        [fin.daily, showCredit],
+    );
+
     const financialCategoryData = useMemo(
         () =>
-            fin.categories
+            effectiveCategories
                 .filter((c) => c.categoryName && c.categoryName.toLowerCase() !== "sin categoría")
                 .slice(0, categoryLimit)
                 .map((c) => ({ name: c.categoryName, value: c.total, color: c.color, percentage: c.percentage })),
-        [fin.categories, categoryLimit],
+        [effectiveCategories, categoryLimit],
     );
 
     // Market summary metrics derived from the fetched datasets.
@@ -191,7 +209,10 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
         [mkt.topProducts, productLimit],
     );
 
-    const kpis = fin.kpis;
+    // Tiles show the toggled (real-only by default) totals; the breakdown
+    // modal always shows the full detail — including the credit-card portion
+    // — regardless of the toggle, since that's the "show me everything" view.
+    const kpis = effectiveKpis;
     const greeting = userFirstName ? `Hola, ${userFirstName}` : "Panel general";
 
     // Tapping a "Resumen financiero" tile opens a modal breaking down the
@@ -199,7 +220,9 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
     const [openKpiModal, setOpenKpiModal] = useState<"balance" | "ingresos" | "gastos" | null>(null);
 
     const kpiModalConfig = useMemo(() => {
-        if (!openKpiModal || !kpis) return null;
+        const rawKpis = fin.kpis;
+        if (!openKpiModal || !rawKpis) return null;
+        const kpis = rawKpis;
 
         const realExpenses = Math.max(0, kpis.totalExpenses - kpis.totalExpensesCredit);
 
@@ -255,7 +278,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
             total: { label: "Total gastado", amount: kpis.totalExpenses, tone: "negative" as BreakdownTone, showSign: false },
             note: undefined as string | undefined,
         };
-    }, [openKpiModal, kpis]);
+    }, [openKpiModal, fin.kpis]);
 
     const isInitialLoading =
         finLoading &&
@@ -441,7 +464,10 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                             >
                                 {/* Resumen financiero */}
                                 <div className="space-y-2">
-                                    <BlockTitle>Resumen financiero</BlockTitle>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <BlockTitle>Resumen financiero</BlockTitle>
+                                        <CreditToggle checked={showCredit} onChange={setShowCredit} />
+                                    </div>
                                     {finLoading && !kpis ? (
                                         <TilesSkeleton />
                                     ) : (
@@ -476,7 +502,7 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                     {/* Evolución financiera */}
                                     <div className="space-y-2">
                                         <BlockTitle className="hidden sm:block">Evolución financiera</BlockTitle>
-                                        {finLoading ? <ChartSkeleton /> : <UnifiedTrendChart data={fin.daily} iconLegend className={CHART_HEIGHT} />}
+                                        {finLoading ? <ChartSkeleton /> : <UnifiedTrendChart data={effectiveDaily} iconLegend className={CHART_HEIGHT} />}
                                     </div>
 
                                     {/* Top categorías de gasto */}

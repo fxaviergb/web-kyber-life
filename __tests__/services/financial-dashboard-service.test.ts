@@ -306,6 +306,23 @@ describe("FinancialDashboardService", () => {
             expect(uninst!.total).toBe(100);
             expect(uninst!.institutionName).toBe("Unknown");
         });
+
+        it("should report the credit-card portion of each institution's total", async () => {
+            const transactions: FinancialTransaction[] = [
+                { ...baseTransaction, id: "1", type: "EXPENSE", amount: 300, institutionId: "inst-1", paidWithCredit: true },
+                { ...baseTransaction, id: "2", type: "INCOME", amount: 1000, institutionId: "inst-1" },
+            ];
+            transactionRepo.findByOwnerId.mockResolvedValue(transactions);
+            institutionRepo.findByOwnerId.mockResolvedValue([
+                { id: "inst-1", name: "Bank A", ownerUserId: mockUserId, status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), isDeleted: false } as FinancialInstitution
+            ]);
+
+            const breakdown = await service.getInstitutionBreakdown(mockUserId);
+
+            const inst1 = breakdown.find(b => b.institutionId === "inst-1");
+            expect(inst1!.total).toBe(1300);
+            expect(inst1!.creditTotal).toBe(300);
+        });
     });
 
     describe("getDailyBreakdown", () => {

@@ -35,6 +35,8 @@ export interface InstitutionBreakdown {
     institutionId: string | null;
     institutionName: string;
     total: number;
+    /** Portion of `total` paid with a credit card — deferred, not yet reflected in the balance. */
+    creditTotal: number;
     count: number;
     percentage: number;
 }
@@ -326,17 +328,18 @@ export class FinancialDashboardService {
         const institutions = await this.institutionRepo.findByOwnerId(userId);
         const instMap = new Map(institutions.map(i => [i.id, i]));
 
-        const groups: Record<string, { total: number; count: number }> = {};
+        const groups: Record<string, { total: number; creditTotal: number; count: number }> = {};
         let grandTotal = 0;
 
         for (const t of confirmed) {
             const instId = t.institutionId || "UNKNOWN";
             if (!groups[instId]) {
-                groups[instId] = { total: 0, count: 0 };
+                groups[instId] = { total: 0, creditTotal: 0, count: 0 };
             }
             // Use absolute amount for institution volume
             const absAmount = Math.abs(Number(t.amount));
             groups[instId].total += absAmount;
+            if (t.paidWithCredit) groups[instId].creditTotal += absAmount;
             groups[instId].count += 1;
             grandTotal += absAmount;
         }
@@ -348,6 +351,7 @@ export class FinancialDashboardService {
                     institutionId: instId === "UNKNOWN" ? null : instId,
                     institutionName: institution?.name || "Unknown",
                     total: Math.round(data.total * 100) / 100,
+                    creditTotal: Math.round(data.creditTotal * 100) / 100,
                     count: data.count,
                     percentage: grandTotal > 0
                         ? Math.round((data.total / grandTotal) * 10000) / 100
