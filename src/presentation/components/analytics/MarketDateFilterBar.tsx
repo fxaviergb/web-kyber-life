@@ -42,7 +42,7 @@ export function MarketDateFilterBar() {
     const router = useRouter();
     const searchParams = useSearchParams();
     
-    const [filterType, setFilterType] = useState<FilterType>("custom");
+    const [filterType, setFilterType] = useState<FilterType>("month");
     const [customStartDate, setCustomStartDate] = useState<string>("");
     const [customEndDate, setCustomEndDate] = useState<string>("");
 
@@ -53,16 +53,14 @@ export function MarketDateFilterBar() {
         const start = searchParams.get("startDate");
         const end = searchParams.get("endDate");
 
-        // No (valid) filter in the URL → default to the custom 22..21 cycle and hydrate it.
+        // No (valid) filter in the URL → default to the current month and hydrate it.
         if (!type || !validTypes.includes(type)) {
-            const def = defaultHubCustomRange();
-            setFilterType("custom");
-            setCustomStartDate(def.start);
-            setCustomEndDate(def.end);
+            const range = getDateRange("month");
+            setFilterType("month");
             const params = new URLSearchParams(searchParams);
-            params.set("filter", "custom");
-            params.set("startDate", new Date(def.start + "T00:00:00").toISOString());
-            params.set("endDate", new Date(def.end + "T23:59:59.999").toISOString());
+            params.set("filter", "month");
+            if (range.start) params.set("startDate", range.start);
+            if (range.end) params.set("endDate", range.end);
             router.replace(`?${params.toString()}`, { scroll: false });
             return;
         }

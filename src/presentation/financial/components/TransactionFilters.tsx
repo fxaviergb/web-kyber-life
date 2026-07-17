@@ -266,36 +266,33 @@ export function TransactionFilters({ categories = [], institutions = [] }: Trans
     return (
         <div className="flex flex-col gap-3 w-full mb-4">
             {/* Mobile Accordion Toggle */}
-            <div 
+            <div
                 className={cn(
-                    "sm:hidden relative flex items-center justify-between py-3 px-4 rounded-[1.25rem] border border-border/50 dark:border-white/10 bg-gradient-to-b from-black/[0.02] dark:from-white/[0.04] to-transparent shadow-lg shadow-black/5 dark:shadow-black/20 cursor-pointer transition-all active:scale-[0.98]",
-                    isExpanded ? "bg-black/[0.02] dark:bg-white/[0.02] border-border dark:border-white/15" : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                    "sm:hidden flex items-center justify-between gap-3 py-3 px-4 rounded-2xl border border-border-base bg-bg-primary cursor-pointer transition-colors active:scale-[0.99]",
+                    isExpanded ? "border-border" : "hover:bg-bg-hover",
                 )}
                 onClick={() => setIsExpanded(!isExpanded)}
             >
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/10 dark:via-white/20 to-transparent rounded-t-[1.25rem]" aria-hidden="true" />
-                <div className="flex items-center gap-3 relative z-10">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-inner">
+                <div className="flex items-center gap-3 min-w-0">
+                    <span className="flex items-center justify-center w-8 h-8 shrink-0 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                         <Filter className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col justify-center gap-1.5">
-                        <span className="text-lg font-bold tracking-tight leading-none text-foreground/90">
-                            Filtros de Búsqueda
+                    </span>
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-[15px] font-medium text-foreground/90 leading-tight">
+                            Filtros de búsqueda
                         </span>
-                        <p className="text-[10px] text-muted-foreground font-medium leading-none uppercase tracking-wider truncate max-w-[200px] sm:max-w-none">
+                        <span className="text-[11px] text-muted-foreground leading-tight mt-0.5 truncate">
                             {activeFiltersText}
-                        </p>
+                        </span>
                     </div>
                 </div>
-                <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-black/5 dark:bg-white/5 border border-border/50 dark:border-white/10 shadow-sm">
-                    <ChevronDown className={cn("w-4 h-4 text-foreground/70 transition-transform duration-300", isExpanded && "rotate-180")} />
-                </div>
+                <ChevronDown className={cn("w-5 h-5 shrink-0 text-muted-foreground transition-transform duration-300", isExpanded && "rotate-180")} />
             </div>
 
             {/* ── Content (Hidden on mobile by default) ───────────────── */}
             <div className={cn(
-                "flex-col sm:flex-row gap-3 w-full items-center bg-background/40 backdrop-blur-md border border-white/5 p-2 rounded-2xl shadow-sm transition-all duration-300",
-                isExpanded ? "flex animate-in fade-in slide-in-from-top-4" : "hidden sm:flex"
+                "flex-col sm:flex-row gap-3 w-full items-stretch sm:items-center bg-bg-primary border border-border-base p-3 sm:p-2 rounded-2xl shadow-sm transition-all duration-300",
+                isExpanded ? "flex animate-in fade-in slide-in-from-top-2" : "hidden sm:flex"
             )}>
                 <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -303,19 +300,125 @@ export function TransactionFilters({ categories = [], institutions = [] }: Trans
                     </div>
                     <Input
                         placeholder="Buscar transacciones, instituciones o categorías..."
-                        className="pl-9 bg-transparent border-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none hover:bg-white/5 transition-colors"
+                        className="pl-9 h-10 rounded-xl bg-muted/40 border-border/40 focus-visible:ring-1 focus-visible:ring-offset-0 transition-colors sm:h-9 sm:rounded-lg sm:bg-transparent sm:border-transparent sm:shadow-none sm:hover:bg-white/5 sm:focus-visible:ring-0"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
 
-                <div className="h-6 w-px bg-white/10 hidden sm:block shrink-0" />
+                <div className="h-6 w-px bg-border-base hidden sm:block shrink-0" />
 
-                <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto shrink-0 pl-0 sm:pl-1 mt-2 sm:mt-0">
+                {/* Mobile: structured inline fields (no popovers) */}
+                <div className="flex flex-col gap-3 sm:hidden">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5 min-w-0">
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                Categoría
+                            </label>
+                            <Select value={categoryId} onValueChange={handleCategoryChange}>
+                                <SelectTrigger className="w-full h-10 rounded-xl bg-muted/40 border-border/40">
+                                    <SelectValue placeholder="Todas" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todas las categorías</SelectItem>
+                                    {categories.map(c => (
+                                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5 min-w-0">
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                Institución
+                            </label>
+                            <Select value={institutionId} onValueChange={handleInstitutionChange}>
+                                <SelectTrigger className="w-full h-10 rounded-xl bg-muted/40 border-border/40">
+                                    <SelectValue placeholder="Todas" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todas las instituciones</SelectItem>
+                                    {institutions.map(i => (
+                                        <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Período
+                        </label>
+                        <Select
+                            value={activePreset ?? "custom"}
+                            onValueChange={(v: string) => {
+                                const preset = v as DatePreset;
+                                if (preset === "custom") {
+                                    setActivePreset("custom");
+                                } else {
+                                    handlePresetClick(preset);
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="w-full h-10 rounded-xl bg-muted/40 border-border/40">
+                                <SelectValue placeholder="Período" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {(["today", "week", "month", "all", "custom"] as const).map((preset) => (
+                                    <SelectItem key={preset} value={preset}>{PRESET_LABELS[preset]}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {activePreset === "custom" && (
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                <Input
+                                    type="date"
+                                    aria-label="Desde"
+                                    value={customFrom}
+                                    onChange={(e) => setCustomFrom(e.target.value)}
+                                    className="h-10 rounded-xl bg-muted/40 border-border/40 text-xs"
+                                />
+                                <Input
+                                    type="date"
+                                    aria-label="Hasta"
+                                    value={customTo}
+                                    onChange={(e) => setCustomTo(e.target.value)}
+                                    className="h-10 rounded-xl bg-muted/40 border-border/40 text-xs"
+                                />
+                                <Button
+                                    size="sm"
+                                    className="col-span-2 rounded-xl"
+                                    disabled={!customFrom || !customTo}
+                                    onClick={handleCustomApply}
+                                >
+                                    Aplicar rango
+                                </Button>
+                            </div>
+                        )}
+                        <p className="text-[11px] text-muted-foreground pt-0.5">
+                            Rango: {getDateButtonLabel()}
+                        </p>
+                    </div>
+
+                    {hasAnyFilter && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full rounded-xl text-muted-foreground"
+                            onClick={clearAllFilters}
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Limpiar filtros
+                        </Button>
+                    )}
+                </div>
+
+                {/* Desktop: compact popover buttons */}
+                <div className="hidden sm:flex gap-2 w-auto shrink-0 pl-1">
                     {/* Advanced Filters Dropdown (Category & Institution) */}
                     <Popover open={filtersPopoverOpen} onOpenChange={setFiltersPopoverOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="ghost" className="w-full sm:w-auto gap-2 hover:bg-white/5 justify-start sm:justify-center">
+                            <Button variant="ghost" className="gap-2 hover:bg-white/5">
                                 <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0" />
                                 <span className="text-muted-foreground truncate">Filtros</span>
                                 {((categoryId && categoryId !== "all" ? 1 : 0) + (institutionId && institutionId !== "all" ? 1 : 0)) > 0 && (
@@ -368,7 +471,7 @@ export function TransactionFilters({ categories = [], institutions = [] }: Trans
                             <Button
                                 variant="ghost"
                                 className={cn(
-                                    "w-full sm:w-auto gap-2 hover:bg-white/5 justify-start sm:justify-center",
+                                    "gap-2 hover:bg-white/5",
                                     hasDateFilter ? "text-accent-primary" : "text-muted-foreground",
                                 )}
                             >
@@ -476,7 +579,7 @@ export function TransactionFilters({ categories = [], institutions = [] }: Trans
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="col-span-2 sm:col-span-1 text-xs text-muted-foreground hover:text-foreground w-full sm:w-auto mt-1 sm:mt-0"
+                            className="text-xs text-muted-foreground hover:text-foreground"
                             onClick={clearAllFilters}
                         >
                             Limpiar filtros

@@ -78,7 +78,7 @@ export function SpendTrendChart({
     const gradientId = `spend-grad-${useId().replace(/:/g, "")}`;
 
     return (
-        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] border-border/40 shadow-sm overflow-hidden", className)}>
+        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] bg-bg-primary border-border/40 shadow-sm overflow-hidden", className)}>
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 gap-3">
                 <div className="flex items-center gap-2.5">
                     {Icon && (

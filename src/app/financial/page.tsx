@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { FinancialDashboard } from "@/presentation/financial/components/FinancialDashboard";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowRight, Inbox as InboxIcon } from "lucide-react";
+import { Plus, ScanLine, ListChecks } from "lucide-react";
 import Link from "next/link";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 
@@ -15,22 +15,22 @@ export default function FinancialOverviewPage() {
                         Controla tus ingresos, gastos y salud financiera de un vistazo.
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild>
+                <div className="flex w-full gap-2 sm:w-auto">
+                    <Button variant="outline" asChild className="h-10 flex-1 rounded-xl sm:flex-initial">
                         <Link href="/financial/scans">
-                            <InboxIcon className="mr-2 h-4 w-4" />
-                            Bandeja
+                            <ScanLine className="h-4 w-4 text-accent-primary" />
+                            Escaneos
                         </Link>
                     </Button>
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" asChild className="h-10 flex-1 rounded-xl sm:flex-initial">
                         <Link href="/financial/transactions">
+                            <ListChecks className="h-4 w-4 text-accent-primary" />
                             Transacciones
-                            <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                     </Button>
-                    <Button size="sm" asChild>
+                    <Button asChild className="h-10 flex-1 rounded-xl sm:flex-initial">
                         <Link href="/financial/transactions/new">
-                            <Plus className="mr-2 h-4 w-4" />
+                            <Plus className="h-4 w-4" />
                             Agregar
                         </Link>
                     </Button>

@@ -30,6 +30,7 @@ import { SpendTrendChart } from "@/presentation/components/charts/SpendTrendChar
 import { UnifiedTrendChart } from "@/presentation/financial/components/UnifiedTrendChart";
 import { useFinancialOverview, useMarketOverview } from "./hooks/useHomeDashboard";
 import { StatTile } from "./stat-tile";
+import { SparkStatCard } from "./spark-stat-card";
 import { FrequentProductsCard } from "./frequent-products-card";
 import { DashboardLoading } from "./DashboardLoading";
 import { RobotLoader } from "@/components/ui/RobotLoader";
@@ -417,26 +418,34 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                         <TilesSkeleton />
                                     ) : (
                                         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                                            <StatTile
+                                            <SparkStatCard
                                                 label="Balance"
                                                 value={currency(kpis?.netBalance ?? 0)}
                                                 icon={Wallet}
-                                                accentClassName={(kpis?.netBalance ?? 0) < 0 ? "text-accent-danger" : "text-emerald-500"}
-                                                negative={(kpis?.netBalance ?? 0) < 0}
+                                                color={(kpis?.netBalance ?? 0) < 0 ? "#ef4444" : "#22c55e"}
+                                                tintClassName={(kpis?.netBalance ?? 0) < 0 ? "from-rose-500/[0.16] via-rose-500/[0.05]" : "from-emerald-500/[0.16] via-emerald-500/[0.05]"}
+                                                badgeClassName={(kpis?.netBalance ?? 0) < 0 ? "bg-rose-500/20 text-rose-500 dark:text-rose-400" : "bg-emerald-500/20 text-emerald-500 dark:text-emerald-400"}
+                                                points={effectiveDaily.map((d) => d.net)}
                                                 onClick={kpis ? () => setOpenKpiModal("balance") : undefined}
                                             />
-                                            <StatTile
+                                            <SparkStatCard
                                                 label="Ingresos"
                                                 value={currency(kpis?.totalIncome ?? 0)}
                                                 icon={ArrowDownCircle}
-                                                accentClassName="text-accent-success"
+                                                color="#22c55e"
+                                                tintClassName="from-emerald-500/[0.16] via-emerald-500/[0.05]"
+                                                badgeClassName="bg-emerald-500/20 text-emerald-500 dark:text-emerald-400"
+                                                points={effectiveDaily.map((d) => d.income)}
                                                 onClick={kpis ? () => setOpenKpiModal("ingresos") : undefined}
                                             />
-                                            <StatTile
+                                            <SparkStatCard
                                                 label="Gastos"
                                                 value={currency(kpis?.totalExpenses ?? 0)}
                                                 icon={ArrowUpCircle}
-                                                accentClassName="text-accent-danger"
+                                                color="#ef4444"
+                                                tintClassName="from-rose-500/[0.16] via-rose-500/[0.05]"
+                                                badgeClassName="bg-rose-500/20 text-rose-500 dark:text-rose-400"
+                                                points={effectiveDaily.map((d) => d.expenses)}
                                                 onClick={kpis ? () => setOpenKpiModal("gastos") : undefined}
                                             />
                                         </div>
