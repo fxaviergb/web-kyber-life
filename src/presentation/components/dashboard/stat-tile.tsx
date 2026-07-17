@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StatTileProps {
@@ -66,6 +66,12 @@ export function StatTile({ label, value, icon: Icon, accentClassName, trend, neg
                     </span>
                 )}
             </div>
+            {onClick && (
+                <ChevronRight
+                    aria-hidden="true"
+                    className="pointer-events-none absolute bottom-1.5 right-1.5 h-3 w-3 text-text-tertiary/60"
+                />
+            )}
         </div>
     );
 }
