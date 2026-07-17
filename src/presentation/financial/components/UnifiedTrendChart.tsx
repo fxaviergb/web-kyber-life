@@ -147,7 +147,7 @@ export function UnifiedTrendChart({ data, iconLegend = false, className }: Unifi
     }, [chartData]);
 
     return (
-        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] border-border/40 shadow-sm overflow-hidden", className)}>
+        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] bg-bg-primary border-border/40 shadow-sm overflow-hidden", className)}>
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 gap-4">
                 <div className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-emerald-500" />

@@ -192,7 +192,7 @@ export function FrequentProductsCard({ products, headerAction, className }: Freq
     }, []);
 
     return (
-        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] border-border/40 shadow-sm overflow-hidden", className)}>
+        <Card className={cn("flex flex-col h-full min-h-[320px] sm:min-h-[280px] bg-bg-primary border-border/40 shadow-sm overflow-hidden", className)}>
             <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">

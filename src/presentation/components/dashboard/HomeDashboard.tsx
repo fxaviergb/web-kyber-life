@@ -30,13 +30,15 @@ import { SpendTrendChart } from "@/presentation/components/charts/SpendTrendChar
 import { UnifiedTrendChart } from "@/presentation/financial/components/UnifiedTrendChart";
 import { useFinancialOverview, useMarketOverview } from "./hooks/useHomeDashboard";
 import { StatTile } from "./stat-tile";
+import { SparkStatCard } from "./spark-stat-card";
 import { FrequentProductsCard } from "./frequent-products-card";
 import { DashboardLoading } from "./DashboardLoading";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 import { MobileCarousel } from "./MobileCarousel";
-import { KpiBreakdownModal, type BreakdownRow, type BreakdownTone } from "@/presentation/financial/components/KpiBreakdownModal";
+import { KpiBreakdownModal } from "@/presentation/financial/components/KpiBreakdownModal";
 import { CreditToggle } from "@/presentation/financial/components/CreditToggle";
 import { excludeCreditFromKpis, excludeCreditFromCategoryBreakdown, excludeCreditFromDailyBreakdown } from "@/presentation/financial/lib/credit-toggle";
+import { buildKpiModalConfig, type KpiModalKind } from "@/presentation/financial/lib/kpi-modal-config";
 
 /**
  * Shared vertical size for every dashboard chart. Kept identical across both
@@ -217,68 +219,12 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
 
     // Tapping a "Resumen financiero" tile opens a modal breaking down the
     // values behind that number (e.g. real vs. credit-card expenses).
-    const [openKpiModal, setOpenKpiModal] = useState<"balance" | "ingresos" | "gastos" | null>(null);
+    const [openKpiModal, setOpenKpiModal] = useState<KpiModalKind | null>(null);
 
-    const kpiModalConfig = useMemo(() => {
-        const rawKpis = fin.kpis;
-        if (!openKpiModal || !rawKpis) return null;
-        const kpis = rawKpis;
-
-        const realExpenses = Math.max(0, kpis.totalExpenses - kpis.totalExpensesCredit);
-
-        if (openKpiModal === "balance") {
-            const rows: BreakdownRow[] = [{ label: "Ingresos", amount: kpis.totalIncome, tone: "positive" as BreakdownTone }];
-            if (kpis.totalTransfersFunding > 0) {
-                rows.push({ label: "Fondeo desde ahorros", amount: kpis.totalTransfersFunding, tone: "positive", hint: "Transferencias que regresan dinero a tu balance disponible" });
-            }
-            rows.push({ label: "Gastos reales", amount: realExpenses, tone: "negative" });
-            if (kpis.totalTransfersSavings > 0) {
-                rows.push({ label: "Ahorro apartado", amount: kpis.totalTransfersSavings, tone: "negative", hint: "Transferencias a ahorros e inversiones" });
-            }
-            return {
-                title: "Detalle del balance",
-                description: "Cómo se calculó tu saldo disponible",
-                icon: Wallet,
-                iconClassName: kpis.netBalance < 0 ? "bg-accent-danger/10 text-accent-danger" : "bg-emerald-500/10 text-emerald-500",
-                rows,
-                total: { label: "Balance", amount: kpis.netBalance, tone: (kpis.netBalance < 0 ? "negative" : "positive") as BreakdownTone, showSign: true },
-                note: kpis.totalExpensesCredit > 0
-                    ? `No incluye ${currency(kpis.totalExpensesCredit)} en gastos pagados con tarjeta de crédito — se reflejarán cuando registres el pago de la tarjeta.`
-                    : undefined,
-            };
-        }
-
-        if (openKpiModal === "ingresos") {
-            const rows: BreakdownRow[] = [{ label: "Ingresos", amount: kpis.totalIncome, tone: "positive" as BreakdownTone }];
-            if (kpis.totalTransfersFunding > 0) {
-                rows.push({ label: "Fondeo desde ahorros", amount: kpis.totalTransfersFunding, tone: "positive", hint: "Transferencias que regresan dinero a tu balance disponible" });
-            }
-            return {
-                title: "Detalle de ingresos",
-                description: "Todo el dinero que entró a tu balance disponible",
-                icon: ArrowDownCircle,
-                iconClassName: "bg-accent-success/10 text-accent-success",
-                rows,
-                total: { label: "Total ingresado", amount: kpis.totalIncome + kpis.totalTransfersFunding, tone: "positive" as BreakdownTone, showSign: false },
-                note: undefined as string | undefined,
-            };
-        }
-
-        // gastos
-        const rows: BreakdownRow[] = [{ label: "Gastos reales", amount: realExpenses, tone: "negative" as BreakdownTone, hint: "Ya afectan tu balance disponible" }];
-        if (kpis.totalExpensesCredit > 0) {
-            rows.push({ label: "Gastos con tarjeta", amount: kpis.totalExpensesCredit, tone: "pending", hint: "Pendientes de reflejarse cuando pagues la tarjeta" });
-        }
-        return {
-            title: "Detalle de gastos",
-            description: "Gastos reales vs. pagados con tarjeta de crédito",
-            icon: ArrowUpCircle,
-            iconClassName: "bg-accent-danger/10 text-accent-danger",
-            rows,
-            total: { label: "Total gastado", amount: kpis.totalExpenses, tone: "negative" as BreakdownTone, showSign: false },
-            note: undefined as string | undefined,
-        };
-    }, [openKpiModal, fin.kpis]);
+    const kpiModalConfig = useMemo(
+        () => (openKpiModal && fin.kpis ? buildKpiModalConfig(openKpiModal, fin.kpis) : null),
+        [openKpiModal, fin.kpis],
+    );
 
     const isInitialLoading =
         finLoading &&
@@ -472,26 +418,34 @@ export function HomeDashboard({ userFirstName }: { userFirstName?: string }) {
                                         <TilesSkeleton />
                                     ) : (
                                         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                                            <StatTile
+                                            <SparkStatCard
                                                 label="Balance"
                                                 value={currency(kpis?.netBalance ?? 0)}
                                                 icon={Wallet}
-                                                accentClassName={(kpis?.netBalance ?? 0) < 0 ? "text-accent-danger" : "text-emerald-500"}
-                                                negative={(kpis?.netBalance ?? 0) < 0}
+                                                color={(kpis?.netBalance ?? 0) < 0 ? "#ef4444" : "#22c55e"}
+                                                tintClassName={(kpis?.netBalance ?? 0) < 0 ? "from-rose-500/[0.16] via-rose-500/[0.05]" : "from-emerald-500/[0.16] via-emerald-500/[0.05]"}
+                                                badgeClassName={(kpis?.netBalance ?? 0) < 0 ? "bg-rose-500/20 text-rose-500 dark:text-rose-400" : "bg-emerald-500/20 text-emerald-500 dark:text-emerald-400"}
+                                                points={effectiveDaily.map((d) => d.net)}
                                                 onClick={kpis ? () => setOpenKpiModal("balance") : undefined}
                                             />
-                                            <StatTile
+                                            <SparkStatCard
                                                 label="Ingresos"
                                                 value={currency(kpis?.totalIncome ?? 0)}
                                                 icon={ArrowDownCircle}
-                                                accentClassName="text-accent-success"
+                                                color="#22c55e"
+                                                tintClassName="from-emerald-500/[0.16] via-emerald-500/[0.05]"
+                                                badgeClassName="bg-emerald-500/20 text-emerald-500 dark:text-emerald-400"
+                                                points={effectiveDaily.map((d) => d.income)}
                                                 onClick={kpis ? () => setOpenKpiModal("ingresos") : undefined}
                                             />
-                                            <StatTile
+                                            <SparkStatCard
                                                 label="Gastos"
                                                 value={currency(kpis?.totalExpenses ?? 0)}
                                                 icon={ArrowUpCircle}
-                                                accentClassName="text-accent-danger"
+                                                color="#ef4444"
+                                                tintClassName="from-rose-500/[0.16] via-rose-500/[0.05]"
+                                                badgeClassName="bg-rose-500/20 text-rose-500 dark:text-rose-400"
+                                                points={effectiveDaily.map((d) => d.expenses)}
                                                 onClick={kpis ? () => setOpenKpiModal("gastos") : undefined}
                                             />
                                         </div>
