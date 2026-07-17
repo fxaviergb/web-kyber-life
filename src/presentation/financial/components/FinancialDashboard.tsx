@@ -1,24 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UnifiedTrendChart } from "./UnifiedTrendChart";
-import { TypeBreakdownChart } from "./TypeBreakdownChart";
 import { CategoryPieChart } from "./CategoryPieChart";
 import { InstitutionBarChart } from "./InstitutionBarChart";
 import { useFinancialDashboardOffline } from "../hooks/useFinancialDashboardOffline";
 import { useFinancialRealtime } from "../hooks/useFinancialRealtime";
-import { DollarSign, TrendingUp, TrendingDown, Activity, ArrowRight, WifiOff, RefreshCw, Clock, ArrowRightLeft, Wallet, CreditCard } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, ArrowRight, WifiOff, RefreshCw, ArrowRightLeft, Wallet, CreditCard, Filter, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from "next/link";
 import { RobotLoader } from "@/components/ui/RobotLoader";
 import { defaultHubCustomRange } from "@/lib/date-range";
+import { cn } from "@/lib/utils";
 import { CreditToggle } from "./CreditToggle";
+import { StatTile } from "@/presentation/components/dashboard/stat-tile";
+import { KpiBreakdownModal } from "./KpiBreakdownModal";
+import { buildKpiModalConfig, type KpiModalKind } from "../lib/kpi-modal-config";
 import {
     excludeCreditFromKpis,
     excludeCreditFromCategoryBreakdown,
@@ -29,6 +30,14 @@ function formatCurrency(value: number): string {
     return `$${Math.abs(value).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+const PERIOD_LABELS = {
+    all: "Todo el tiempo",
+    today: "Hoy",
+    week: "Semana",
+    month: "Mes",
+    custom: "Personalizado",
+} as const;
+
 export function FinancialDashboard() {
     const [filterType, setFilterType] = useState<"all" | "today" | "week" | "month" | "custom">("custom");
     const [customStartDate, setCustomStartDate] = useState<string>(() => defaultHubCustomRange().start);
@@ -38,6 +47,12 @@ export function FinancialDashboard() {
     // Off by default: amounts and charts show only real (cash) spending until
     // the user opts into seeing credit-card-paid transactions too.
     const [showCredit, setShowCredit] = useState(false);
+    // Mobile-only: filters collapsed by default (accordion), matching the
+    // transactions list screen's "Filtros de Búsqueda" pattern.
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
+    // Tapping a Balance/Ingresos/Gastos tile opens a modal breaking down the
+    // values behind that number.
+    const [openKpiModal, setOpenKpiModal] = useState<KpiModalKind | null>(null);
 
     const { startDate, endDate } = useMemo(() => {
         const now = new Date();
@@ -92,6 +107,12 @@ export function FinancialDashboard() {
     const dailyBreakdown = useMemo(
         () => (showCredit ? rawDailyBreakdown : excludeCreditFromDailyBreakdown(rawDailyBreakdown)),
         [rawDailyBreakdown, showCredit],
+    );
+
+    // Always shows the full detail (real + credit), regardless of the toggle.
+    const kpiModalConfig = useMemo(
+        () => (openKpiModal && rawKpis ? buildKpiModalConfig(openKpiModal, rawKpis) : null),
+        [openKpiModal, rawKpis],
     );
 
     const totalCategoryExpenses = useMemo(() => {
@@ -149,71 +170,102 @@ export function FinancialDashboard() {
         <div className="space-y-6">
             {/* Filter Controls & Status */}
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4">
-                <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 flex-1 w-full">
-                    {/* Mobile Filter (Select) */}
-                    <div className="w-full sm:hidden">
-                        <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
-                            <SelectTrigger className="w-full bg-muted/40 border-border/40 rounded-xl h-10 font-medium">
-                                <SelectValue placeholder="Seleccionar período" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todo el tiempo</SelectItem>
-                                <SelectItem value="today">Hoy</SelectItem>
-                                <SelectItem value="week">Semana</SelectItem>
-                                <SelectItem value="month">Mes</SelectItem>
-                                <SelectItem value="custom">Personalizado</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Desktop Filter (Tabs) */}
-                    <div className="hidden sm:flex items-center p-1 bg-muted/40 border border-border/40 rounded-xl w-full">
-                        {(
-                            [
-                                { id: 'all', label: 'Todo el tiempo' },
-                                { id: 'today', label: 'Hoy' },
-                                { id: 'week', label: 'Semana' },
-                                { id: 'month', label: 'Mes' },
-                                { id: 'custom', label: 'Personalizado' }
-                            ] as const
-                        ).map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setFilterType(tab.id as any)}
-                                className={`
-                                    flex-1 relative px-4 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg whitespace-nowrap
-                                    ${filterType === tab.id
-                                        ? 'text-foreground bg-background shadow-sm ring-1 ring-border/50'
-                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
-                                `}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {filterType === "custom" && (
-                        <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-top-1">
-                            <div className="flex items-center gap-2 w-full bg-muted/20 p-1 rounded-xl border border-border/40">
-                                <Input
-                                    type="date"
-                                    value={customStartDate}
-                                    onChange={(e) => setCustomStartDate(e.target.value)}
-                                    className="h-8 text-xs bg-background border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-offset-0"
-                                />
-                                <span className="text-muted-foreground/50 text-xs font-medium">a</span>
-                                <Input
-                                    type="date"
-                                    value={customEndDate}
-                                    onChange={(e) => setCustomEndDate(e.target.value)}
-                                    className="h-8 text-xs bg-background border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-offset-0"
-                                />
+                <div className="flex flex-col gap-3 flex-1 w-full">
+                    {/* Mobile Accordion Toggle */}
+                    <div
+                        className={cn(
+                            "sm:hidden relative flex items-center justify-between py-3 px-4 rounded-[1.25rem] border border-border/50 dark:border-white/10 bg-gradient-to-b from-black/[0.02] dark:from-white/[0.04] to-transparent shadow-lg shadow-black/5 dark:shadow-black/20 cursor-pointer transition-all active:scale-[0.98]",
+                            filtersExpanded ? "bg-black/[0.02] dark:bg-white/[0.02] border-border dark:border-white/15" : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
+                        )}
+                        onClick={() => setFiltersExpanded((v) => !v)}
+                    >
+                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/10 dark:via-white/20 to-transparent rounded-t-[1.25rem]" aria-hidden="true" />
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-inner">
+                                <Filter className="w-4 h-4" />
+                            </div>
+                            <div className="flex flex-col justify-center gap-1.5">
+                                <span className="text-lg font-bold tracking-tight leading-none text-foreground/90">
+                                    Filtros de Búsqueda
+                                </span>
+                                <p className="text-[10px] text-muted-foreground font-medium leading-none uppercase tracking-wider">
+                                    {`Filtros para: ${PERIOD_LABELS[filterType]}`}
+                                </p>
                             </div>
                         </div>
-                    )}
-                </div>
+                        <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-black/5 dark:bg-white/5 border border-border/50 dark:border-white/10 shadow-sm">
+                            <ChevronDown className={cn("w-4 h-4 text-foreground/70 transition-transform duration-300", filtersExpanded && "rotate-180")} />
+                        </div>
+                    </div>
 
-                <CreditToggle checked={showCredit} onChange={setShowCredit} />
+                    {/* Filter content: collapsible on mobile, always visible on sm+ */}
+                    <div className={cn(
+                        "flex-col xl:flex-row items-start xl:items-center gap-4 w-full",
+                        filtersExpanded ? "flex animate-in fade-in slide-in-from-top-4" : "hidden sm:flex",
+                    )}>
+                        {/* Mobile Filter (Select) */}
+                        <div className="w-full sm:hidden">
+                            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
+                                <SelectTrigger className="w-full bg-muted/40 border-border/40 rounded-xl h-10 font-medium">
+                                    <SelectValue placeholder="Seleccionar período" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todo el tiempo</SelectItem>
+                                    <SelectItem value="today">Hoy</SelectItem>
+                                    <SelectItem value="week">Semana</SelectItem>
+                                    <SelectItem value="month">Mes</SelectItem>
+                                    <SelectItem value="custom">Personalizado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Desktop Filter (Tabs) */}
+                        <div className="hidden sm:flex items-center p-1 bg-muted/40 border border-border/40 rounded-xl w-full">
+                            {(
+                                [
+                                    { id: 'all', label: 'Todo el tiempo' },
+                                    { id: 'today', label: 'Hoy' },
+                                    { id: 'week', label: 'Semana' },
+                                    { id: 'month', label: 'Mes' },
+                                    { id: 'custom', label: 'Personalizado' }
+                                ] as const
+                            ).map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setFilterType(tab.id as any)}
+                                    className={`
+                                        flex-1 relative px-4 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg whitespace-nowrap
+                                        ${filterType === tab.id
+                                            ? 'text-foreground bg-background shadow-sm ring-1 ring-border/50'
+                                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
+                                    `}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {filterType === "custom" && (
+                            <div className="flex items-center gap-2 w-full sm:w-auto animate-in fade-in slide-in-from-top-1">
+                                <div className="flex items-center gap-2 w-full bg-muted/20 p-1 rounded-xl border border-border/40">
+                                    <Input
+                                        type="date"
+                                        value={customStartDate}
+                                        onChange={(e) => setCustomStartDate(e.target.value)}
+                                        className="h-8 text-xs bg-background border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-offset-0"
+                                    />
+                                    <span className="text-muted-foreground/50 text-xs font-medium">a</span>
+                                    <Input
+                                        type="date"
+                                        value={customEndDate}
+                                        onChange={(e) => setCustomEndDate(e.target.value)}
+                                        className="h-8 text-xs bg-background border-border/50 rounded-lg focus-visible:ring-1 focus-visible:ring-offset-0"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Stale/offline indicator as Tooltip */}
                 {isStale && (
@@ -259,80 +311,64 @@ export function FinancialDashboard() {
 
 
             {/* KPI Cards */}
-            <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
-                    <StatCard
-                        title="Ingresos"
+            <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary">Resumen financiero</h2>
+                    <CreditToggle checked={showCredit} onChange={setShowCredit} />
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+                    <div className="col-span-2 lg:col-span-1">
+                        <StatTile
+                            label="Balance"
+                            value={`${(kpis?.netBalance ?? 0) >= 0 ? "+" : "-"}${formatCurrency(kpis?.netBalance ?? 0)}`}
+                            icon={DollarSign}
+                            accentClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-emerald-500" : "text-accent-danger"}
+                            negative={(kpis?.netBalance ?? 0) < 0}
+                            onClick={rawKpis ? () => setOpenKpiModal("balance") : undefined}
+                        />
+                    </div>
+                    <StatTile
+                        label="Ingresos"
                         value={formatCurrency(kpis?.totalIncome ?? 0)}
                         icon={TrendingUp}
-                        iconClassName="text-green-500"
-                        valueClassName="text-green-500"
-                        description="Ingresos confirmados"
-                        tooltipText="Suma de todas las transacciones positivas (ingresos, depósitos y devoluciones) dentro del rango de fechas seleccionado."
-                        className="flex-1"
+                        accentClassName="text-green-500"
+                        onClick={rawKpis ? () => setOpenKpiModal("ingresos") : undefined}
                     />
-                </div>
-                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
-                    <StatCard
-                        title="Gastos"
+                    <StatTile
+                        label="Gastos"
                         value={formatCurrency(kpis?.totalExpenses ?? 0)}
                         icon={TrendingDown}
-                        iconClassName="text-red-500"
-                        valueClassName="text-red-500"
-                        description={
-                            kpis && kpis.totalExpensesCredit > 0
-                                ? `${formatCurrency(kpis.totalExpensesCredit)} con tarjeta (pendiente)`
-                                : "Gastos confirmados"
-                        }
-                        tooltipText="Suma de todas las transacciones negativas (pagos, compras y comisiones) dentro del rango de fechas seleccionado. La parte pagada con tarjeta de crédito todavía no afecta tu balance — se reflejará cuando registres el pago de la tarjeta."
-                        className="flex-1"
+                        accentClassName="text-red-500"
+                        onClick={rawKpis ? () => setOpenKpiModal("gastos") : undefined}
                     />
-                </div>
-                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
-                    <StatCard
-                        title="Transferencias"
+                    <StatTile
+                        label="Transferencias"
                         value={formatCurrency(kpis?.totalTransfers ?? 0)}
                         icon={ArrowRightLeft}
-                        iconClassName="text-orange-500"
-                        valueClassName="text-orange-500"
-                        description={
-                            kpis && (kpis.totalTransfersSavings > 0 || kpis.totalTransfersFunding > 0)
-                                ? `${formatCurrency(kpis.totalTransfersSavings)} a ahorros · ${formatCurrency(kpis.totalTransfersFunding)} de vuelta`
-                                : "Entre cuentas propias"
-                        }
-                        tooltipText="Suma de todas las transferencias realizadas entre cuentas propias. El dinero movido a ahorros resta del balance disponible; el fondeo que regresa desde ahorros lo suma de vuelta."
-                        className="flex-1"
+                        accentClassName="text-orange-500"
                     />
-                </div>
-                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-1 flex flex-col items-stretch">
-                    <StatCard
-                        title="Retiros"
+                    <StatTile
+                        label="Retiros"
                         value={formatCurrency(kpis?.totalWithdrawals ?? 0)}
                         icon={Wallet}
-                        iconClassName="text-blue-500"
-                        valueClassName="text-blue-500"
-                        description="Retiros en cajeros"
-                        tooltipText="Suma de todos los retiros en efectivo o salidas no clasificadas como gasto dentro del rango de fechas seleccionado."
-                        className="flex-1"
-                    />
-                </div>
-                <div className="snap-center shrink-0 w-[240px] sm:w-auto sm:col-span-2 lg:col-span-1 flex flex-col items-stretch">
-                    <StatCard
-                        title="Balance"
-                        value={`${(kpis?.netBalance ?? 0) >= 0 ? "+" : "-"}${formatCurrency(kpis?.netBalance ?? 0)}`}
-                        icon={DollarSign}
-                        iconClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
-                        valueClassName={(kpis?.netBalance ?? 0) >= 0 ? "text-green-500" : "text-red-500"}
-                        description="Saldo disponible real"
-                        tooltipText="Ingresos, más fondeo desde ahorros, menos tus gastos reales (excluye lo pagado con tarjeta de crédito) y menos lo que apartaste a ahorros. Un balance positivo indica superávit."
-                        trend={kpis ? {
-                            value: `${kpis.transactionCount} transacciones`,
-                            positive: kpis.netBalance >= 0,
-                        } : undefined}
-                        className="flex-1"
+                        accentClassName="text-blue-500"
                     />
                 </div>
             </div>
+
+            {kpiModalConfig && (
+                <KpiBreakdownModal
+                    open={!!openKpiModal}
+                    onOpenChange={(o) => !o && setOpenKpiModal(null)}
+                    title={kpiModalConfig.title}
+                    description={kpiModalConfig.description}
+                    icon={kpiModalConfig.icon}
+                    iconClassName={kpiModalConfig.iconClassName}
+                    rows={kpiModalConfig.rows}
+                    total={kpiModalConfig.total}
+                    note={kpiModalConfig.note}
+                />
+            )}
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
