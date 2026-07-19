@@ -16,8 +16,12 @@ self.addEventListener("push", (event) => {
     const title = payload.title || "Kyber Life";
     const options = {
         body: payload.body,
-        icon: "/images/logo-kyber-darkbg-192x192.png",
-        badge: "/images/logo-kyber-darkbg-192x192.png",
+        // Must have real alpha transparency around the glyph — Android
+        // masks the notification/status-bar icon using the alpha channel,
+        // so an opaque image (like the darkbg logo) renders as a solid
+        // block instead of the robot silhouette.
+        icon: "/images/logo-kyber-blue-192x192.png",
+        badge: "/images/logo-kyber-blue-192x192.png",
         data: { url: payload.url || "/" },
     };
 
