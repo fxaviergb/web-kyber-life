@@ -46,13 +46,13 @@ const TYPE_LEGEND: { key: keyof TypeTotals; label: string; color: string; Icon: 
 /** Bottom legend: per-type icon + period total (no text labels), tied by color. */
 function TypeLegend({ totals }: { totals?: TypeTotals }) {
     return (
-        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+        <div className="flex flex-nowrap items-center justify-center gap-x-3 sm:gap-x-5 overflow-x-auto custom-scrollbar px-0.5">
             {TYPE_LEGEND.map(({ key, label, color, Icon }) => (
-                <div key={key} className="flex items-center gap-1.5" title={label} aria-label={label}>
-                    <span className="flex h-5 w-5 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
-                        <Icon className="h-3 w-3" />
+                <div key={key} className="flex items-center gap-1 sm:gap-1.5 shrink-0" title={label} aria-label={label}>
+                    <span className="flex h-4 w-4 sm:h-5 sm:w-5 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
+                        <Icon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </span>
-                    <span className="text-sm font-bold leading-none" style={{ color }}>
+                    <span className="text-xs sm:text-sm font-bold leading-none whitespace-nowrap" style={{ color }}>
                         {formatCurrency(totals?.[key] || 0)}
                     </span>
                 </div>
