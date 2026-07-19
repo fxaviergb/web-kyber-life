@@ -1,6 +1,7 @@
 "use client";
 
-import { Menu, Search, Bell, PanelLeft, ChevronDown, User as UserIcon, LogOut } from "lucide-react";
+import { Menu, Search, PanelLeft, ChevronDown, User as UserIcon, LogOut } from "lucide-react";
+import { NotificationBell } from "@/presentation/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -174,15 +175,7 @@ export function Topbar({ onMenuClick, isSidebarOpen, onSidebarToggle, user }: To
             <div className="ml-auto flex items-center gap-3">
                 <ThemeToggle />
 
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative hover:bg-bg-hover rounded-full"
-                    aria-label="Notifications"
-                >
-                    <Bell className="h-5 w-5 text-text-secondary" />
-                    <span className="absolute top-2 right-2 h-2 w-2 bg-accent-danger rounded-full ring-2 ring-bg-secondary" />
-                </Button>
+                {user?.id && <NotificationBell userId={user.id} />}
 
                 {/* User Profile */}
                 <DropdownMenu>
