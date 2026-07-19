@@ -18,7 +18,9 @@ import {
     InMemoryFinancialInstitutionRepository,
     InMemoryFinancialInstitutionTypeRepository,
     InMemoryFinancialAccountRepository,
-    InMemoryFinancialCategoryRepository
+    InMemoryFinancialCategoryRepository,
+    InMemoryNotificationRepository,
+    InMemoryPushSubscriptionRepository
 } from "./repositories/implementations";
 import { seedRepositories } from "./seed/seed-data";
 import { randomUUID } from "crypto";
@@ -43,7 +45,9 @@ import {
     SupabaseInstitutionTypeRepository,
     SupabaseFinancialInstitutionRepository,
     SupabaseFinancialAccountRepository,
-    SupabaseFinancialCategoryRepository
+    SupabaseFinancialCategoryRepository,
+    SupabaseNotificationRepository,
+    SupabasePushSubscriptionRepository
 } from "./repositories/supabase"; // Need to create this index or import individually
 
 // ... Previous imports ...
@@ -101,6 +105,9 @@ export const financialInstitutionRepository = singleton("financialInstitutionRep
 export const financialAccountRepository = singleton("financialAccountRepo_v4", () => isSupabase ? new SupabaseFinancialAccountRepository() : new InMemoryFinancialAccountRepository());
 export const financialCategoryRepository = singleton("financialCategoryRepo_v4", () => isSupabase ? new SupabaseFinancialCategoryRepository() : new InMemoryFinancialCategoryRepository());
 
+export const notificationRepository = singleton("notificationRepo", () => isSupabase ? new SupabaseNotificationRepository() : new InMemoryNotificationRepository());
+export const pushSubscriptionRepository = singleton("pushSubscriptionRepo", () => isSupabase ? new SupabasePushSubscriptionRepository() : new InMemoryPushSubscriptionRepository());
+
 // Services
 import { AuthService } from "@/application/services/auth-service";
 import { MasterDataService } from "@/application/services/master-data-service";
@@ -113,6 +120,8 @@ import { FinancialTransactionService } from "@/application/services/financial-tr
 import { FinancialInboxService } from "@/application/services/financial-inbox-service";
 import { FinancialDashboardService } from "@/application/services/financial-dashboard-service";
 import { FinancialSettingsService } from "@/application/services/financial-settings-service";
+import { NotificationService } from "@/application/services/notification-service";
+import { PushSubscriptionService } from "@/application/services/push-subscription-service";
 
 export const authService = new AuthService(userRepository, passwordResetTokenRepository);
 export const userService = new UserService(userRepository);
@@ -133,6 +142,8 @@ export const financialInboxService = new FinancialInboxService(
 );
 export const financialDashboardService = new FinancialDashboardService(financialTransactionRepository, financialCategoryRepository, financialInstitutionRepository, financialScannerTransactionRepository);
 export const financialSettingsService = new FinancialSettingsService(financialInstitutionTypeRepository, financialInstitutionRepository, financialAccountRepository, financialCategoryRepository);
+export const notificationService = new NotificationService(notificationRepository);
+export const pushSubscriptionService = new PushSubscriptionService(pushSubscriptionRepository);
 export const masterDataService = new MasterDataService(supermarketRepository, categoryRepository, unitRepository);
 export const productService = new ProductService(genericItemRepository, brandProductRepository, priceObservationRepository);
 export const templateService = new TemplateService(templateRepository, templateItemRepository);

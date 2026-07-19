@@ -1,6 +1,6 @@
 import { InMemoryRepository } from "./in-memory-repository";
-import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution, FinancialInstitutionType, FinancialAccount, FinancialCategory } from "@/domain/entities";
-import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionTypeRepository, IFinancialInstitutionRepository, IFinancialAccountRepository, IFinancialCategoryRepository } from "@/domain/repositories";
+import { User, Supermarket, Category, Unit, GenericItem, BrandProduct, Template, TemplateItem, Purchase, PurchaseLine, PriceObservation, PasswordResetToken, FinancialTransaction, FinancialTransactionAuditLog, FinancialScanExecution, FinancialScannerTransaction, FinancialInstitution, FinancialInstitutionType, FinancialAccount, FinancialCategory, Notification, PushSubscription } from "@/domain/entities";
+import { IUserRepository, ISupermarketRepository, ICategoryRepository, IUnitRepository, IGenericItemRepository, IBrandProductRepository, ITemplateRepository, ITemplateItemRepository, IPurchaseRepository, IPurchaseLineRepository, IPriceObservationRepository, IPasswordResetTokenRepository, IFinancialTransactionRepository, IFinancialTransactionAuditLogRepository, IFinancialScanExecutionRepository, IFinancialScannerTransactionRepository, IFinancialInstitutionTypeRepository, IFinancialInstitutionRepository, IFinancialAccountRepository, IFinancialCategoryRepository, INotificationRepository, IPushSubscriptionRepository } from "@/domain/repositories";
 import { UUID } from "@/domain/core";
 import { PaginationParams, PaginatedResult, TransactionSearchFilters } from "@/domain/pagination";
 
@@ -345,5 +345,46 @@ export class InMemoryPriceObservationRepository implements IPriceObservationRepo
     }
     async findByOwnerId(userId: UUID): Promise<PriceObservation[]> {
         return (await this.findAll()).filter(o => o.ownerUserId === userId);
+    }
+}
+
+export class InMemoryNotificationRepository extends InMemoryRepository<Notification> implements INotificationRepository {
+    async findByOwnerId(userId: UUID, limit = 20): Promise<Notification[]> {
+        return (await this.findAll())
+            .filter(n => n.ownerUserId === userId)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            .slice(0, limit);
+    }
+    async countUnread(userId: UUID): Promise<number> {
+        return (await this.findAll()).filter(n => n.ownerUserId === userId && !n.isRead).length;
+    }
+    async markAsRead(id: UUID, userId: UUID): Promise<void> {
+        const item = this.items.get(id);
+        if (item && item.ownerUserId === userId && !item.isRead) {
+            item.isRead = true;
+            item.readAt = new Date().toISOString();
+        }
+    }
+    async markAllAsRead(userId: UUID): Promise<void> {
+        const now = new Date().toISOString();
+        for (const item of this.items.values()) {
+            if (item.ownerUserId === userId && !item.isRead) {
+                item.isRead = true;
+                item.readAt = now;
+            }
+        }
+    }
+}
+
+export class InMemoryPushSubscriptionRepository extends InMemoryRepository<PushSubscription> implements IPushSubscriptionRepository {
+    async findByOwnerId(userId: UUID): Promise<PushSubscription[]> {
+        return (await this.findAll()).filter(s => s.ownerUserId === userId);
+    }
+    async findByEndpoint(endpoint: string): Promise<PushSubscription | null> {
+        return (await this.findAll()).find(s => s.endpoint === endpoint) || null;
+    }
+    async deleteByEndpoint(endpoint: string, userId: UUID): Promise<void> {
+        const match = (await this.findAll()).find(s => s.endpoint === endpoint && s.ownerUserId === userId);
+        if (match) await this.delete(match.id);
     }
 }
