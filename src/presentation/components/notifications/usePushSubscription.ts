@@ -23,20 +23,10 @@ export function usePushSubscription() {
     const [state, setState] = useState<PushSupportState>("default");
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-            setState("unsupported");
-            return;
-        }
-        if (!vapidPublicKey) {
-            setState("unconfigured");
-            return;
-        }
-        setState(Notification.permission as PushSupportState);
-    }, [vapidPublicKey]);
-
     const subscribe = useCallback(async () => {
-        if (state === "unsupported" || state === "unconfigured" || !vapidPublicKey) return;
+        if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window) || !vapidPublicKey) {
+            return;
+        }
         setLoading(true);
         try {
             const permission = await Notification.requestPermission();
@@ -59,7 +49,33 @@ export function usePushSubscription() {
         } finally {
             setLoading(false);
         }
-    }, [state, vapidPublicKey]);
+    }, [vapidPublicKey]);
+
+    useEffect(() => {
+        if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+            setState("unsupported");
+            return;
+        }
+        if (!vapidPublicKey) {
+            setState("unconfigured");
+            return;
+        }
+        const permission = Notification.permission;
+        setState(permission as PushSupportState);
+
+        // Browser permission is per-origin and persists across account
+        // switches on the same device, but push_subscriptions.owner_user_id
+        // is per-account. When permission is already granted (e.g. a
+        // different account subscribed earlier on this device), silently
+        // re-sync the subscription to whoever is logged in now — subscribe()
+        // is idempotent here (no re-prompt, same endpoint gets upserted), so
+        // this just keeps the device pointed at the current account without
+        // requiring a manual click.
+        if (permission === "granted") {
+            subscribe().catch(() => {});
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [vapidPublicKey]);
 
     const unsubscribe = useCallback(async () => {
         if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
