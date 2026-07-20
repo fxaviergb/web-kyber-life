@@ -48,7 +48,7 @@ export function NotificationBell({ userId }: { userId: string }) {
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
-    const push = usePushSubscription();
+    const push = usePushSubscription(userId);
 
     const refresh = useCallback(async () => {
         const [listResult, countResult] = await Promise.all([
