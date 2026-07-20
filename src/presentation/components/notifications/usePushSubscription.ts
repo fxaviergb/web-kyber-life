@@ -17,8 +17,13 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
  * gracefully (state stays "unsupported"/"unconfigured") when Push isn't
  * available or NEXT_PUBLIC_VAPID_PUBLIC_KEY hasn't been set up yet, so the
  * rest of the notification center works regardless of push readiness.
+ *
+ * @param userId The currently authenticated user. Passing it in (rather
+ * than resolving it only server-side) lets the auto-resync effect below
+ * depend on it, so switching accounts on the same device re-syncs the
+ * subscription even when the app never fully unmounts/remounts.
  */
-export function usePushSubscription() {
+export function usePushSubscription(userId?: string) {
     const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     const [state, setState] = useState<PushSupportState>("default");
     const [loading, setLoading] = useState(false);
@@ -70,12 +75,16 @@ export function usePushSubscription() {
         // re-sync the subscription to whoever is logged in now — subscribe()
         // is idempotent here (no re-prompt, same endpoint gets upserted), so
         // this just keeps the device pointed at the current account without
-        // requiring a manual click.
-        if (permission === "granted") {
+        // requiring a manual click. Depending on `userId` (not just the
+        // static vapidPublicKey) is what makes this re-fire on an account
+        // switch that doesn't unmount the component (e.g. logout/login
+        // inside the same PWA session), instead of only running once per
+        // tab lifetime.
+        if (permission === "granted" && userId) {
             subscribe().catch(() => {});
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [vapidPublicKey]);
+    }, [vapidPublicKey, userId]);
 
     const unsubscribe = useCallback(async () => {
         if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
