@@ -76,7 +76,6 @@ Renombra `.env.example` a `.env` y configura las variables:
 | `NEXT_PUBLIC_AUTH_STRATEGY` | ✅ | Debe coincidir con `DATA_SOURCE` (accesible en el cliente) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Solo Supabase | URL del proyecto en Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Solo Supabase | Clave anónima pública de Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | ❌ Opcional | Clave de servicio para tareas administrativas |
 | `NEXT_PUBLIC_SESSION_TIMEOUT_MS` | ❌ Opcional | Tiempo de inactividad en ms antes de cerrar sesión. Default: `1800000` (30 min) |
 | `NEXT_PUBLIC_BASE_URL` | ❌ Opcional | URL base para callbacks de autenticación. Default: `http://localhost:3000` |
 | `NEXT_PUBLIC_FF_FINANCIAL_REALTIME` | ❌ Opcional | Habilita WebSocket Realtime de Supabase (`true`/`false`). Default: `false` |
