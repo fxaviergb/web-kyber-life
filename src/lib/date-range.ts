@@ -12,6 +12,43 @@ export interface ResolvedRange {
     endDate?: string;
 }
 
+/**
+ * Canonical timezone the app uses to decide "what calendar day is it now".
+ *
+ * The billing cycle (22 → 21) must roll forward based on the *user's* local day,
+ * not the day of whatever machine runs the code. Server Components render in UTC,
+ * so `new Date()` there is hours ahead of a user west of UTC and the cycle would
+ * flip early (e.g. at 23:00 local on the 21st it is already the 22nd in UTC).
+ * Anchoring to a fixed zone keeps the server and the client in agreement and
+ * matches the app's wall-clock treatment of transaction dates.
+ *
+ * Overridable via NEXT_PUBLIC_APP_TIMEZONE (must be a valid IANA zone). Public so
+ * the value is identical in the SSR pass and the client bundle.
+ */
+export const APP_TIMEZONE = process.env.NEXT_PUBLIC_APP_TIMEZONE || "America/Guayaquil";
+
+/**
+ * Return a Date whose *local* components (getFullYear/getMonth/getDate/…) read
+ * back as the wall-clock time of `now` in `timeZone`. Callers can then use the
+ * ordinary local getters to reason about the zone's calendar day, independent of
+ * where the code runs (UTC on the server, the device zone on the client).
+ */
+export function zonedNow(timeZone: string = APP_TIMEZONE, now: Date = new Date()): Date {
+    const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+    }).formatToParts(now);
+    const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+    // Intl with hour12:false can emit "24" for midnight in some engines; normalize.
+    return new Date(get("year"), get("month") - 1, get("day"), get("hour") % 24, get("minute"), get("second"));
+}
+
 /** Format a Date as a local YYYY-MM-DD string (suitable for <input type="date">). */
 export function toDateInputValue(d: Date): string {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -75,20 +112,24 @@ export function wallClockInputToISO(value?: string | null): string | undefined {
  * - "week": Monday of the current week → now.
  * - "month": first day of the current month → now.
  * - "custom": the provided YYYY-MM-DD strings, expanded to full days.
+ *
+ * The relative presets ("today"/"week"/"month") anchor to "now" resolved in
+ * {@link APP_TIMEZONE}, so the current day/week/month is the user's local one
+ * rather than the day of the machine running the code (UTC on the server).
  */
 export function computeDateRange(
     filterType: RangeFilterType,
     customStart?: string,
     customEnd?: string,
 ): ResolvedRange {
-    const now = new Date();
+    const now = zonedNow();
 
     if (filterType === "all") return { startDate: undefined, endDate: undefined };
 
     if (filterType === "today") {
-        const start = new Date();
+        const start = new Date(now);
         start.setHours(0, 0, 0, 0);
-        const end = new Date();
+        const end = new Date(now);
         end.setHours(23, 59, 59, 999);
         return { startDate: start.toISOString(), endDate: end.toISOString() };
     }
@@ -128,8 +169,12 @@ export function computeDateRange(
  *   - day <= 21 → [previous month 22, this month 21]
  * (The full-day expansion is applied by computeDateRange for "custom".)
  * Returns YYYY-MM-DD strings for the date inputs.
+ *
+ * `reference` is interpreted through its local components. It defaults to "now"
+ * resolved in {@link APP_TIMEZONE}, so the cycle rolls over on the user's local
+ * day rather than the server's UTC day (see {@link zonedNow}).
  */
-export function defaultHubCustomRange(reference: Date = new Date()): { start: string; end: string } {
+export function defaultHubCustomRange(reference: Date = zonedNow()): { start: string; end: string } {
     const anchorMonth = reference.getDate() >= 22 ? reference.getMonth() : reference.getMonth() - 1;
     const start = new Date(reference.getFullYear(), anchorMonth, 22);
     const end = new Date(reference.getFullYear(), anchorMonth + 1, 21);
