@@ -106,6 +106,32 @@ describe("date-range", () => {
                 end: "2026-02-21",
             });
         });
+
+        describe("default reference resolves 'now' in APP_TIMEZONE (UTC-5)", () => {
+            afterEach(() => {
+                jest.useRealTimers();
+            });
+
+            it("does NOT roll forward on the evening of the 21st (bug: UTC already the 22nd)", () => {
+                // 2026-06-22T04:01Z === 2026-06-21 23:01 in America/Guayaquil (UTC-5).
+                // The UTC day is the 22nd, but the user's local day is still the 21st,
+                // so the current cycle (May 22 → Jun 21) must remain selected.
+                jest.useFakeTimers().setSystemTime(new Date("2026-06-22T04:01:00.000Z"));
+                expect(defaultHubCustomRange()).toEqual({
+                    start: "2026-05-22",
+                    end: "2026-06-21",
+                });
+            });
+
+            it("rolls forward once it is actually the 22nd in APP_TIMEZONE", () => {
+                // 2026-06-22T05:01Z === 2026-06-22 00:01 in UTC-5.
+                jest.useFakeTimers().setSystemTime(new Date("2026-06-22T05:01:00.000Z"));
+                expect(defaultHubCustomRange()).toEqual({
+                    start: "2026-06-22",
+                    end: "2026-07-21",
+                });
+            });
+        });
     });
 
     describe("computeDateRange", () => {
@@ -166,6 +192,17 @@ describe("date-range", () => {
                 expect(start.getHours()).toBe(0);
                 expect(new Date(endDate!).getDate()).toBe(22); // up to "now"
             });
+        });
+
+        it("'today' uses the APP_TIMEZONE day, not the UTC day, near midnight", () => {
+            // 2026-06-22T04:01Z === 2026-06-21 23:01 in America/Guayaquil (UTC-5).
+            // The UTC day is already the 22nd, but "today" for the user is the 21st.
+            jest.useFakeTimers().setSystemTime(new Date("2026-06-22T04:01:00.000Z"));
+            const { startDate } = computeDateRange("today");
+            const start = new Date(startDate!);
+            expect(start.getMonth()).toBe(5); // June
+            expect(start.getDate()).toBe(21);
+            jest.useRealTimers();
         });
     });
 });
