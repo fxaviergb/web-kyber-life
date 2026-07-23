@@ -98,8 +98,14 @@ export async function updateCategoryAction(id: UUID, data: Partial<FinancialCate
     return result;
 }
 
+export async function getCategoryTransactionCountAction(id: UUID) {
+    const user = await getRequiredUser();
+    return financialSettingsService.getCategoryTransactionCount(user.id, id);
+}
+
 export async function deleteCategoryAction(id: UUID) {
     const user = await getRequiredUser();
-    await financialSettingsService.deleteCategory(user.id, id);
+    const result = await financialSettingsService.deleteCategory(user.id, id);
     revalidatePath("/financial/settings");
+    return result;
 }
