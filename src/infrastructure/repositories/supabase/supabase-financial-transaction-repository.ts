@@ -114,6 +114,31 @@ export class SupabaseFinancialTransactionRepository implements IFinancialTransac
         return data.map(row => this.mapToEntity(row));
     }
 
+    async countByCategoryId(userId: UUID, categoryId: UUID): Promise<number> {
+        const supabase = await createClient();
+        const { count, error } = await supabase
+            .from('financial_transactions')
+            .select('id', { count: 'exact', head: true })
+            .eq('owner_user_id', userId)
+            .eq('category_id', categoryId);
+
+        if (error) throw new Error(`Error counting transactions by category: ${error.message}`);
+        return count ?? 0;
+    }
+
+    async reassignCategory(userId: UUID, fromCategoryId: UUID, toCategoryId: UUID | null): Promise<number> {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('financial_transactions')
+            .update({ category_id: toCategoryId, updated_at: new Date().toISOString() })
+            .eq('owner_user_id', userId)
+            .eq('category_id', fromCategoryId)
+            .select('id');
+
+        if (error) throw new Error(`Error reassigning transactions category: ${error.message}`);
+        return data?.length ?? 0;
+    }
+
     async findRecent(userId: UUID, limit: number): Promise<FinancialTransaction[]> {
         const supabase = await createClient();
         const { data, error } = await supabase

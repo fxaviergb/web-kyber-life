@@ -141,7 +141,7 @@ export const financialInboxService = new FinancialInboxService(
     financialCategoryRepository
 );
 export const financialDashboardService = new FinancialDashboardService(financialTransactionRepository, financialCategoryRepository, financialInstitutionRepository, financialScannerTransactionRepository);
-export const financialSettingsService = new FinancialSettingsService(financialInstitutionTypeRepository, financialInstitutionRepository, financialAccountRepository, financialCategoryRepository);
+export const financialSettingsService = new FinancialSettingsService(financialInstitutionTypeRepository, financialInstitutionRepository, financialAccountRepository, financialCategoryRepository, financialTransactionRepository);
 export const notificationService = new NotificationService(notificationRepository);
 export const pushSubscriptionService = new PushSubscriptionService(pushSubscriptionRepository);
 export const masterDataService = new MasterDataService(supermarketRepository, categoryRepository, unitRepository);

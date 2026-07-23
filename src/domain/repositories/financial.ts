@@ -18,6 +18,13 @@ export interface IFinancialTransactionRepository extends IRepository<FinancialTr
     search(userId: UUID, query: string, filters?: TransactionSearchFilters): Promise<FinancialTransaction[]>;
     findPaginated(userId: UUID, filters: TransactionSearchFilters, pagination: PaginationParams): Promise<PaginatedResult<FinancialTransaction>>;
     getUniqueTags(userId: UUID): Promise<string[]>;
+    /** Number of transactions owned by the user that reference the given category. */
+    countByCategoryId(userId: UUID, categoryId: UUID): Promise<number>;
+    /**
+     * Move every transaction owned by the user from `fromCategoryId` to
+     * `toCategoryId` (or null to un-categorize). Returns how many were updated.
+     */
+    reassignCategory(userId: UUID, fromCategoryId: UUID, toCategoryId: UUID | null): Promise<number>;
 }
 
 export interface ScanExecutionDateFilter {

@@ -5,8 +5,9 @@ import { FinancialCategory } from "@/domain/entities/financial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, Tags } from "lucide-react";
-import { createCategoryAction, updateCategoryAction, deleteCategoryAction } from "@/app/actions/financial-settings";
+import { createCategoryAction, updateCategoryAction, deleteCategoryAction, getCategoryTransactionCountAction } from "@/app/actions/financial-settings";
 import { FormSheet } from "@/components/ui/form-sheet";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -22,6 +23,11 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingId, setEditingId] = useState<UUID | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Delete confirmation state
+    const [deletingCat, setDeletingCat] = useState<FinancialCategory | null>(null);
+    const [deleteCount, setDeleteCount] = useState<number | null>(null); // null while counting
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         setCategories(initialData);
@@ -74,17 +80,44 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
         }
     };
 
-    const handleDelete = async (id: UUID) => {
-        if (!confirm("¿Seguro que deseas eliminar esta categoría?")) return;
-        
+    const handleDeleteRequest = async (cat: FinancialCategory) => {
+        setDeletingCat(cat);
+        setDeleteCount(null);
         try {
-            await deleteCategoryAction(id);
-            setCategories(categories.filter(c => c.id !== id));
-            toast.success("Categoría eliminada");
-        } catch (error: any) {
-            toast.error("Error al eliminar");
+            const count = await getCategoryTransactionCountAction(cat.id!);
+            setDeleteCount(count);
+        } catch {
+            // If the count can't be resolved, fall back to the plain confirmation.
+            setDeleteCount(0);
         }
     };
+
+    const handleDeleteConfirm = async () => {
+        if (!deletingCat) return;
+        setIsDeleting(true);
+        try {
+            const { reassignedCount } = await deleteCategoryAction(deletingCat.id!);
+            setCategories(prev => prev.filter(c => c.id !== deletingCat.id));
+            if (reassignedCount > 0) {
+                const noun = reassignedCount === 1 ? "transacción reasignada" : "transacciones reasignadas";
+                toast.success(`Categoría eliminada. ${reassignedCount} ${noun} a «Otros».`);
+            } else {
+                toast.success("Categoría eliminada");
+            }
+            setDeletingCat(null);
+            setDeleteCount(null);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Error al eliminar");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const deleteDescription = deleteCount === null
+        ? "Comprobando transacciones asociadas…"
+        : deleteCount > 0
+            ? `Esta categoría tiene ${deleteCount} ${deleteCount === 1 ? "transacción asociada" : "transacciones asociadas"}. Al eliminarla, ${deleteCount === 1 ? "esa transacción quedará huérfana y se marcará" : "esas transacciones quedarán huérfanas y se marcarán"} con la categoría «Otros». ¿Deseas continuar?`
+            : "¿Seguro que deseas eliminar esta categoría? Esta acción no se puede deshacer.";
 
     return (
         <Card className="border-none shadow-none bg-transparent">
@@ -175,7 +208,7 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10" onClick={() => handleOpenDialog(cat)}>
                                                     <Edit2 className="w-4 h-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDelete(cat.id!)}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDeleteRequest(cat)}>
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
                                             </>
@@ -188,6 +221,23 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                     </div>
                 )}
             </CardContent>
+
+            <ConfirmationModal
+                open={!!deletingCat}
+                onOpenChange={(open) => {
+                    if (!open && !isDeleting) {
+                        setDeletingCat(null);
+                        setDeleteCount(null);
+                    }
+                }}
+                title={`Eliminar «${deletingCat?.name ?? ""}»`}
+                description={deleteDescription}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="destructive"
+                isLoading={isDeleting || deleteCount === null}
+                onConfirm={handleDeleteConfirm}
+            />
         </Card>
     );
 }

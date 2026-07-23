@@ -1,19 +1,24 @@
 import { UUID } from "@/domain/core";
 import { FinancialInstitution, FinancialAccount, FinancialCategory } from "@/domain/entities/financial";
-import { 
-    IFinancialInstitutionRepository, 
+import {
+    IFinancialInstitutionRepository,
     IFinancialInstitutionTypeRepository,
-    IFinancialAccountRepository, 
-    IFinancialCategoryRepository 
+    IFinancialAccountRepository,
+    IFinancialCategoryRepository,
+    IFinancialTransactionRepository
 } from "@/domain/repositories/financial";
 import { randomUUID } from "crypto";
+
+/** Name of the base ("system") category orphaned transactions fall back to. */
+const FALLBACK_CATEGORY_NAME = "otros";
 
 export class FinancialSettingsService {
     constructor(
         private institutionTypeRepo: IFinancialInstitutionTypeRepository,
         private institutionRepo: IFinancialInstitutionRepository,
         private accountRepo: IFinancialAccountRepository,
-        private categoryRepo: IFinancialCategoryRepository
+        private categoryRepo: IFinancialCategoryRepository,
+        private transactionRepo: IFinancialTransactionRepository
     ) {}
 
     // --- Institution Types ---
@@ -198,7 +203,21 @@ export class FinancialSettingsService {
         return this.categoryRepo.update(updated);
     }
 
-    async deleteCategory(userId: UUID, categoryId: UUID): Promise<void> {
+    /** How many of the user's transactions are classified under this category. */
+    async getCategoryTransactionCount(userId: UUID, categoryId: UUID): Promise<number> {
+        const existing = await this.categoryRepo.findById(categoryId);
+        if (!existing || existing.ownerUserId !== userId) {
+            throw new Error("Category not found or access denied");
+        }
+        return this.transactionRepo.countByCategoryId(userId, categoryId);
+    }
+
+    /**
+     * Delete a user category. Any transaction still classified under it is first
+     * reassigned to the base "Otros" category so none are left orphaned, then the
+     * category itself is removed. Returns how many transactions were reassigned.
+     */
+    async deleteCategory(userId: UUID, categoryId: UUID): Promise<{ reassignedCount: number }> {
         const existing = await this.categoryRepo.findById(categoryId);
         if (!existing || existing.ownerUserId !== userId) {
             throw new Error("Category not found or access denied");
@@ -208,13 +227,21 @@ export class FinancialSettingsService {
         if (existing.ownerUserId === null) {
              throw new Error("Cannot delete system base categories");
         }
-        
-        // Soft delete
-        const updated: FinancialCategory = {
-            ...existing,
-            isDeleted: true,
-            updatedAt: new Date().toISOString()
-        };
-        await this.categoryRepo.update(updated);
+
+        // Move associated transactions to the "Otros" fallback before removing.
+        const fallback = await this.findFallbackCategory(userId);
+        let reassignedCount = 0;
+        if (fallback && fallback.id && fallback.id !== categoryId) {
+            reassignedCount = await this.transactionRepo.reassignCategory(userId, categoryId, fallback.id);
+        }
+
+        await this.categoryRepo.delete(categoryId);
+        return { reassignedCount };
+    }
+
+    /** Resolve the base "Otros" category (ownerUserId === null) for fallback reassignment. */
+    private async findFallbackCategory(userId: UUID): Promise<FinancialCategory | undefined> {
+        const all = await this.categoryRepo.findAllBaseAndUser(userId);
+        return all.find(c => c.ownerUserId === null && c.name.trim().toLowerCase() === FALLBACK_CATEGORY_NAME);
     }
 }
