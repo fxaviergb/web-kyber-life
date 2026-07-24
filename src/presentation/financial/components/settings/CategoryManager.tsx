@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { FinancialCategory } from "@/domain/entities/financial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit2, Trash2, Tags } from "lucide-react";
+import { Plus, Edit2, Trash2, Tags, Lock, UserRound, type LucideIcon } from "lucide-react";
 import { createCategoryAction, updateCategoryAction, deleteCategoryAction, getCategoryTransactionCountAction } from "@/app/actions/financial-settings";
 import { FormSheet } from "@/components/ui/form-sheet";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
@@ -73,8 +73,8 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                 toast.success("Categoría creada");
             }
             setIsDialogOpen(false);
-        } catch (error: any) {
-            toast.error(error.message || "Error al guardar");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Error al guardar");
         } finally {
             setIsSubmitting(false);
         }
@@ -118,6 +118,55 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
         : deleteCount > 0
             ? `Esta categoría tiene ${deleteCount} ${deleteCount === 1 ? "transacción asociada" : "transacciones asociadas"}. Al eliminarla, ${deleteCount === 1 ? "esa transacción quedará huérfana y se marcará" : "esas transacciones quedarán huérfanas y se marcarán"} con la categoría «Otros». ¿Deseas continuar?`
             : "¿Seguro que deseas eliminar esta categoría? Esta acción no se puede deshacer.";
+
+    // Split into user-owned vs. system (base) categories so each group is shown
+    // under its own heading and the user can tell them apart at a glance.
+    const visibleCategories = categories.filter(c => !c.isDeleted);
+    const myCategories = visibleCategories.filter(c => c.ownerUserId !== null);
+    const systemCategories = visibleCategories.filter(c => c.ownerUserId === null);
+
+    const resolveIcon = (name?: string | null): LucideIcon => {
+        if (name && name in Icons) {
+            return (Icons as unknown as Record<string, LucideIcon>)[name];
+        }
+        return Tags;
+    };
+
+    const renderCategoryCard = (cat: FinancialCategory) => {
+        const IconComponent = resolveIcon(cat.icon);
+        const isSystem = cat.ownerUserId === null;
+        return (
+            <div key={cat.id} className="p-5 border rounded-xl bg-card shadow-sm flex flex-col gap-2 group hover:border-primary/50 hover:shadow-md transition-all">
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div
+                            className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center opacity-90 shadow-sm"
+                            style={{ backgroundColor: `${cat.color || '#3b82f6'}25`, color: cat.color || '#3b82f6' }}
+                        >
+                            <IconComponent className="w-6 h-6" />
+                        </div>
+                        <h3 className="font-semibold text-base text-card-foreground truncate">
+                            {cat.name}
+                        </h3>
+                    </div>
+                    {isSystem ? (
+                        <span className="shrink-0 text-muted-foreground/60" title="Categoría del sistema (no editable)">
+                            <Lock className="w-4 h-4" />
+                        </span>
+                    ) : (
+                        <div className="flex gap-1 shrink-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10" onClick={() => handleOpenDialog(cat)}>
+                                <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDeleteRequest(cat)}>
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <Card className="border-none shadow-none bg-transparent">
@@ -167,58 +216,44 @@ export function CategoryManager({ initialData }: CategoryManagerProps) {
                     </FormSheet>
                 </div>
             </CardHeader>
-            <CardContent className="px-0">
-                {categories.filter(c => !c.isDeleted).length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl bg-muted/30">
-                        <Tags className="w-10 h-10 mx-auto mb-4 opacity-20" />
-                        <p className="font-medium text-foreground">No tienes categorías registradas</p>
-                        <p className="text-sm mt-1 mb-4">Añade categorías para organizar tus gastos.</p>
-                        <Button variant="outline" onClick={() => handleOpenDialog()}>
-                            Añadir la primera
-                        </Button>
+            <CardContent className="px-0 space-y-8">
+                {/* ── Mis categorías (creadas por el usuario) ───────────── */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <UserRound className="w-4 h-4 text-primary shrink-0" />
+                        <h3 className="text-sm font-semibold text-foreground">Mis categorías</h3>
+                        <span className="text-xs text-muted-foreground">({myCategories.length})</span>
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {categories.filter(c => !c.isDeleted).map(cat => {
-                            const IconComponent = cat.icon && (Icons as any)[cat.icon] ? (Icons as any)[cat.icon] : Tags;
-                            return (
-                            <div key={cat.id} className="p-5 border rounded-xl bg-card shadow-sm flex flex-col gap-2 group hover:border-primary/50 hover:shadow-md transition-all">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-4">
-                                        <div 
-                                            className="w-12 h-12 rounded-full flex items-center justify-center opacity-90 shadow-sm"
-                                            style={{ backgroundColor: `${cat.color || '#3b82f6'}25`, color: cat.color || '#3b82f6' }}
-                                        >
-                                            <IconComponent className="w-6 h-6" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-base text-card-foreground flex items-center gap-2">
-                                                {cat.name}
-                                                {cat.ownerUserId === null && (
-                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground uppercase tracking-wider font-medium">
-                                                        Sistema
-                                                    </span>
-                                                )}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {cat.ownerUserId !== null && (
-                                            <>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10" onClick={() => handleOpenDialog(cat)}>
-                                                    <Edit2 className="w-4 h-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDeleteRequest(cat)}>
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            );
-                        })}
-                    </div>
+                    {myCategories.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground border border-dashed rounded-xl bg-muted/30">
+                            <Tags className="w-9 h-9 mx-auto mb-3 opacity-20" />
+                            <p className="font-medium text-foreground">Aún no has creado categorías propias</p>
+                            <p className="text-sm mt-1 mb-4">Crea las tuyas para personalizar la organización de tus gastos.</p>
+                            <Button variant="outline" onClick={() => handleOpenDialog()}>
+                                <Plus className="w-4 h-4" />
+                                Crear categoría
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {myCategories.map(renderCategoryCard)}
+                        </div>
+                    )}
+                </section>
+
+                {/* ── Categorías del sistema (base, no editables) ───────── */}
+                {systemCategories.length > 0 && (
+                    <section className="space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <h3 className="text-sm font-semibold text-foreground">Categorías del sistema</h3>
+                            <span className="text-xs text-muted-foreground">({systemCategories.length})</span>
+                            <span className="hidden sm:inline text-xs text-muted-foreground/70">· predefinidas, no editables</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {systemCategories.map(renderCategoryCard)}
+                        </div>
+                    </section>
                 )}
             </CardContent>
 
