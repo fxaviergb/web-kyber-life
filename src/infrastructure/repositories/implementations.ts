@@ -164,6 +164,18 @@ export class InMemoryFinancialTransactionRepository extends InMemoryRepository<F
         }
         return Array.from(tagsSet);
     }
+
+    async countByCategoryId(userId: UUID, categoryId: UUID): Promise<number> {
+        return (await this.findByOwnerId(userId)).filter(t => t.categoryId === categoryId).length;
+    }
+
+    async reassignCategory(userId: UUID, fromCategoryId: UUID, toCategoryId: UUID | null): Promise<number> {
+        const affected = (await this.findByOwnerId(userId)).filter(t => t.categoryId === fromCategoryId);
+        for (const t of affected) {
+            await this.update({ ...t, categoryId: toCategoryId, updatedAt: new Date().toISOString() });
+        }
+        return affected.length;
+    }
 }
 
 export class InMemoryUserRepository extends InMemoryRepository<User> implements IUserRepository {

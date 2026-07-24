@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: 'Kyber',
-        short_name: 'Kyber',
+        name: 'KyberLife',
+        short_name: 'KyberLife',
         description: 'Gestión inteligente de gastos y vida',
         start_url: '/',
         display: 'standalone',
